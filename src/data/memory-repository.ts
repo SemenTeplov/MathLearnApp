@@ -1,12 +1,14 @@
 // ============================================
-// STORAGE/MEMORY-REPOSITORY.TS — тестовая реализация
+// DATA/MEMORY-REPOSITORY.TS — тестовая реализация (1.8.2)
 // ============================================
+
+import { Repository } from './repository';
 
 /**
  * Тестовая реализация Repository в памяти.
  * Данные не сохраняются между перезапусками.
  */
-class MemoryRepository extends Repository {
+export class MemoryRepository extends Repository {
     _data: unknown = null;
 
     constructor() {

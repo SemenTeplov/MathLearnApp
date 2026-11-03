@@ -6,6 +6,9 @@
 // Только презентация: клики уходят в пропсы, логика — в useMap.
 
 import type { RefObject } from 'react';
+import { PlayerRules } from '../core/player-rules';
+import type { Difficulty, MapData, Zone as ZoneData } from '../core/types';
+import type { MapModalTarget, MapViewData } from '../ui/types';
 import { Player } from './Player';
 import { Path } from './Path';
 import { Trainer } from './Trainer';
@@ -19,7 +22,7 @@ export interface MapScreenProps {
     modalTarget: MapModalTarget | null;
     selectedDifficulty: Difficulty;
     mapRef: RefObject<HTMLDivElement | null>;
-    onTrainerClick(zone: Zone | undefined, trainerNumber: number, trainerIndex: number): void;
+    onTrainerClick(zone: ZoneData | undefined, trainerNumber: number, trainerIndex: number): void;
     onSelectDifficulty(difficulty: Difficulty): void;
     onCancel(): void;
     onPlayerArrived(): void;

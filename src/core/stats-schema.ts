@@ -1,26 +1,31 @@
 // ============================================
-// MODEL/STATS-SCHEMA.JS — структура Stats v3 и миграции
+// CORE/STATS-SCHEMA.TS — структура Stats v3 и миграции (1.8.2)
 // ============================================
+
+import { CONFIG } from './config';
+import { CorruptedDataError } from './errors';
+import { MapCatalog } from './map-catalog';
+import type { MapData, Stats } from './types';
+
+/** Плоские поля версий 1–2, которые переезжают в maps при миграции. */
+type LegacyStats = Stats & {
+    currentTrainerIndex?: number;
+    totalScore?: number;
+};
 
 /**
  * Схема сохранённой статистики: версия, текущая карта и данные по картам.
  * Только данные: без DOM, Storage, сервисов и звука.
  */
-const StatsSchema = {
-    /**
-     * Пустые данные одной карты.
-     * @returns {MapData}
-     */
-    emptyMap() {
+export const StatsSchema = {
+    /** Пустые данные одной карты. */
+    emptyMap(): MapData {
         return { totalScore: 0, currentTrainerIndex: -1 };
     },
 
-    /**
-     * Статистика по умолчанию: все карты каталога, пустая позиция.
-     * @returns {Stats}
-     */
-    defaults() {
-        const maps = {};
+    /** Статистика по умолчанию: все карты каталога, пустая позиция. */
+    defaults(): Stats {
+        const maps: Record<string, MapData> = {};
         this._mapIds().forEach((id) => {
             maps[id] = this.emptyMap();
         });
@@ -32,22 +37,14 @@ const StatsSchema = {
         };
     },
 
-    /**
-     * Данные текущей карты (T25).
-     * @param {Stats} stats
-     * @returns {MapData}
-     */
-    entry(stats) {
+    /** Данные текущей карты (T25). */
+    entry(stats: Stats): MapData {
         return stats.maps[stats.currentMap];
     },
 
-    /**
-     * Приводит запись к актуальной версии (пошагово 1 → 2 → 3).
-     * @param {Object} data — сохранённая запись
-     * @returns {Stats}
-     */
-    migrate(data) {
-        const stats = data || {};
+    /** Приводит запись к актуальной версии (пошагово 1 → 2 → 3). */
+    migrate(data: unknown): Stats {
+        const stats = (data || {}) as LegacyStats;
         const current = CONFIG.VERSION;
         let version = stats.version || 0;
 
@@ -77,10 +74,8 @@ const StatsSchema = {
      * Дополняет запись недостающими картами и полями (US-38).
      * Неизвестный currentMap заменяется картой по умолчанию,
      * данные остальных карт сохраняются.
-     * @param {Stats} stats
-     * @returns {Stats}
      */
-    ensureMaps(stats) {
+    ensureMaps(stats: Stats): Stats {
         if (!stats.maps || typeof stats.maps !== 'object') {
             stats.maps = {};
         }
@@ -102,14 +97,15 @@ const StatsSchema = {
         return stats;
     },
 
-    /**
-     * Переносит плоские поля версии 2 в карту по умолчанию.
-     * @param {Object} stats
-     */
-    _toMaps(stats) {
-        const maps = stats.maps && typeof stats.maps === 'object' ? stats.maps : {};
+    /** Переносит плоские поля версии 2 в карту по умолчанию. */
+    _toMaps(stats: LegacyStats): void {
+        const maps: Record<string, MapData> = stats.maps && typeof stats.maps === 'object'
+            ? stats.maps
+            : {};
         const mapId = MapCatalog.has(stats.currentMap) ? stats.currentMap : this._defaultId();
-        const existing = maps[mapId] && typeof maps[mapId] === 'object' ? maps[mapId] : {};
+        const existing: MapData = maps[mapId] && typeof maps[mapId] === 'object'
+            ? maps[mapId]
+            : {} as MapData;
 
         maps[mapId] = {
             totalScore: stats.totalScore == null ? (existing.totalScore || 0) : stats.totalScore,
@@ -125,20 +121,14 @@ const StatsSchema = {
         delete stats.currentTrainerIndex;
     },
 
-    /**
-     * Идентификаторы карт каталога.
-     * @returns {string[]}
-     */
-    _mapIds() {
+    /** Идентификаторы карт каталога. */
+    _mapIds(): string[] {
         const maps = Array.isArray(CONFIG.MAPS) ? CONFIG.MAPS : [];
         return maps.map((map) => map.id);
     },
 
-    /**
-     * Идентификатор карты по умолчанию.
-     * @returns {string}
-     */
-    _defaultId() {
+    /** Идентификатор карты по умолчанию. */
+    _defaultId(): string {
         const map = MapCatalog.getDefault();
         return map ? map.id : CONFIG.DEFAULT_MAP;
     }

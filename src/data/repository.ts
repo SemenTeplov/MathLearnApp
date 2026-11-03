@@ -1,32 +1,23 @@
 // ============================================
-// STORAGE/REPOSITORY.TS — базовый класс Repository
+// DATA/REPOSITORY.TS — базовый класс Repository (1.8.2)
 // ============================================
 
 /**
  * Базовый класс репозитория.
  * Определяет контракт для всех реализаций хранилища.
  */
-class Repository {
-    /**
-     * Сохраняет данные.
-     * @throws — не реализовано
-     */
+export class Repository {
+    /** Сохраняет данные. */
     save(data: unknown): void {
         throw new Error('Not implemented');
     }
 
-    /**
-     * Загружает данные.
-     * @throws — не реализовано
-     */
+    /** Загружает данные. */
     load(): unknown {
         throw new Error('Not implemented');
     }
 
-    /**
-     * Очищает данные.
-     * @throws — не реализовано
-     */
+    /** Очищает данные. */
     clear(): void {
         throw new Error('Not implemented');
     }

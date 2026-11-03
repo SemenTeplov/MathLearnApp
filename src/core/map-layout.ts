@@ -1,12 +1,14 @@
 // ============================================
-// LOGIC/MAP-LAYOUT.JS — геометрия карты (переехал из view/ в 1.8.0)
+// CORE/MAP-LAYOUT.TS — геометрия карты (1.8.2)
 // ============================================
+
+import type { MapBand, MapGeometry, Point, TrainerPoint, Zone } from './types';
 
 /**
  * Чистая геометрия карты: полосы зон, координаты тренажёров, путь дороги
  * и точка игрока. Не обращается к DOM и CONFIG — удобно для юнит-тестов.
  */
-const MapLayout = {
+export const MapLayout = {
     TRAINER_SPACING: 100,
     TRAINER_SIZE: 52,
     PLAYER_SIZE: 52,
@@ -17,19 +19,14 @@ const MapLayout = {
     AMPLITUDE_MAX: 110,
     FALLBACK_WIDTH: 600,
 
-    /**
-     * Строит раскладку карты по списку зон.
-     * @param {Zone[]} zones — зоны из CONFIG.ZONES
-     * @param {number} width — ширина полотна в px
-     * @returns {MapGeometry}
-     */
-    buildLayout(zones, width) {
+    /** Строит раскладку карты по списку зон. */
+    buildLayout(zones: Zone[], width: number): MapGeometry {
         const list = Array.isArray(zones) ? zones : [];
         const canvasWidth = this._normalizeWidth(width);
         const centerX = canvasWidth / 2;
         const amplitude = this._amplitude(canvasWidth);
-        const bands = [];
-        const trainers = [];
+        const bands: MapBand[] = [];
+        const trainers: TrainerPoint[] = [];
         let top = 0;
 
         list.forEach((zone) => {
@@ -65,13 +62,8 @@ const MapLayout = {
         };
     },
 
-    /**
-     * Точка игрока для указанного индекса.
-     * @param {TrainerPoint[]} trainers — тренажёры из buildLayout()
-     * @param {number} index — плоский индекс игрока
-     * @returns {Point|null} — null для пустой карты
-     */
-    getPlayerPoint(trainers, index) {
+    /** Точка игрока для указанного индекса; null для пустой карты. */
+    getPlayerPoint(trainers: TrainerPoint[], index: number): Point | null {
         if (!Array.isArray(trainers) || trainers.length === 0) return null;
 
         if (index < 0) {
@@ -83,12 +75,8 @@ const MapLayout = {
         return { x: point.x, y: point.y };
     },
 
-    /**
-     * Строит один непрерывный SVG-путь по всем тренажёрам.
-     * @param {Point[]} trainers
-     * @returns {string} — значение атрибута d
-     */
-    buildRoadPath(trainers) {
+    /** Строит один непрерывный SVG-путь по всем тренажёрам. */
+    buildRoadPath(trainers: Point[]): string {
         const points = Array.isArray(trainers) ? trainers : [];
         if (points.length === 0) return '';
 
@@ -107,32 +95,20 @@ const MapLayout = {
         return d;
     },
 
-    /**
-     * Приводит ширину к положительному числу.
-     * @param {number} width
-     * @returns {number}
-     */
-    _normalizeWidth(width) {
+    /** Приводит ширину к положительному числу. */
+    _normalizeWidth(width: number): number {
         const value = Number(width);
         return value > 0 ? value : this.FALLBACK_WIDTH;
     },
 
-    /**
-     * Боковое смещение тренажёров от центра.
-     * @param {number} width
-     * @returns {number}
-     */
-    _amplitude(width) {
+    /** Боковое смещение тренажёров от центра. */
+    _amplitude(width: number): number {
         const value = width * this.AMPLITUDE_RATIO;
         return Math.min(this.AMPLITUDE_MAX, Math.max(this.AMPLITUDE_MIN, value));
     },
 
-    /**
-     * Округляет координату до 0.1px.
-     * @param {number} value
-     * @returns {number}
-     */
-    _round(value) {
+    /** Округляет координату до 0.1px. */
+    _round(value: number): number {
         return Math.round(value * 10) / 10;
     }
 };

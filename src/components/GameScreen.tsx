@@ -5,7 +5,9 @@
 // жизни, «+10»), вопрос, 4 кнопки ответов с классами correct/wrong,
 // плашка feedback с кнопкой «Продолжить». Только презентация.
 
-import { config } from '../config';
+import { CONFIG } from '../core/config';
+import type { Problem } from '../core/types';
+import type { GameFeedbackView, GameSessionView } from '../ui/types';
 
 export interface GameScreenProps {
     session: GameSessionView;
@@ -22,7 +24,7 @@ export interface GameScreenProps {
 /** Полоски жизней: ❤️ за каждую оставшуюся, 🖤 за потерянную. */
 function renderLives(lives: number): string {
     let text = '';
-    for (let i = 0; i < config.MAX_LIVES; i++) {
+    for (let i = 0; i < CONFIG.MAX_LIVES; i++) {
         text += i < lives ? '❤️' : '🖤';
     }
     return text;
