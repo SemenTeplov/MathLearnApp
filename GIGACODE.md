@@ -49,7 +49,7 @@ css/                        # 21 файл, без изменений с 1.5.0 (A
 js/                         # Только слои: 19 файлов (13 .ts + 6 .js)
   model/
     config.ts               # CONFIG: ZONES, MAPS, DEFAULT_MAP, VERSION = 3, min в оценках
-    session-model.ts        # Состояние раунда (lives, roundScore, currentQuestionIndex, difficulty, completed)
+    session-model.ts        # Состояние раунда (lives, roundScore, correct, wrong, currentQuestionIndex, difficulty, completed)
     map-catalog.js          # Каталог карт: get / getDefault / has
     stats-schema.js         # Схема Stats v3: defaults, emptyMap, entry, migrate, ensureMaps
   storage/
@@ -79,7 +79,7 @@ test/
   setup.js                  # Моки и общая настройка vitest (CONFIG v3)
   ts-source.js              # readSource(): чтение и transpileModule для .ts
   logic/                    # Тесты правил, генератора, очков, игрока
-  model/                    # Тесты конфига, каталога карт и схемы Stats
+  model/                    # Тесты конфига, каталога карт, счётчиков раунда и схемы Stats
   service/                  # Тесты звукового сервиса и статистики
   map/                      # Тесты геометрии карты (18)
 .gigacode/
@@ -106,7 +106,7 @@ npm install
 npm run dev          # http://localhost:5173 — единственный способ запуска
 npm run typecheck    # tsc --noEmit: 0 ошибок
 npm run build        # = typecheck (Vite не бандлит classic-скрипты)
-npm test             # vitest run: 141 тест в 11 сьютах
+npm test             # vitest run: 156 тестов в 12 сьютах
 npm run test:watch   # vitest в watch-режиме
 ```
 
@@ -144,9 +144,12 @@ npm run test:watch   # vitest в watch-режиме
 Logic (правила); плюс инфраструктурные Errors и Audio. Поверх них — React-слой, который
 читает классические глобалы (`CONFIG`, `StatsService`, `PlayerState`…).
 
-- **Model:** только состояние — поля, геттеры, сеттеры, `reset()`. Не знает о React, Storage
-  и React-хуках. DTO описаны в `src/types.ts`; зоны по умолчанию — `CONFIG.ZONES`,
-  каталог предметов — `CONFIG.MAPS` (`MapCatalog`), формат сохранённого — `StatsSchema`.
+- **Model:** только состояние — поля, геттеры, сеттеры, `reset()`. В `SessionModel` живут
+  счётчики ответов (`correct`/`wrong`, `total = correct + wrong`): они меняются в
+  `recordCorrect`/`recordIncorrect` при ответе, а не вычисляются из индекса вопроса (1.8.1).
+  Модель не знает о React, Storage и React-хуках. DTO описаны в `src/types.ts`; зоны по
+  умолчанию — `CONFIG.ZONES`, каталог предметов — `CONFIG.MAPS` (`MapCatalog`), формат
+  сохранённого — `StatsSchema`.
 - **Storage:** единственная точка работы с хранилищем — `Repository` + реализации
   (localStorage, memory, session). Сервисы связывают Model и Storage.
 - **Logic:** генерация задач, расчёт очков, проверка ответов, оценка, правила игрока
