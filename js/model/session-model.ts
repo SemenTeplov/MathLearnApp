@@ -9,6 +9,8 @@
 class SessionModel {
     _lives: number;
     _roundScore: number;
+    _correct: number;
+    _wrong: number;
     _currentQuestionIndex: number;
     _difficulty: Difficulty;
     _completed: boolean;
@@ -16,6 +18,8 @@ class SessionModel {
     constructor() {
         this._lives = CONFIG.MAX_LIVES;
         this._roundScore = 0;
+        this._correct = 0;
+        this._wrong = 0;
         this._currentQuestionIndex = 0;
         this._difficulty = CONFIG.START_DIFFICULTY;
         this._completed = false;
@@ -61,6 +65,8 @@ class SessionModel {
     reset(): void {
         this._lives = CONFIG.MAX_LIVES;
         this._roundScore = 0;
+        this._correct = 0;
+        this._wrong = 0;
         this._currentQuestionIndex = 0;
         this._difficulty = CONFIG.START_DIFFICULTY;
         this._completed = false;
@@ -73,23 +79,24 @@ class SessionModel {
 
     /** Начисляет очки за правильный ответ. */
     recordCorrect(): void {
+        this._correct++;
         this._roundScore += CONFIG.POINTS_BASE;
     }
 
     /** Уменьшает жизни при неправильном ответе. */
     recordIncorrect(): void {
+        this._wrong++;
         this._lives--;
     }
 
     getResults(): GameResult {
-        const total = CONFIG.TOTAL_QUESTIONS;
-        const correct = this._currentQuestionIndex;
-        const wrong = correct;
-
         return {
-            correct,
-            wrong,
-            total,
+            correct: this._correct,
+            wrong: this._wrong,
+            // A49: total — фактически отвечено, а не длина раунда:
+            // при досрочном окончании «0 из 10» вводил бы в заблуждение,
+            // а неотвеченные вопросы не являются ошибками.
+            total: this._correct + this._wrong,
             roundScore: this._roundScore,
             lives: this._lives,
             completed: this._completed
