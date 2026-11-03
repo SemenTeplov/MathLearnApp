@@ -1,0 +1,43 @@
+/* ===== БАЗОВАЯ КНОПКА ===== */
+.btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+}
+
+/* ===== ЗЕЛЁНАЯ КНОПКА ===== */
+.btn-primary {
+    background: #58cc02;
+    color: white;
+    box-shadow: 0 4px 0 #46a302;
+}
+
+.btn-primary:hover {
+    background: #61e002;
+}
+
+.btn-primary:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 #46a302;
+}
+
+/* ===== БЕЛАЯ КНОПКА ===== */
+.btn-secondary {
+    background: white;
+    color: #1cb0f6;
+    border: 2px solid #e5e5e5;
+    box-shadow: 0 4px 0 #e5e5e5;
+}
+
+.btn-secondary:hover {
+    background: #f7f7f7;
+}

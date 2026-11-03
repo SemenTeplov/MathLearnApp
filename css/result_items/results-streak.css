@@ -1,0 +1,27 @@
+/* ============================================
+   RESULTS-STREAK.CSS — бейдж серии (🔥)
+   ============================================ */
+
+.streak-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: #ff9600;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    display: none;
+    z-index: 10;
+}
+
+.streak-badge.show {
+    display: block;
+    animation: pulse 0.5s;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.15); }
+}

@@ -1,0 +1,30 @@
+/* ============================================
+   RESULTS-STATS.CSS — статистика результата
+   ============================================ */
+
+.stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 25px 0;
+}
+
+.stat-card {
+    background: #f7f7f7;
+    padding: 18px;
+    border-radius: 14px;
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: #58cc02;
+}
+
+.stat-label {
+    color: #888;
+    font-size: 13px;
+    margin-top: 4px;
+    font-weight: 600;
+}

@@ -1,0 +1,19 @@
+/* ============================================
+   RESULTS.CSS — главный стиль экрана результатов
+   Собирает все части через @import
+   ============================================ */
+
+/* 1. Иконка результата (🏆 🎉 💪 📚 💔) */
+@import url('result_items/results-icon.css');
+
+/* 2. Статистика: правильные ответы и очки */
+@import url('result_items/results-stats.css');
+
+/* 3. Бейдж серии (🔥) */
+@import url('result_items/results-streak.css');
+
+/* ===== Общие стили экрана результатов ===== */
+
+#resultScreen {
+    position: relative;
+}

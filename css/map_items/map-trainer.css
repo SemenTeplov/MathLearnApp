@@ -1,0 +1,39 @@
+/* ============================================
+   MAP-TRAINER.CSS — кнопка-тренажёр
+   ============================================ */
+
+.map-trainer {
+    position: absolute;
+    z-index: 2;
+    transform: translate(-50%, -50%);
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 3px solid #ffffff;
+    background: #ffffff;
+    color: #4a4a4a;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.18);
+    transition: transform 0.15s;
+}
+
+.map-trainer:hover {
+    transform: translate(-50%, -50%) scale(1.06);
+}
+
+.map-trainer:active {
+    transform: translate(-50%, -50%) translateY(3px);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
+}
+
+/* Доступность по правилам игрока (T18, US-30) */
+.map-trainer--far {
+    cursor: not-allowed;
+}
+
+.map-trainer--near,
+.map-trainer--current {
+    cursor: pointer;
+}

@@ -1,0 +1,46 @@
+/* ============================================
+   MAP-ZONE.CSS — полоса зоны на карте
+   Цвет зоны приходит из CONFIG.ZONES[i].color
+   ============================================ */
+
+.map-zone {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    background: var(--zone-color, #667eea);
+    z-index: 0;
+}
+
+.map-zone--first {
+    border-radius: 18px 18px 0 0;
+}
+
+.map-zone--last {
+    border-radius: 0 0 18px 18px;
+}
+
+.map-zone + .map-zone {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.map-zone-title {
+    position: absolute;
+    top: 10px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.18);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+}
+
+.map-zone-title--left {
+    left: 16px;
+}
+
+.map-zone-title--right {
+    right: 16px;
+}

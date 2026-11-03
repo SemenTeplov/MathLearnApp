@@ -1,0 +1,62 @@
+/* ============================================
+   MAP-GLOBAL.CSS — глобальная карта (выбор предмета)
+   Кнопка 🌍 и модалка со списком карт
+   ============================================ */
+
+/* ===== Кнопка 🌍: фиксирована в правом верхнем углу ===== */
+.global-map-btn {
+    position: fixed;
+    top: 32px;
+    right: 32px;
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #e5e5e5;
+    border-radius: 50%;
+    background: #ffffff;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 4;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.global-map-btn:hover {
+    transform: scale(1.06);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+}
+
+.global-map-btn:active {
+    transform: scale(0.96);
+}
+
+/* ===== Список карт в модалке ===== */
+.map-select-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.map-select-item {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: 2px solid #e5e5e5;
+    background: white;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 16px;
+    color: #666;
+    transition: all 0.2s;
+}
+
+.map-select-item.selected {
+    border-color: #58cc02;
+    background: #d7ffb8;
+    color: #58a700;
+}

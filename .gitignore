@@ -1,0 +1,28 @@
+# Зависимости (package-lock.json коммитим)
+node_modules/
+
+# Результаты сборки Vite (npm run build / npm run preview)
+dist/
+dist-ssr/
+*.local
+
+# Кеш Vite/Vitest (обычно лежит внутри node_modules, но фиксируем явно)
+.vite/
+.vite-temp/
+.vitest/
+.vitest-cache/
+
+# Покрытие тестов (vitest run --coverage, jest)
+coverage/
+*.lcov
+
+# Логи
+*.log
+npm-debug.log*
+
+# Мусор ОС
+.DS_Store
+Thumbs.db
+
+# Инкрементальный кеш TypeScript
+*.tsbuildinfo

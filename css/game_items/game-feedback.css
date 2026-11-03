@@ -1,0 +1,51 @@
+/* ============================================
+   GAME-FEEDBACK.CSS — обратная связь
+   ============================================ */
+
+.feedback {
+    margin-top: 25px;
+    padding: 20px;
+    border-radius: 14px;
+    display: none;
+    animation: slideUp 0.3s ease;
+}
+
+.feedback.show {
+    display: block;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.feedback.correct-fb {
+    background: #d7ffb8;
+    border: 2px solid #58cc02;
+}
+
+.feedback.wrong-fb {
+    background: #ffdfe0;
+    border: 2px solid #ff4b4b;
+}
+
+.feedback-title {
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 6px;
+}
+
+.feedback.correct-fb .feedback-title { color: #58a700; }
+.feedback.wrong-fb .feedback-title { color: #ea2b2b; }
+
+.feedback-text {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.feedback .btn {
+    margin-bottom: 0;
+    padding: 12px;
+    font-size: 14px;
+}

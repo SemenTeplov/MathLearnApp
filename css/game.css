@@ -1,0 +1,22 @@
+/* ============================================
+   GAME.CSS — главный стиль игрового экрана
+   Собирает все части игры через @import
+   ============================================ */
+
+/* 1. Шапка игры: прогресс-бар, жизни, счётчик */
+@import url('game_items/game-answers.css');
+
+/* 2. Вопрос */
+@import url('game_items/game-question.css');
+
+/* 3. Варианты ответов */
+@import url('game_items/game-answers.css');
+
+/* 4. Обратная связь (правильно/неправильно) */
+@import url('game_items/game-feedback.css');
+
+/* ===== Общие стили игрового экрана ===== */
+
+#gameScreen {
+    position: relative;
+}

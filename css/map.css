@@ -1,0 +1,25 @@
+/* ============================================
+   MAP.CSS — главный стиль карты
+   Собирает все части через @import
+   ============================================ */
+
+/* 1. Экран карты и общий счёт */
+@import url('map_items/map-screen.css');
+
+/* 2. Зоны */
+@import url('map_items/map-zone.css');
+
+/* 3. Единая непрерывная дорога */
+@import url('map_items/map-road.css');
+
+/* 4. Игрок поверх дороги */
+@import url('map_items/map-player.css');
+
+/* 5. Кнопки-тренажёры */
+@import url('map_items/map-trainer.css');
+
+/* 6. Модалка выбора сложности */
+@import url('map_items/map-modal.css');
+
+/* 7. Глобальная карта: кнопка 🌍 и список карт */
+@import url('map_items/map-global.css');
