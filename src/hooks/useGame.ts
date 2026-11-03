@@ -1,13 +1,18 @@
 // ============================================
-// SRC/HOOKS/useGame.ts — игровой процесс (1.8.0)
+// SRC/HOOKS/useGame.ts — игровой процесс (1.8.2)
 // ============================================
-// Перенос игрового процесса 1:1 (бывшие контроллер игры и старт раунда). Модель раунда и
-// генератор живут в ref; наружу — снимок GameSessionView. Порядок действий
-// 1:1 с game-controller.js: ответ → правила → счёт/жизни → feedback «+10»
-// на 1.5 с; «Продолжить» → advanceQuestion → shouldEndGame → результаты.
+// Модель раунда и генератор живут в ref; наружу — снимок GameSessionView.
+// Порядок 1:1 с game-controller 1.8.0: ответ → правила → счёт/жизни →
+// feedback «+10» на 1.5 с; «Продолжить» → advanceQuestion → результаты.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { config } from '../config';
+import type { Services } from '../app/types';
+import { CONFIG } from '../core/config';
+import { GameRules } from '../core/game-rules';
+import { ProblemGenerator } from '../core/generator';
+import { SessionModel } from '../core/session-model';
+import type { Difficulty, GameResult, Problem } from '../core/types';
+import type { GameFeedbackView, GameSessionView } from '../ui/types';
 
 export interface UseGameDeps {
     /** Конец раунда: показывает результаты и переключает экран. */
@@ -31,16 +36,16 @@ export interface UseGame {
 
 function initialSession(): GameSessionView {
     return {
-        lives: config.MAX_LIVES,
+        lives: CONFIG.MAX_LIVES,
         roundScore: 0,
         questionNumber: 1,
-        totalQuestions: config.TOTAL_QUESTIONS,
+        totalQuestions: CONFIG.TOTAL_QUESTIONS,
         progress: 10,
-        difficulty: config.START_DIFFICULTY
+        difficulty: CONFIG.START_DIFFICULTY
     };
 }
 
-export function useGame({ onRoundFinished, onExitToMap }: UseGameDeps): UseGame {
+export function useGame(services: Services, { onRoundFinished, onExitToMap }: UseGameDeps): UseGame {
     const modelRef = useRef<SessionModel | null>(null);
     const generatorRef = useRef<ProblemGenerator | null>(null);
     const questionCountRef = useRef(0);
@@ -50,7 +55,7 @@ export function useGame({ onRoundFinished, onExitToMap }: UseGameDeps): UseGame 
     depsRef.current = { onRoundFinished, onExitToMap };
 
     if (!modelRef.current) modelRef.current = new SessionModel();
-    if (!generatorRef.current) generatorRef.current = new ProblemGenerator(config.START_DIFFICULTY);
+    if (!generatorRef.current) generatorRef.current = new ProblemGenerator(CONFIG.START_DIFFICULTY);
 
     const [session, setSession] = useState<GameSessionView>(initialSession);
     const [question, setQuestion] = useState<Problem | null>(null);
@@ -68,7 +73,7 @@ export function useGame({ onRoundFinished, onExitToMap }: UseGameDeps): UseGame 
     const start = useCallback((difficulty?: Difficulty) => {
         const model = modelRef.current!;
         const generator = generatorRef.current!;
-        const diff: Difficulty = difficulty || model.difficulty || config.START_DIFFICULTY;
+        const diff: Difficulty = difficulty || model.difficulty || CONFIG.START_DIFFICULTY;
 
         model.reset();
         model.setDifficulty(diff);
@@ -90,7 +95,7 @@ export function useGame({ onRoundFinished, onExitToMap }: UseGameDeps): UseGame 
             lives: model.lives,
             roundScore: model.roundScore,
             questionNumber: 1,
-            totalQuestions: config.TOTAL_QUESTIONS,
+            totalQuestions: CONFIG.TOTAL_QUESTIONS,
             progress: 10,
             difficulty: diff
         });
@@ -103,7 +108,7 @@ export function useGame({ onRoundFinished, onExitToMap }: UseGameDeps): UseGame 
         }
         answeredRef.current = true;
 
-        AudioService.play('click');
+        services.audio.play('click');
 
         const chosen = question.options[index];
         const isCorrect = GameRules.checkAnswer(chosen, question.answer);
@@ -111,7 +116,7 @@ export function useGame({ onRoundFinished, onExitToMap }: UseGameDeps): UseGame 
 
         if (isCorrect) {
             model.recordCorrect();
-            setFloatingScore(config.POINTS_BASE);
+            setFloatingScore(CONFIG.POINTS_BASE);
             if (floatingTimerRef.current) {
                 clearTimeout(floatingTimerRef.current);
             }
@@ -133,13 +138,13 @@ export function useGame({ onRoundFinished, onExitToMap }: UseGameDeps): UseGame 
                 : 'Правильный ответ: ' + question.answer + '. ' + question.explanation
         });
         setSession((prev) => ({ ...prev, lives: model.lives, roundScore: model.roundScore }));
-    }, [question]);
+    }, [question, services]);
 
     const next = useCallback(() => {
         const model = modelRef.current!;
         const generator = generatorRef.current!;
 
-        AudioService.play('click');
+        services.audio.play('click');
         answeredRef.current = false;
         questionCountRef.current++;
         model.advanceQuestion();
@@ -158,18 +163,18 @@ export function useGame({ onRoundFinished, onExitToMap }: UseGameDeps): UseGame 
         setSession((prev) => ({
             ...prev,
             questionNumber: counter,
-            progress: (counter / config.TOTAL_QUESTIONS) * 100
+            progress: (counter / CONFIG.TOTAL_QUESTIONS) * 100
         }));
-    }, []);
+    }, [services]);
 
     const exit = useCallback(() => {
         const model = modelRef.current!;
-        AudioService.play('click');
+        services.audio.play('click');
 
         if (confirm('Выйти из игры? Заработано ' + model.roundScore + ' очков сгорят.')) {
             depsRef.current.onExitToMap();
         }
-    }, []);
+    }, [services]);
 
     return { session, question, feedback, selectedIndex, correctIndex, floatingScore, start, answer, next, exit };
 }

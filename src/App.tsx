@@ -1,11 +1,12 @@
 // ============================================
-// SRC/APP.TSX — весь каркас приложения на React (1.8.0)
+// SRC/APP.TSX — весь каркас приложения на React (1.8.2)
 // ============================================
 // 15.17: React рендерит #mapScreen и .app с теми же id/классами, что были
 // в index.html; .active вычисляется из состояния, а не из DOM-роутера.
 // Модалки — в дереве App. Состояние экранов — локальное (хуки), без сторов.
 
 import { useCallback, useState } from 'react';
+import type { Services } from './app/types';
 import { ErrorModal } from './components/ErrorModal';
 import { GameScreen } from './components/GameScreen';
 import { Header } from './components/Header';
@@ -17,6 +18,7 @@ import { useMap } from './hooks/useMap';
 import { useMapSelection } from './hooks/useMapSelection';
 import { useResults } from './hooks/useResults';
 import { useSessionLock } from './hooks/useSessionLock';
+import type { Difficulty, GameResult } from './core/types';
 
 type ScreenName = 'map' | 'game' | 'results';
 
@@ -25,12 +27,16 @@ interface ErrorMessage {
     message: string;
 }
 
+export interface AppProps {
+    services: Services;
+}
+
 /** Класс экрана: `.screen` + `.active` у текущего (как в 1.7.0). */
 function screenClass(name: ScreenName, current: ScreenName): string {
     return 'screen' + (name === current ? ' active' : '');
 }
 
-export function App() {
+export function App({ services }: AppProps) {
     const [screen, setScreen] = useState<ScreenName>('map');
     const [error, setError] = useState<ErrorMessage | null>(null);
 
@@ -44,8 +50,8 @@ export function App() {
 
     useSessionLock(showError);
 
-    const map = useMap();
-    const results = useResults(map.gameFinished);
+    const map = useMap(services);
+    const results = useResults(services, map.gameFinished);
 
     const handleGameFinished = useCallback((roundResults: GameResult) => {
         results.show(roundResults);
@@ -57,14 +63,14 @@ export function App() {
         navigate('map');
     }, [map.exitGame, navigate]);
 
-    const game = useGame({ onRoundFinished: handleGameFinished, onExitToMap: handleExitToMap });
+    const game = useGame(services, { onRoundFinished: handleGameFinished, onExitToMap: handleExitToMap });
 
     const handleMapChanged = useCallback(() => {
         map.reload();
         navigate('map');
     }, [map.reload, navigate]);
 
-    const mapSelection = useMapSelection(handleMapChanged);
+    const mapSelection = useMapSelection(services, handleMapChanged);
 
     const handleSelectDifficulty = useCallback((difficulty: Difficulty) => {
         map.chooseDifficulty(difficulty);
@@ -73,25 +79,25 @@ export function App() {
     }, [map.chooseDifficulty, game.start, navigate]);
 
     const handlePlayAgain = useCallback(() => {
-        AudioService.play('click');
+        services.audio.play('click');
         game.start();
         navigate('game');
-    }, [game.start, navigate]);
+    }, [services, game.start, navigate]);
 
     const handleBackToMap = useCallback(() => {
-        AudioService.play('click');
+        services.audio.play('click');
         map.reload();
         navigate('map');
-    }, [map.reload, navigate]);
+    }, [services, map.reload, navigate]);
 
     const handleOpenMapSelection = useCallback(() => {
         mapSelection.open();
     }, [mapSelection.open]);
 
     const handleCloseError = useCallback(() => {
-        AudioService.play('click');
+        services.audio.play('click');
         setError(null);
-    }, []);
+    }, [services]);
 
     return (
         <>

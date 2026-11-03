@@ -5,6 +5,7 @@
 // CSS-переменная --zone-color и подпись сбоку.
 
 import type { CSSProperties } from 'react';
+import type { MapBand } from '../core/types';
 
 export interface ZoneProps {
     band: MapBand;

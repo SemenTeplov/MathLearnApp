@@ -4,49 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Math</title>
-
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/buttons.css">
-    <link rel="stylesheet" href="css/screens.css">
-    <link rel="stylesheet" href="css/game.css">
-    <link rel="stylesheet" href="css/results.css">
-    <link rel="stylesheet" href="css/map.css">
 </head>
 <body>
-    <!-- Весь каркас (карта, игра, результаты, модалки) рендерит React -->
-    <!-- Errors -->
-    <script src="js/errors/custom-errors.ts"></script>
-    <script src="js/errors/error-handler.ts"></script>
-
-    <!-- Audio -->
-    <script src="js/service/audio-service.js"></script>
-
-    <!-- Model -->
-    <script src="js/model/config.ts"></script>
-    <script src="js/model/map-catalog.js"></script>
-    <script src="js/model/stats-schema.js"></script>
-    <script src="js/model/session-model.ts"></script>
-
-    <!-- Storage -->
-    <script src="js/storage/repository.ts"></script>
-    <script src="js/storage/local-repository.ts"></script>
-    <script src="js/storage/memory-repository.ts"></script>
-    <script src="js/storage/session-repository.ts"></script>
-
-    <!-- Service -->
-    <script src="js/service/stats-service.ts"></script>
-    <script src="js/service/session-service.ts"></script>
-
-    <!-- Logic -->
-    <script src="js/logic/generator.ts"></script>
-    <script src="js/logic/scoring.ts"></script>
-    <script src="js/logic/game-rules.ts"></script>
-    <script src="js/logic/player-rules.js"></script>
-    <script src="js/logic/player-state.js"></script>
-    <script src="js/logic/map-layout.js"></script>
-
-    <!-- React: единственный вход приложения (классические слои выше) -->
     <div id="root" style="display: contents"></div>
-    <script type="module" src="/main.tsx"></script>
+    <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

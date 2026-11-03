@@ -1,6 +1,8 @@
 // ============================================
-// MODEL/CONFIG.TS — константы и настройки
+// CORE/CONFIG.TS — константы и настройки (1.8.2)
 // ============================================
+
+import type { Config, GameMap, Zone } from './types';
 
 /** Зоны карты по умолчанию (математика). */
 const ZONES: Zone[] = [
@@ -14,7 +16,7 @@ const MAPS: GameMap[] = [
     { id: 'math', title: 'Математика', zones: ZONES }
 ];
 
-const CONFIG: Config = {
+export const CONFIG: Config = {
     TOTAL_QUESTIONS: 10,
     MAX_LIVES: 3,
     START_DIFFICULTY: 'easy',

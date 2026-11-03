@@ -1,9 +1,13 @@
 // ============================================
-// LOGIC/GAME-RULES.TS — правила игры
+// CORE/GAME-RULES.TS — правила игры (1.8.2)
 // ============================================
 
+import { CONFIG } from './config';
+import type { SessionModel } from './session-model';
+import type { GameResult, Rating } from './types';
+
 /** Объект для игровых правил. */
-const GameRules = {
+export const GameRules = {
     /** Проверяет ответ. */
     checkAnswer(chosen: number, correct: number): boolean {
         return chosen === correct;

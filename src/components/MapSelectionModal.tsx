@@ -5,6 +5,8 @@
 // .modal → h2 → .map-select-list с .map-select-item (selected у текущей) →
 // кнопка «Закрыть». Только презентация.
 
+import type { GameMap } from '../core/types';
+
 export interface MapSelectionModalProps {
     maps: GameMap[];
     currentMap: string;

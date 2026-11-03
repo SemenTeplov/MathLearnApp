@@ -5,6 +5,8 @@
 // две карточки статистики, строка «Заработано» (inline-стиль как в HTML 1.7.0)
 // и две кнопки. Только презентация — без расчётов и DOM.
 
+import type { GameResult, Rating } from '../core/types';
+
 export interface ResultsScreenProps {
     results: GameResult;
     rating: Rating;

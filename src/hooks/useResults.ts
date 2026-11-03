@@ -1,11 +1,15 @@
 // ============================================
-// SRC/HOOKS/useResults.ts — экран результатов (1.8.0)
+// SRC/HOOKS/useResults.ts — экран результатов (1.8.2)
 // ============================================
-// Перенос логики экрана результатов 1:1 (бывший контроллер):
-// оценка → успешность → onRoundFinished (позиция игрока) →
+// Оценка → успешность → onRoundFinished (позиция игрока) →
 // StatsService.updateAfterRound (только победа) → звук → строка «Заработано».
 
 import { useCallback, useState } from 'react';
+import type { Services } from '../app/types';
+import { GameRules } from '../core/game-rules';
+import { Scoring } from '../core/scoring';
+import type { GameResult, Rating } from '../core/types';
+import type { ResultsView } from '../ui/types';
 
 export interface UseResults {
     /** Данные экрана результатов; null — экран не показывался. */
@@ -15,9 +19,13 @@ export interface UseResults {
 }
 
 /**
+ * @param services — сервисы приложения (статистика, звук)
  * @param onRoundFinished — сообщает об итоге раунда (позиция на карте)
  */
-export function useResults(onRoundFinished: (isSuccessful: boolean) => void): UseResults {
+export function useResults(
+    services: Services,
+    onRoundFinished: (isSuccessful: boolean) => void
+): UseResults {
     const [view, setView] = useState<ResultsView | null>(null);
 
     const show = useCallback((results: GameResult): void => {
@@ -27,10 +35,10 @@ export function useResults(onRoundFinished: (isSuccessful: boolean) => void): Us
         onRoundFinished(isSuccessful);
 
         if (isSuccessful) {
-            StatsService.updateAfterRound(results.roundScore);
-            AudioService.play('win');
+            services.stats.updateAfterRound(results.roundScore);
+            services.audio.play('win');
         } else {
-            AudioService.play('lose');
+            services.audio.play('lose');
         }
 
         const earnings = isSuccessful
@@ -38,7 +46,7 @@ export function useResults(onRoundFinished: (isSuccessful: boolean) => void): Us
             : 'Заработано: ' + results.roundScore + ' (не зачтено)';
 
         setView({ results, rating, earnings });
-    }, [onRoundFinished]);
+    }, [onRoundFinished, services]);
 
     return { view, show };
 }

@@ -5,11 +5,30 @@
 ```bash
 npm test           # vitest run: 156 тестов в 12 сьютах
 npm run test:watch # watch-режим
-npm run typecheck  # tsc --noEmit (исходники js/ и src/, включая .tsx)
+npm run typecheck  # tsc --noEmit (src/ + test/, включая .tsx)
 ```
 
 Раннер — **vitest** (не Jest). Конфигурация — `vitest.config.ts`: `environment: 'jsdom'`,
 `globals: true`, `setupFiles: ['./test/setup.js']`.
+
+## 1.8.2 — тесты красные по плану
+
+Этап 1.8.2 перевёл код с 19 классических `<script>` на ES-модули в `src/`, а тесты
+**не менялись** (TR-39/Z25). Сьюты читают исходники по старым путям `./js/…` через
+`readSource` + `eval`, поэтому фактический прогон такой:
+
+| Группа | Сьюты | Тесты | Статус |
+|---|---|---|---|
+| `logic/scoring`, `logic/game-rules`, `logic/generator` | 3 | 43 | ✅ зелёные (логика продублирована в тесте) |
+| `model/config`, `model/map-catalog`, `model/session-model`, `model/stats-schema`, `logic/player-rules`, `logic/player-state`, `map/map-layout`, `service/audio-service`, `service/stats-service` | 9 | 113 | ❌ красные: `ENOENT: no such file or directory, open './js/…'` |
+
+Итог: **9 сьютов failed / 3 passed, 43 теста passed** (113 тестов не запускаются, потому
+что падает загрузка модуля). Красный список — `/tmp/ml-1.8.2-red.txt`, полный отчёт —
+`.gigacode/tasks/TASKS.md` (этап 17, 17.9).
+
+Переписывание тестов на `import` и `allowJs: false` — **этап 3**; до него `npm test`
+красный по плану, а `tsc --noEmit` — 0. `test/**`, `test/setup.js` и `test/ts-source.js`
+в 1.8.2 не изменялись (`git diff --name-only` не содержит `test/**`).
 
 ## Как тесты читают исходники
 
@@ -17,8 +36,9 @@ npm run typecheck  # tsc --noEmit (исходники js/ и src/, включа�
 `.ts` выполняет `typescript.transpileModule` (`target: ES2020`, `module: None`). Это нужно,
 потому что тесты загружают код через классический `eval` в глобальную область, а не через
 `import`. Четыре сьюта (`model/config`, `model/session-model`, `model/stats-schema`,
-`service/stats-service`) используют `readSource`; остальные описывают проверяемую логику
-прямо в тесте.
+`service/stats-service`) используют `readSource`; остальные читают файл напрямую через
+`fs.readFileSync` или описывают проверяемую логику прямо в тесте. После 1.8.2 все эти
+пути ведут в удалённый `js/` — отсюда красный прогон.
 
 ## Структура
 
@@ -46,20 +66,22 @@ test/
 
 ## Покрытие
 
-| Модуль | Тестов | Что тестируется |
+Пути в таблице — целевые (1.8.2); тесты пока читают старые `js/…` и красные.
+
+| Модуль 1.8.2 | Тестов | Что тестируется |
 |--------|--------|-----------------|
-| `logic/scoring.ts` | 8 | `calculateRoundScore`, `isRoundSuccessful` |
-| `logic/game-rules.ts` | 12 | `checkAnswer`, `shouldEndGame`, `getRating` |
-| `logic/generator.ts` | 23 | `constructor`, `setDifficulty`, `rnd`, `generate`, `easy`, `medium`, `hard`, `build` |
-| `logic/player-rules.js` | 13 | `getAction`, `normalizeIndex`, константы |
-| `logic/player-state.js` | 7 | `moveTo`, `isReplay`, `revert`, `commitWin`, цепочки ходов |
-| `model/config.ts` | 6 | `VERSION: 3`, `DEFAULT_MAP`, `MAPS`, `MAPS[0].zones === ZONES`, `min` в оценках, неизменность остальных полей, паритет с `test/setup.js` |
-| `model/map-catalog.js` | 9 | `get`, `getDefault`, `has`, неизвестный/`undefined` id → `math`, фолбэк на первую карту |
-| `model/session-model.ts` | 15 | `recordCorrect`, `recordIncorrect`, `getResults` (`correct`/`wrong`/`total`), оценка `GameRules.getRating`, `reset()` |
-| `model/stats-schema.js` | 16 | `emptyMap`, `defaults`, `entry`, `migrate` (1 → 3, 2 → 3, версия 9), `ensureMaps`, идемпотентность |
-| `service/audio-service.js` | 5 | `preload`, `play`, обработка ошибок |
-| `service/stats-service.ts` | 24 | дефолты v3, загрузка и миграции, счёт и позиция текущей карты, `switchMap` (та же / неизвестная / другая), `reset`, ошибки |
-| `logic/map-layout.js` | 18 | шаг 100px, полосы зон, чередование X, `index` тренажёра, `buildRoadPath`, `getPlayerPoint` |
+| `core/scoring.ts` | 8 | `calculateRoundScore`, `isRoundSuccessful` |
+| `core/game-rules.ts` | 12 | `checkAnswer`, `shouldEndGame`, `getRating` |
+| `core/generator.ts` | 23 | `constructor`, `setDifficulty`, `rnd`, `generate`, `easy`, `medium`, `hard`, `build` |
+| `core/player-rules.ts` | 13 | `getAction`, `normalizeIndex`, константы |
+| `core/player-state.ts` | 7 | `moveTo`, `isReplay`, `revert`, `commitWin`, цепочки ходов |
+| `core/config.ts` | 6 | `VERSION: 3`, `DEFAULT_MAP`, `MAPS`, `MAPS[0].zones === ZONES`, `min` в оценках, неизменность остальных полей, паритет с `test/setup.js` |
+| `core/map-catalog.ts` | 9 | `get`, `getDefault`, `has`, неизвестный/`undefined` id → `math`, фолбэк на первую карту |
+| `core/session-model.ts` | 15 | `recordCorrect`, `recordIncorrect`, `getResults` (`correct`/`wrong`/`total`), оценка `GameRules.getRating`, `reset()` |
+| `core/stats-schema.ts` | 16 | `emptyMap`, `defaults`, `entry`, `migrate` (1 → 3, 2 → 3, версия 9), `ensureMaps`, идемпотентность |
+| `services/audio-service.ts` | 5 | `preload`, `play`, обработка ошибок |
+| `data/stats-service.ts` | 24 | дефолты v3, загрузка и миграции, счёт и позиция текущей карты, `switchMap` (та же / неизвестная / другая), `reset`, ошибки |
+| `core/map-layout.ts` | 18 | шаг 100px, полосы зон, чередование X, `index` тренажёра, `buildRoadPath`, `getPlayerPoint` |
 | **Итого** | **156** | |
 
 ## 1.8.1 — статистика раунда
@@ -89,6 +111,20 @@ test/
   `test/map/map-layout.test.js` изменён **только путь** — все 18 тестов те же.
 - React-слой (`src/App.tsx`, `src/components/**`, `src/hooks/**`, `main.tsx`) проверяется
   `tsc --noEmit` (0 ошибок) и сквозным прогоном в браузере; юнит-тестов у него нет.
+
+## Сквозная проверка 1.8.2
+
+`npm run dev` + headless Chromium (CDP), 15 проверок / 9 сценариев — все зелёные
+(подробности и таблица — в корневом `README.md`, § «Статус и smoke-тест»):
+
+- карта: 3 зоны, 15 тренажёров, счёт 0, игрок 🚶, CSS 52px, один вход `/src/main.tsx`;
+- дальний клик — no-op, соседний — движение 600 мс и модалка по приходу;
+- старт игры: 10 вопросов, 3 жизни; 8/2 → «Отлично!», «Правильных: 8», «80 ✓», `Stats` v3;
+- 3 ошибки → «Игра окончена», очки не зачтены; «На карту» → счёт 80 и commit;
+- 🌍: текущая карта выделена, та же карта — no-op; F5 — счёт и позиция на месте;
+- вторая вкладка → модалка «Игра уже запущена»; консоль без ошибок приложения;
+- миграция `ml_stats` v2 → v3: счёт 42 и позиция 3 читаются, запись становится v3 при
+  следующем сохранении (`version: 3`, `totalScore: 142`, `currentTrainerIndex: 4`).
 
 ## Сквозная проверка 1.8.0
 
