@@ -1,11 +1,11 @@
 // ============================================
-// LOGIC/GENERATOR.TS — генератор математических задач
+// CORE/GENERATOR.TS — генератор математических задач (1.8.2)
 // ============================================
 
-/**
- * Генерирует математические задачи по трём сложностям.
- */
-class ProblemGenerator {
+import type { Difficulty, Problem } from './types';
+
+/** Генерирует математические задачи по трём сложностям. */
+export class ProblemGenerator {
     difficulty: Difficulty;
 
     constructor(difficulty: Difficulty) {
@@ -16,9 +16,7 @@ class ProblemGenerator {
         this.difficulty = d;
     }
 
-    /**
-     * Генерирует случайное целое число в диапазоне [min, max].
-     */
+    /** Генерирует случайное целое число в диапазоне [min, max]. */
     rnd(min: number, max: number): number {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }

@@ -5,6 +5,7 @@
 // координаты и класс доступности по PlayerRules.getAction().
 
 import type { CSSProperties } from 'react';
+import type { TrainerPoint } from '../core/types';
 
 export interface TrainerProps {
     trainer: TrainerPoint;

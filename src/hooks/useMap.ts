@@ -1,12 +1,18 @@
 // ============================================
-// SRC/HOOKS/useMap.ts — карта: позиция игрока, движение, модалка (1.8.0)
+// SRC/HOOKS/useMap.ts — карта: позиция, движение, модалка (1.8.2)
 // ============================================
-// PlayerState + CSS transition 600ms + onTransitionEnd (A47), без setTimeout.
-// Ширина полотна — ref на .map + замер после рендера (как в 1.5.0).
+// PlayerState + transition 600ms + onTransitionEnd (A47); ширина — ref .map.
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { config } from '../config';
-
+import type { RefObject } from 'react';
+import type { Services } from '../app/types';
+import { CONFIG } from '../core/config';
+import { MapCatalog } from '../core/map-catalog';
+import { MapLayout } from '../core/map-layout';
+import { PlayerRules } from '../core/player-rules';
+import { PlayerState } from '../core/player-state';
+import type { Difficulty, MapData, Zone } from '../core/types';
+import type { MapModalTarget, MapViewData } from '../ui/types';
 export interface UseMap {
     stats: MapData;
     mapData: MapViewData;
@@ -14,7 +20,7 @@ export interface UseMap {
     isModalOpen: boolean;
     modalTarget: MapModalTarget | null;
     selectedDifficulty: Difficulty;
-    mapRef: React.RefObject<HTMLDivElement | null>;
+    mapRef: RefObject<HTMLDivElement | null>;
     onTrainerClick(zone: Zone | undefined, trainerNumber: number, trainerIndex: number): void;
     chooseDifficulty(difficulty: Difficulty): void;
     cancel(): void;
@@ -27,43 +33,39 @@ export interface UseMap {
 interface MapState extends MapData {
     zones: Zone[];
 }
-
 /** Снимок карты из каталога и Stats (позиция нормализуется). */
-function readMapState(): MapState {
-    const map = MapCatalog.get(StatsService.getCurrentMap());
-    const zones: Zone[] = Array.isArray(map && map.zones) ? map.zones : config.ZONES;
+function readMapState(services: Services): MapState {
+    const map = MapCatalog.get(services.stats.getCurrentMap());
+    const zones: Zone[] = Array.isArray(map && map.zones) ? map.zones : CONFIG.ZONES;
     const total = zones.reduce((sum, zone) => sum + (zone.trainersCount || 0), 0);
 
     return {
         zones,
-        totalScore: StatsService.getTotalScore(),
-        currentTrainerIndex: PlayerRules.normalizeIndex(StatsService.getTrainerIndex(), total)
+        totalScore: services.stats.getTotalScore(),
+        currentTrainerIndex: PlayerRules.normalizeIndex(services.stats.getTrainerIndex(), total)
     };
 }
 
-export function useMap(): UseMap {
+export function useMap(services: Services): UseMap {
     const mapRef = useRef<HTMLDivElement | null>(null);
     const playerRef = useRef<PlayerState | null>(null);
     const pendingRef = useRef<MapModalTarget | null>(null);
 
-    const [state, setState] = useState<MapState>(readMapState);
+    const [state, setState] = useState<MapState>(() => readMapState(services));
     playerRef.current ??= new PlayerState(state.currentTrainerIndex);
 
     const [width, setWidth] = useState<number>(MapLayout.FALLBACK_WIDTH);
     const [isMoving, setIsMoving] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalTarget, setModalTarget] = useState<MapModalTarget | null>(null);
-    const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>(config.START_DIFFICULTY);
+    const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>(CONFIG.START_DIFFICULTY);
 
     const measure = useCallback(() => {
         const element = mapRef.current;
         if (!element) return;
         const measured = element.clientWidth;
-        if (measured > 0) {
-            setWidth((prev) => (Math.abs(measured - prev) > 0.5 ? measured : prev));
-        }
+        if (measured > 0) setWidth((prev) => (Math.abs(measured - prev) > 0.5 ? measured : prev));
     }, []);
-
     // Замер после каждого рендера: ширина меняется при появлении скроллбара.
     useLayoutEffect(() => {
         measure();
@@ -86,19 +88,19 @@ export function useMap(): UseMap {
         };
     }, [measure]);
 
-    const geometry: MapGeometry = MapLayout.buildLayout(state.zones, width);
+    const geometry = MapLayout.buildLayout(state.zones, width);
     const playerPoint = MapLayout.getPlayerPoint(geometry.trainers, state.currentTrainerIndex);
     const mapData: MapViewData = { zones: state.zones, geometry, playerPoint };
 
     const reload = useCallback(() => {
         pendingRef.current = null;
-        const next = readMapState();
+        const next = readMapState(services);
         playerRef.current = new PlayerState(next.currentTrainerIndex);
         setIsMoving(false);
         setIsModalOpen(false);
         setModalTarget(null);
         setState(next);
-    }, []);
+    }, [services]);
 
     const onTrainerClick = useCallback((zone: Zone | undefined, trainerNumber: number, trainerIndex: number) => {
         if (isMoving || isModalOpen) return;
@@ -109,7 +111,7 @@ export function useMap(): UseMap {
         const action = PlayerRules.getAction(player.index, trainerIndex);
         if (action === 'ignore') return;
 
-        AudioService.play('click');
+        services.audio.play('click');
 
         if (action === 'play') {
             setModalTarget({ zoneTitle: zone ? zone.title : '', trainerNumber });
@@ -121,21 +123,19 @@ export function useMap(): UseMap {
         pendingRef.current = { zoneTitle: zone ? zone.title : '', trainerNumber };
         setIsMoving(true);
         setState((prev) => ({ ...prev, currentTrainerIndex: trainerIndex }));
-    }, [isMoving, isModalOpen]);
+    }, [isMoving, isModalOpen, services]);
 
     const arrived = useCallback(() => {
         const target = pendingRef.current;
         pendingRef.current = null;
         setIsMoving(false);
-
-        if (target) {
-            setModalTarget(target);
-            setIsModalOpen(true);
-        }
+        if (!target) return;
+        setModalTarget(target);
+        setIsModalOpen(true);
     }, []);
 
     const cancel = useCallback(() => {
-        AudioService.play('click');
+        services.audio.play('click');
         setIsModalOpen(false);
         setModalTarget(null);
 
@@ -144,14 +144,14 @@ export function useMap(): UseMap {
 
         const index = player.revert();
         setState((prev) => ({ ...prev, currentTrainerIndex: index }));
-    }, []);
+    }, [services]);
 
     const chooseDifficulty = useCallback((difficulty: Difficulty) => {
-        AudioService.play('click');
+        services.audio.play('click');
         setSelectedDifficulty(difficulty);
         setIsModalOpen(false);
         setModalTarget(null);
-    }, []);
+    }, [services]);
 
     const gameFinished = useCallback((isSuccessful: boolean) => {
         const player = playerRef.current;
@@ -160,18 +160,18 @@ export function useMap(): UseMap {
         if (player.isReplay()) return;
 
         if (isSuccessful) {
-            StatsService.saveTrainerIndex(player.commitWin());
+            services.stats.saveTrainerIndex(player.commitWin());
         } else {
             player.revert();
-            StatsService.saveTrainerIndex(player.index);
+            services.stats.saveTrainerIndex(player.index);
         }
 
         setState((prev) => ({
             ...prev,
             currentTrainerIndex: player.index,
-            totalScore: StatsService.getTotalScore()
+            totalScore: services.stats.getTotalScore()
         }));
-    }, []);
+    }, [services]);
 
     const exitGame = useCallback(() => {
         const player = playerRef.current;

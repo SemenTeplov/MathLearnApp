@@ -1,12 +1,15 @@
 // ============================================
-// MODEL/SESSION-MODEL.TS — состояние раунда
+// CORE/SESSION-MODEL.TS — состояние раунда (1.8.2)
 // ============================================
+
+import { CONFIG } from './config';
+import type { Difficulty, GameResult } from './types';
 
 /**
  * Модель состояния одного раунда (игры).
  * Содержит только данные: поля, геттеры, сеттеры, reset().
  */
-class SessionModel {
+export class SessionModel {
     _lives: number;
     _roundScore: number;
     _correct: number;

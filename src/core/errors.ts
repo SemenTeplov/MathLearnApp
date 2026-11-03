@@ -1,9 +1,9 @@
 // ============================================
-// ERRORS/CUSTOM-ERRORS.TS — кастомные исключения
+// CORE/ERRORS.TS — кастомные исключения (1.8.2)
 // ============================================
 
 /** Базовое исключение для ошибок хранилища. */
-class StorageError extends Error {
+export class StorageError extends Error {
     constructor(message: string) {
         super(message);
         this.name = 'StorageError';
@@ -11,7 +11,7 @@ class StorageError extends Error {
 }
 
 /** Данные в хранилище повреждены. */
-class CorruptedDataError extends StorageError {
+export class CorruptedDataError extends StorageError {
     constructor(message: string) {
         super(message);
         this.name = 'CorruptedDataError';
@@ -19,7 +19,7 @@ class CorruptedDataError extends StorageError {
 }
 
 /** Хранилище недоступно. */
-class StorageUnavailableError extends StorageError {
+export class StorageUnavailableError extends StorageError {
     constructor(message: string) {
         super(message);
         this.name = 'StorageUnavailableError';
@@ -27,7 +27,7 @@ class StorageUnavailableError extends StorageError {
 }
 
 /** Превышена квота хранилища. */
-class QuotaExceededError extends StorageError {
+export class QuotaExceededError extends StorageError {
     constructor(message: string) {
         super(message);
         this.name = 'QuotaExceededError';
@@ -35,7 +35,7 @@ class QuotaExceededError extends StorageError {
 }
 
 /** Ошибка сессии (например, дубликат вкладки). */
-class SessionError extends Error {
+export class SessionError extends Error {
     constructor(message: string) {
         super(message);
         this.name = 'SessionError';

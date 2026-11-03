@@ -18,14 +18,14 @@
 - 💬 **Объяснения** — после каждого ответа показывается решение
 - 📊 **Экран результатов** — статистика и оценка
 - 🏆 **Общий счёт** — сохраняется между сессиями (localStorage)
-- 🔒 **Одна вкладка** — вторая вкладка с игрой блокируется
+- 🔒 **Одна вкладка** — открытие второй вкладки показывает предупреждение
 - 🔊 **Звуковое сопровождение** — клики, победа, поражение; ошибки звука не ломают игру
 
 ## Запуск
 
-Слои Model, Storage, Service, Logic и Errors написаны на TypeScript, точка входа —
-`main.tsx` (React 19), поэтому приложение запускается через Vite (он отдаёт `.ts` и `.tsx`
-со снятыми типами). Прямое открытие `index.html` и `python3 -m http.server` **не работают**.
+Весь код — ES-модули TypeScript/TSX (`.ts`/`.tsx`), точка входа — `src/main.tsx`.
+Приложение запускается через Vite; прямое открытие `index.html` и `python3 -m http.server`
+**не работают** (браузер не умеет `.ts` и голые импорты).
 
 ```bash
 npm install        # один раз
@@ -37,36 +37,50 @@ npm run dev        # http://localhost:5173
 ```bash
 npm run typecheck  # tsc --noEmit — 0 ошибок
 npm run build      # = typecheck
-npm test           # vitest: 156 тестов в 12 сьютах
+npm test           # vitest: 156 тестов в 12 сьютах (9 сьютов красные до этапа 3 — см. «Тесты»)
+npx vite build     # прод-сборка: побочный эффект 1.8.2, собирается (53 модуля)
 ```
 
-> ⚠️ **Прод-сборка `npx vite build` не работает.** Vite собирает React в `assets/`, но 19
-> классических `<script src="js/…">` без `type="module"` не бандлятся и не копируются в
-> `dist/`. Сборка формально завершается кодом 0, однако готовый `dist/index.html` ссылается
-> на отсутствующие `js/*.ts` (404), и приложение не стартует. Рабочий режим — `npm run dev`.
-> Ограничение известно и снимается переводом слоёв на ES-модули в следующих этапах; в 1.8.0
-> `vite build` вне области (PLAN, «Запреты»).
+> ⚠️ **Тесты на 1.8.2 красные по плану.** Сьюты читают старые `./js/…` через `readSource` +
+> `eval`; после переноса в `src/` 9 сьютов падают с `ENOENT`, 3 сьюта зелёные. Тесты не
+> менялись — их переписывание на `import` вынесено в этап 3 (см. `test/README.md`).
 
-## React (1.8.0)
+> ℹ️ **Прод-сборка.** `npx vite build` в 1.8.2 впервые собирается: классических `<script>`
+> больше нет, Vite бандлит один граф модулей. Ограничение: `audio/` подключается в рантайме
+> (`new Audio('audio/…')`), поэтому в `dist/` звуки не копируются и в собранной версии
+> не играют. Рабочий режим — `npm run dev`; копирование `audio/` и правки под прод
+> в область 1.8.2 не входили.
 
-Все экраны — React-компоненты: карта, игра, результаты, шапка счёта и модалки (выбор карты,
-сложности, ошибок). Логика раунда, карты и выбора карты живёт в хуках, состояние —
-локальное (`useState`), без глобальных сторов.
+## Архитектура (1.8.2)
 
-- `main.tsx` — единственная точка входа: `bootstrap()` (звук, статистика, сессия,
-  обработчики ошибок) → `createRoot` + `<StrictMode><App /></StrictMode>` в `#root`
-  (`display: contents`, чтобы `.app` оставался прямым flex-элементом `body`).
-- `src/App.tsx` — каркас: `#mapScreen` (`.screen`/`.active` из состояния) с `<Header/>` и
-  `<MapScreen/>`, `.app` с `#gameScreen`/`#resultScreen`, модалки рядом.
-- `src/components/` — 10 компонентов: `ResultsScreen`, `MapSelectionModal`, `GameScreen`,
-  `MapScreen`, `Zone`, `Trainer`, `Player`, `Path`, `Header`, `ErrorModal`.
-- `src/hooks/` — 6 хуков: `useResults`, `useMapSelection`, `useGame`, `useMap`,
-  `useSessionLock`, `useAudio`. Движение игрока — CSS `transition: transform 600ms` +
-  `onTransitionEnd`.
-- Классические слои Model / Logic / Storage / Service / Errors остаются глобалами и
-  подключаются тегами `<script>` до модуля; CSS — те же 21 файл без правок.
-- Старые `js/view/**`, `js/controller/**` и `js/script.js` удалены; временные мосты
-  `window.showErrorModal` (1.7.0) и `window.mlBridge` (1.8.0) сняты.
+Один граф ES-модулей вместо 19 `<script>`-тегов и глобальных переменных:
+
+- `index.html` — только `#root` (`display: contents`) и **один**
+  `<script type="module" src="/src/main.tsx">`. CSS импортируется из `src/main.tsx`
+  в прежнем порядке: `base`, `buttons`, `screens`, `game`, `results`, `map`.
+- `src/core/` — домен (13 модулей): `config`, `types`, `errors`, `error-handler`,
+  `session-model`, `map-catalog`, `stats-schema`, `game-rules`, `generator`, `scoring`,
+  `player-rules`, `player-state`, `map-layout`. Без React, DOM и `localStorage`.
+- `src/data/` — `Repository` + `LocalStorageRepository` / `MemoryRepository` и
+  `StatsService(repo)`; единственное место, где используется `localStorage`.
+- `src/services/audio-service.ts` — класс `AudioService` и тип `AudioKind`;
+  ошибки загрузки и воспроизведения глотаются.
+- `src/ui/types.ts` — view-модели React-слоя; доменные типы — `src/core/types.ts`.
+- `src/app/` — `Services` и `createServices()`: единственная точка создания сервисов.
+- `src/main.tsx` — `createServices()` → `audio.preload()` → `initGlobalErrorHandlers()` →
+  `createRoot(...).render(<StrictMode><App services={services}/></StrictMode>)`.
+- `src/App.tsx` — каркас и навигация: экраны `#mapScreen`, `#gameScreen`, `#resultScreen`,
+  модалки выбора карты/сложности/ошибок. Состояние — локальное (`useState` в хуках),
+  без Context/Zustand/redux.
+- `src/components/` — 10 презентационных компонентов; `src/hooks/` — 5 хуков
+  (`useGame`, `useMap`, `useMapSelection`, `useResults`, `useSessionLock`). Сервисы
+  приходят в хуки **первым аргументом** (`useMap(services)`), создаются один раз и не
+  хранятся в модульных переменных; `useAudio` удалён.
+- Глобальных переменных, `declare global`, `window.*`-мостов и `globalThis.*` нет:
+  любой идентификатор доступен только через `import`.
+
+Поведение, разметка, CSS (21 файл), тексты, значения `CONFIG`, формат `Stats` v3 и ключи
+`ml_stats` / `ml_session_lock` не изменились.
 
 ## Статистика раунда (1.8.1)
 
@@ -132,77 +146,74 @@ npm test
 
 156 тестов в `test/` (vitest + jsdom): правила игры, генератор, очки, правила и состояние
 игрока (`test/logic/`), статистика и звуковой сервис (`test/service/`), конфиг, каталог карт,
-схема `Stats` и счётчики раунда (`test/model/`), геометрия карты (`test/map/`). Исходники
-`.ts` подключаются через `test/ts-source.js` (`typescript.transpileModule`), поэтому тесты
-читают те же файлы, что и приложение. UI-тесты прежних `view/controller` удалены вместе с
-файлами (41 тест, решение владельца); 123 теста логики сохранены, `map-layout` переехал в
-`js/logic/`. В 1.8.1 добавлен сьют `test/model/session-model.test.js` (15 тестов): счётчики
-ответов, `total = correct + wrong`, оценка и `reset()`. Первый прогон на 1.8.0 был
-**красным** (8 верных + 2 ошибки давали `wrong = 10`), после фикса модели — **156/156**.
+схема `Stats` и счётчики раунда (`test/model/`), геометрия карты (`test/map/`).
 
-## Статус и ручной smoke-тест (dev, 16 сценариев)
+На **1.8.2** тесты намеренно **не менялись**: они читают `./js/…` через `readSource` +
+`eval` и после переноса кода в `src/` падают с `ENOENT`. Фактический прогон:
 
-Срез на **03.11.2026** (1.8.1 — статистика раунда; экраны на React с 1.8.0):
+| Группа | Сьюты | Тесты | Статус |
+|---|---|---|---|
+| `scoring`, `game-rules`, `generator` | 3 | 43 | ✅ зелёные (дублируют логику в тесте) |
+| `config`, `map-catalog`, `session-model`, `stats-schema`, `player-rules`, `player-state`, `map-layout`, `audio-service`, `stats-service` | 9 | 113 | ❌ красные (`ENOENT: ./js/…`) |
+
+Это ожидаемый результат миграции (TR-39): переписывание тестов на `import` — **этап 3**,
+до него `allowJs: true` и `npm test` красный. `test/**`, `test/setup.js` и
+`test/ts-source.js` в 1.8.2 не изменялись.
+
+## Статус и smoke-тест (dev, 1.8.2)
+
+Срез на **03.11.2026** (1.8.2 — ES-модули; экраны на React с 1.8.0):
 
 | Проверка | Команда | Результат |
 |---|---|---|
-| Версия | — | **1.8.1**: счётчики ответов в `SessionModel`, `total` = фактически отвечено |
+| Версия | — | **1.8.2**: `src/core`/`data`/`services`/`ui`/`app`, один module-скрипт, `js/` удалён |
 | Типы | `npm run typecheck` | ✅ **0 ошибок** |
-| Тесты | `npm test` | ✅ **156/156** в 12 сьютах, ~5 с |
-| Dev-сервер | `npm run dev` | ✅ `http://localhost:5173` отвечает 200 (консоль и сценарии — ниже) |
-| Прод-сборка | `npx vite build` | ❌ **broken**: classic-теги без `type="module"` не бандлятся, `dist/js/**` нет → 404 |
+| Тесты | `npm test` | ⚠️ **43/156** зелёных (3 сьюта); 9 сьютов / 113 тестов красные по плану (этап 3) |
+| Dev-сервер | `npm run dev` | ✅ `http://localhost:5173`, консоль без ошибок приложения |
+| Прод-сборка | `npx vite build` | ✅ собирается (53 модуля); ⚠️ `audio/` не копируется в `dist` |
 
-Автоматика — только `typecheck` и `test`. Ниже — **ручной** smoke-тест: 16 сценариев из
-PLAN §15.8, они не покрыты ни vitest, ни CI. Отмечайте `[x]` по факту прогона.
+Автоматический smoke — headless Chromium (CDP), **15 проверок / 9 сценариев**, все зелёные:
 
-**Подготовка.** `npm run dev` → `http://localhost:5173`. Для чистого прогона в консоли
-`localStorage.removeItem('ml_stats')` и перезагрузить страницу; для проверки сохранения —
-пройти пункт 1 после перезагрузки с уже записанной статистикой. Звук включается после первого
-клика (политика автовоспроизведения), поэтому щёлкайте по карте до проверки `win`/`lose`.
+1. [x] **Первый запуск.** Карта «Математика»: 3 зоны, 15 тренажёров, счёт 🏆 0, игрок перед первым тренажёром; CSS применён (игрок 52px); в DOM один вход `/src/main.tsx`, classic `js/` нет.
+2. [x] **Дальний / соседний тренажёр.** Дальний — без движения и модалки; соседний — движение 600 мс, затем модалка «Сложение · Тренажёр 1».
+3. [x] **Сложность.** «Легко» → игра: 10 вопросов, 3 жизни, вопрос, прогресс.
+4. [x] **8 верных + 2 неверных.** «🎉 Отлично!», «Правильных: 8», «Заработано: 80 ✓», звук `win`; `ml_stats` — `version: 3`, `totalScore: 80`.
+5. [x] **0 жизней.** «💔 Игра окончена», «Заработано: 0 (не зачтено)»; счёт остаётся 80.
+6. [x] **«На карту».** Счёт 🏆 80, позиция закреплена (commit), один текущий тренажёр.
+7. [x] **🌍.** Список карт, текущая выделена, выбор той же карты — no-op, «Закрыть» работает.
+8. [x] **F5.** После перезагрузки счёт 80 и позиция на месте.
+9. [x] **Вторая вкладка.** Уже открытая вкладка показывает модалку «Игра уже запущена» (поведение 1.8.1: `BroadcastChannel` + `hello`); консоль без ошибок приложения (`favicon.ico` 404 к приложению не относится).
 
-### Карта и навигация
-
-- [ ] **1. Старт карты.** Карта на весь экран: 3 зоны (Сложение, Вычитание, Умножение), 15 тренажёров, игрок на позиции из `ml_stats` (после сброса — перед тренажёром №1).
-- [ ] **2. Счёт.** 🏆 в шапке совпадает с `StatsService.getTotalScore()` для текущей карты.
-- [ ] **3. Текущий тренажёр.** Клик по тренажёру под игроком → модалка повторной игры, без движения.
-- [ ] **4. Соседний тренажёр.** Клик → движение ~600 мс → модалка сложности сразу по приходе.
-- [ ] **5. Дальний тренажёр.** Клик → no-op: ни движения, ни модалки, ни звука; курсор `not-allowed`.
-- [ ] **6. «Отмена».** Игрок откатывается на прежнюю позицию, `ml_stats` не меняется (позиция не сохранена).
-
-### Игра
-
-- [ ] **7. Старт раунда.** Выбор сложности → 10 вопросов, счёт 0, жизни 3.
-- [ ] **8. Верный ответ.** `correct`, объяснение решения, `+10` и рост счёта в шапке.
-- [ ] **9. Неверный ответ.** `wrong`, «Правильный ответ: …», жизнь −1, звук ошибки.
-- [ ] **10. «Продолжить».** Новый вопрос, счётчик и прогресс обновляются.
-
-### Результаты
-
-- [ ] **11. Победа.** 8 верных из 10 → «🎉 Отлично!», «Правильных: 8», «Заработано: 80 ✓», звук `win`, очки в общий счёт; 10 верных → «🏆 Идеально!» и 100 очков.
-- [ ] **12. Провал.** 0 жизней → «💔 Игра окончена», звук `lose`, очки не начисляются.
-- [ ] **13. «Играть снова».** Новый раунд с той же сложностью, счёт и прогресс сброшены.
-- [ ] **14. «На карту».** Карта с обновлённым счётом; позиция по правилам commit/revert: победа на новом — сохранилась, провал — откат, тренировка на текущем — без записи.
-
-### Карты и сессия
-
-- [ ] **15. 🌍 → другая карта → возврат.** Текущая выделена; другая открывается с первого тренажёра (позиция `−1`) со своим счётом; возврат на прежнюю — позиция сохранена.
-- [ ] **16. Перезагрузка и вторая вкладка.** F5 — позиция и счёт на месте; вторая вкладка → React-модалка «Игра уже запущена», первая продолжает работать.
-
-Пункты 1–16 соответствуют PLAN §15.8; после правок UI/навигации прогонять целиком.
+Дополнительно проверена миграция хранилища: запись `ml_stats` версии 2 (`totalScore: 42`,
+`currentTrainerIndex: 3`) подхватывается без потерь (счёт 🏆 42, игрок на тренажёре 3),
+а при следующем сохранении перезаписывается в v3 (`maps.math` + `currentMap`). Миграция
+ленивая — как и в 1.8.1: `StatsSchema.migrate()` выполняется при чтении, запись — при
+очередном `save()`. После раунда 10/10 и «На карту»: `version: 3`, `totalScore: 142`,
+`currentTrainerIndex: 4`.
 
 ## Структура проекта
 
 ```
-index.html          # Точка входа (HTML, CSS-ссылки, 19 классических скриптов + модуль)
-main.tsx            # bootstrap() + createRoot: единственный вход приложения
+index.html          # #root + один <script type="module" src="/src/main.tsx">
 src/
+  main.tsx          # CSS-импорты → createServices → preload → handlers → render
   App.tsx           # Каркас: экраны, модалки, состояние навигации
-  bootstrap.ts      # Инициализация слоёв (замена IIFE script.js)
-  config.ts         # Типизированный доступ к CONFIG
-  types.ts          # Все типы (глобальные интерфейсы) + view-модели
+  app/
+    createServices.ts  # Composition root: StatsService + AudioService
+    types.ts           # interface Services
+  core/             # 13 модулей домена (без React/DOM/localStorage)
+    config.ts types.ts errors.ts error-handler.ts session-model.ts map-catalog.ts
+    stats-schema.ts game-rules.ts generator.ts scoring.ts player-rules.ts
+    player-state.ts map-layout.ts
+  data/
+    repository.ts local-repository.ts memory-repository.ts stats-service.ts
+  services/
+    audio-service.ts  # AudioService, AudioKind
+  ui/
+    types.ts          # View-модели (MapViewData, ResultsView, …)
   components/       # ResultsScreen, MapSelectionModal, GameScreen, MapScreen,
                     # Zone, Trainer, Player, Path, Header, ErrorModal
-  hooks/            # useResults, useMapSelection, useGame, useMap, useSessionLock, useAudio
+  hooks/            # useResults, useMapSelection, useGame, useMap, useSessionLock
 css/
   base.css          # Базовые стили
   buttons.css       # Кнопки
@@ -214,31 +225,23 @@ css/
   map_items/        # Стили карты: экран, зоны, дорога, игрок, тренажёры, модалки, глобальная карта
   game_items/       # Стили игровых элементов
   result_items/     # Стили результатов
-js/
-  model/            # config.ts, session-model.ts, map-catalog.js, stats-schema.js
-  storage/          # Репозитории (localStorage, memory, session) — TypeScript
-  service/          # stats-service.ts, session-service.ts, audio-service.js
-  logic/            # Правила, генератор, очки, игрок, map-layout.js (геометрия)
-  errors/           # Обработка ошибок — TypeScript
 audio/              # Звуки (click, win, lose)
-test/               # Тесты (vitest + jsdom)
+test/               # Тесты (vitest + jsdom), не менялись в 1.8.2
 ```
 
-TypeScript используется в слоях Model, Storage, Service, Logic и Errors, а также во всём
-React-слое (`main.tsx`, `src/**`). Классические `.js` — только шесть файлов:
-`map-catalog`, `stats-schema`, `player-rules`, `player-state`, `audio-service`, `map-layout`.
-`src/types.ts` — единственный источник типов (глобальные интерфейсы + view-модели); в
-`index.html` не подключается, потому что это ES-модуль.
+TypeScript используется везде, включая все шесть бывших `.js`-файлов
+(`map-catalog`, `stats-schema`, `player-rules`, `player-state`, `audio-service`,
+`map-layout`). Доменные типы — только `src/core/types.ts`, view-модели — только
+`src/ui/types.ts`; глобальных объявлений (`declare global`) нет.
 
 ## Технологии
 
 - **HTML5** — разметка
 - **CSS3** — стили, градиенты, адаптивность
-- **TypeScript 5.9** — Model, Storage, Service, Logic, Errors и весь React-слой (`src/`)
+- **TypeScript 5.9** — весь код: домен, данные, сервисы, UI и тесты
 - **React 19.3.1 + @types/react** — все экраны и модалки (карта, игра, результаты, шапка)
-- **Vanilla JavaScript (ES6+)** — шесть классических слоёв (`map-catalog`, `stats-schema`,
-  `player-rules`, `player-state`, `audio-service`, `map-layout`)
-- **Vite 8** — dev-сервер, отдаёт `.ts` со снятыми типами (`npm run dev`)
+- **ES-модули** — один граф импортов, один `<script type="module">`
+- **Vite 8** — dev-сервер и прод-сборка (побочный эффект 1.8.2)
 - **vitest + jsdom** — тесты
 
 ## Документация процесса

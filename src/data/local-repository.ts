@@ -1,11 +1,16 @@
 // ============================================
-// STORAGE/LOCAL-REPOSITORY.TS — localStorage реализация
+// DATA/LOCAL-REPOSITORY.TS — localStorage реализация (1.8.2)
 // ============================================
 
-/**
- * Реализация Repository через localStorage.
- */
-class LocalStorageRepository extends Repository {
+import {
+    CorruptedDataError,
+    QuotaExceededError,
+    StorageUnavailableError
+} from '../core/errors';
+import { Repository } from './repository';
+
+/** Реализация Repository через localStorage. */
+export class LocalStorageRepository extends Repository {
     _key: string;
 
     /** @param key — ключ в localStorage */

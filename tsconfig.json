@@ -3,14 +3,16 @@
     "target": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "strict": true,
-    "allowJs": true,
+    "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": [],
-    "noEmit": true
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "types": ["vite/client"],
+    "allowJs": true
   },
-  "include": ["js", "src", "*.tsx"]
+  "include": ["src", "test", "vite.config.ts", "vitest.config.ts"]
 }
