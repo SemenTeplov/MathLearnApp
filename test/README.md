@@ -3,7 +3,7 @@
 ## Запуск
 
 ```bash
-npm test           # vitest run: 141 тест в 11 сьютах
+npm test           # vitest run: 156 тестов в 12 сьютах
 npm run test:watch # watch-режим
 npm run typecheck  # tsc --noEmit (исходники js/ и src/, включая .tsx)
 ```
@@ -16,8 +16,9 @@ npm run typecheck  # tsc --noEmit (исходники js/ и src/, включа�
 `test/ts-source.js` экспортирует `readSource(relPath)`: читает файл от корня проекта и для
 `.ts` выполняет `typescript.transpileModule` (`target: ES2020`, `module: None`). Это нужно,
 потому что тесты загружают код через классический `eval` в глобальную область, а не через
-`import`. Три сьюта (`model/config`, `model/stats-schema`, `service/stats-service`)
-используют `readSource`; остальные описывают проверяемую логику прямо в тесте.
+`import`. Четыре сьюта (`model/config`, `model/session-model`, `model/stats-schema`,
+`service/stats-service`) используют `readSource`; остальные описывают проверяемую логику
+прямо в тесте.
 
 ## Структура
 
@@ -34,6 +35,7 @@ test/
 ├── model/
 │   ├── config.test.js                # Конфиг 1.5.0–1.6.0 и синхронизация с setup.js (6 тестов)
 │   ├── map-catalog.test.js           # Каталог карт: get / getDefault / has (9 тестов)
+│   ├── session-model.test.js         # Счётчики ответов, getResults, total, reset (15 тестов)
 │   └── stats-schema.test.js          # Stats v3: defaults, миграции, ensureMaps (16 тестов)
 ├── service/
 │   ├── audio-service.test.js         # Звуковой сервис (5 тестов)
@@ -53,11 +55,26 @@ test/
 | `logic/player-state.js` | 7 | `moveTo`, `isReplay`, `revert`, `commitWin`, цепочки ходов |
 | `model/config.ts` | 6 | `VERSION: 3`, `DEFAULT_MAP`, `MAPS`, `MAPS[0].zones === ZONES`, `min` в оценках, неизменность остальных полей, паритет с `test/setup.js` |
 | `model/map-catalog.js` | 9 | `get`, `getDefault`, `has`, неизвестный/`undefined` id → `math`, фолбэк на первую карту |
+| `model/session-model.ts` | 15 | `recordCorrect`, `recordIncorrect`, `getResults` (`correct`/`wrong`/`total`), оценка `GameRules.getRating`, `reset()` |
 | `model/stats-schema.js` | 16 | `emptyMap`, `defaults`, `entry`, `migrate` (1 → 3, 2 → 3, версия 9), `ensureMaps`, идемпотентность |
 | `service/audio-service.js` | 5 | `preload`, `play`, обработка ошибок |
 | `service/stats-service.ts` | 24 | дефолты v3, загрузка и миграции, счёт и позиция текущей карты, `switchMap` (та же / неизвестная / другая), `reset`, ошибки |
 | `logic/map-layout.js` | 18 | шаг 100px, полосы зон, чередование X, `index` тренажёра, `buildRoadPath`, `getPlayerPoint` |
-| **Итого** | **141** | |
+| **Итого** | **156** | |
+
+## 1.8.1 — статистика раунда
+
+- **156/156 в 12 сьютах.** Новый сьют `model/session-model.test.js` (15 тестов) вызывает
+  реальную `SessionModel` через `readSource` + `eval`; `CONFIG` берётся из `test/setup.js`,
+  логика модели в тест не скопирована.
+- Первый прогон на 1.8.0 — **красный**: 14 из 15 тестов падали, сценарий 8/2 давал
+  `wrong = 10` вместо 2 (`correct`/`wrong` собирались из индекса вопроса, `total` был всегда
+  `TOTAL_QUESTIONS`). Зелёным оставался только тест `reset`, не проверяющий счётчики.
+- После фикса `SessionModel` (`_correct`/`_wrong`, инкременты в `recordCorrect` /
+  `recordIncorrect`, `reset()` обнуляет счётчики, `total = correct + wrong`) — **156/156**;
+  изменены только `js/model/session-model.ts` и новый сьют, остальные 141 тест — без правок.
+- Оценка (`GameRules.getRating`) и `CONFIG` не менялись: 8/2 → 80% → «Отлично!», 10/10 →
+  «Идеально!», 0/3 при `lives = 0` → «Игра окончена».
 
 ## 1.8.0 — миграция экранов на React
 
