@@ -38,14 +38,16 @@ npm run dev        # http://localhost:5173
 ```bash
 npm run typecheck  # tsc --noEmit — 0 ошибок
 npm run build      # = typecheck
-npm test           # vitest: 158 тестов в 12 сьютах (1.8.3 — зелёные)
+npm test           # vitest: 261 тест в 28 сьютах (1.8.3 — зелёные)
+npm run test:coverage  # покрытие v8 по группам + пороги 80/60
 npx vite build     # прод-сборка: побочный эффект 1.8.2, собирается (53 модуля)
 ```
 
-> ✅ **Тесты на 1.8.3 зелёные.** 12 сьютов переведены на `.test.ts` и импортируют прод-код
-> из `src/core`/`src/data`/`src/services`; `eval`, `readSource` и копия `CONFIG` удалены,
-> `allowJs: false`. React-тесты и пороги покрытия — следующие этапы 1.8.3
-> (см. `test/README.md`, `spec_v1_8_3.md`).
+> ✅ **Тесты на 1.8.3 зелёные.** Все сьюты импортируют прод-код из `src/**`;
+> `eval`, `readSource` и копия `CONFIG` удалены, `allowJs: false`.
+> 12 доменных сьютов + RTL-тесты (`@testing-library/react`): 7 компонентных,
+> 4 хуковых и 5 точечных `core`/`data`; coverage — **96.84%** statements /
+> **88.74%** branches при порогах 80/60 (см. `test/README.md`, `spec_v1_8_3.md`).
 
 > ℹ️ **Прод-сборка.** `npx vite build` в 1.8.2 впервые собирается: классических `<script>`
 > больше нет, Vite бандлит один граф модулей. Ограничение: `audio/` подключается в рантайме
@@ -142,26 +144,35 @@ npx vite build     # прод-сборка: побочный эффект 1.8.2,
 ## Тесты
 
 ```bash
-npm install   # один раз: vitest, jsdom, typescript
+npm install   # один раз: vitest, jsdom, typescript, @testing-library/*
 npm test
+npm run test:coverage
 ```
 
-158 тестов в `test/` (vitest + jsdom): домен — `test/core/` (правила игры, генератор,
-очки, игрок, карта, `CONFIG`, `Stats`), данные — `test/data/` (`StatsService` через
-`MemoryRepository`), сервисы — `test/services/` (звук).
+**261 тест в 28 сьютах** (vitest + jsdom): домен — `test/core/`, данные —
+`test/data/` (`StatsService` через `MemoryRepository`), сервисы — `test/services/`
+(звук), UI — `test/components/` и `test/hooks/` (`@testing-library/react` +
+`user-event` + `jest-dom`).
 
-На **1.8.3** тесты переписаны на `import`: `eval`, `readSource` и `test/ts-source.js`
-удалены, копия `CONFIG` из `test/setup.js` убрана, `allowJs: false`. Копии
-`GameRules`/`ProblemGenerator`/`Scoring` заменены настоящими модулями. Прогон:
+На **1.8.3** все тесты переписаны на `import`: `eval`, `readSource` и
+`test/ts-source.js` удалены, копия `CONFIG` из `test/setup.js` убрана,
+`allowJs: false`. Копии `GameRules`/`ProblemGenerator`/`Scoring` заменены настоящими
+модулями. Прогон:
 
-| Группа | Сьюты | Тесты | Статус |
-|---|---|---|---|
-| `test/core/**` | 10 | 124 | ✅ зелёные |
-| `test/data/**` | 1 | 26 | ✅ зелёные |
-| `test/services/**` | 1 | 8 | ✅ зелёные |
+| Группа | Сьюты | Тесты | Покрытие (stmts/branch) | Статус |
+|---|---|---|---|---|
+| `test/core/**` | 12 | 135 | 99.32 / 90.44 | ✅ зелёные |
+| `test/data/**` | 4 | 40 | 100 / 100 | ✅ зелёные |
+| `test/services/**` | 1 | 9 | 100 / 100 | ✅ зелёные |
+| `test/components/**` | 7 | 45 | 93.44 / 87.75 | ✅ зелёные |
+| `test/hooks/**` | 4 | 32 | 95.21 / 81.92 | ✅ зелёные |
+| `src/App.tsx` | — | — | 87.17 / 100 | ✅ |
+| **Итого** | **28** | **261** | **96.84 / 88.74** | ✅ |
 
-React-тесты (`@testing-library/react`) и пороги покрытия 80/60 — следующие этапы
-1.8.3; E2E — опционально. Подробности — `test/README.md` и `spec_v1_8_3.md`.
+Пороги покрытия — `coverage.thresholds` в `vitest.config.ts`: **80%**
+(`core`/`data`/`services`) и **60%** (`components`/`hooks`/`App.tsx`); пороги не
+понижаются. E2E (Playwright) в `npm test` не входит — backlog 1.8.3 → 1.9
+записан в `test/README.md`. Подробности — `test/README.md` и `spec_v1_8_3.md`.
 
 ## Статус и smoke-тест (dev, 1.8.3)
 
@@ -169,9 +180,10 @@ React-тесты (`@testing-library/react`) и пороги покрытия 80/
 
 | Проверка | Команда | Результат |
 |---|---|---|
-| Версия | — | **1.8.3**: тесты `.test.ts` на `src/**`, без `eval`/`readSource`, `allowJs: false` |
+| Версия | — | **1.8.3**: тесты `.test.ts(x)` на `src/**`, без `eval`/`readSource`, `allowJs: false` |
 | Типы | `npm run typecheck` | ✅ **0 ошибок** |
-| Тесты | `npm test` | ✅ **158/158** в 12 сьютах |
+| Тесты | `npm test` | ✅ **261/261** в 28 сьютах |
+| Покрытие | `npm run test:coverage` | ✅ **96.84%** stmts / **88.74%** branches, пороги 80/60 |
 | Dev-сервер | `npm run dev` | ✅ `http://localhost:5173`, консоль без ошибок приложения |
 | Прод-сборка | `npx vite build` | ✅ собирается (53 модуля); ⚠️ `audio/` не копируется в `dist` |
 
@@ -229,7 +241,7 @@ css/
   game_items/       # Стили игровых элементов
   result_items/     # Стили результатов
 audio/              # Звуки (click, win, lose)
-test/               # Тесты (vitest + jsdom), не менялись в 1.8.2
+test/               # 28 сьютов / 261 тест: core, data, services, components, hooks
 ```
 
 TypeScript используется везде, включая все шесть бывших `.js`-файлов
@@ -245,7 +257,8 @@ TypeScript используется везде, включая все шесть
 - **React 19.3.1 + @types/react** — все экраны и модалки (карта, игра, результаты, шапка)
 - **ES-модули** — один граф импортов, один `<script type="module">`
 - **Vite 8** — dev-сервер и прод-сборка (побочный эффект 1.8.2)
-- **vitest + jsdom** — тесты
+- **vitest + jsdom** — тесты (домен, данные, сервисы, RTL для компонентов и хуков)
+- **@testing-library/react + user-event + jest-dom** — компонентные и хуковые тесты
 
 ## Документация процесса
 
