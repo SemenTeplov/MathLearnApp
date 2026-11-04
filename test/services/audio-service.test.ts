@@ -60,6 +60,19 @@ describe('AudioService', () => {
             expect(cloneNode).not.toHaveBeenCalled();
         });
 
+        test('не играет звук, который не загрузился', () => {
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            AudioMock.mockImplementationOnce(() => {
+                throw new Error('load error');
+            });
+            service.preload();
+
+            expect(() => service.play('click')).not.toThrow();
+            expect(cloneNode).not.toHaveBeenCalled();
+
+            warn.mockRestore();
+        });
+
         test('после preload клонирует и запускает нужный звук', () => {
             service.preload();
             service.play('win');
