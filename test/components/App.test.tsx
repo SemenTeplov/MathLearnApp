@@ -1,6 +1,4 @@
-// App: интеграционный сьют на реальных хуках и фейковом Services (D41).
-// Покрывает карту, движение 600 мс через transitionend, игру, результаты,
-// модалку выбора карты, блокировку второй вкладки и «На карту».
+// App: интеграция на реальных хуках и фейковом Services (D41) — карта, движение, игра, результаты.
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -15,12 +13,7 @@ import type { AudioService } from '../../src/services/audio-service';
 
 const ENGLISH: GameMap = { id: 'english', title: 'Английский', zones: CONFIG.ZONES };
 
-interface Channel {
-    onmessage: ((event: MessageEvent) => void) | null;
-    postMessage: ReturnType<typeof vi.fn>;
-    close: ReturnType<typeof vi.fn>;
-}
-
+type Channel = { onmessage: ((event: MessageEvent) => void) | null; postMessage: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> };
 let channels: Channel[] = [];
 
 /** Управляемая заглушка: сьют сам «шлёт» сообщение второй вкладки. */
@@ -39,17 +32,13 @@ function makeServices(): { services: Services; audio: { play: ReturnType<typeof 
     return { services: { audio, stats } as unknown as Services, audio };
 }
 
-const trainers = (container: HTMLElement): NodeListOf<HTMLElement> =>
-    container.querySelectorAll('.map-trainer');
-const answers = (container: HTMLElement): NodeListOf<HTMLElement> =>
-    container.querySelectorAll('.answer-btn');
+const trainers = (c: HTMLElement) => c.querySelectorAll<HTMLElement>('.map-trainer');
+const answers = (c: HTMLElement) => c.querySelectorAll<HTMLElement>('.answer-btn');
 
-/** Клик по соседнему тренажёру + прибытие игрока (transition 600 мс). */
+/** Клик по соседнему тренажёру + прибытие игрока (CSS transition 600 мс). */
 async function arrive(user: ReturnType<typeof userEvent.setup>, container: HTMLElement) {
     await user.click(trainers(container)[0]);
-    fireEvent.transitionEnd(container.querySelector('.map-player') as HTMLElement, {
-        propertyName: 'transform'
-    });
+    fireEvent.transitionEnd(container.querySelector('.map-player') as HTMLElement, { propertyName: 'transform' });
 }
 
 /** Карта → модалка сложности → игра. */
@@ -58,7 +47,7 @@ async function startGame(user: ReturnType<typeof userEvent.setup>, container: HT
     await user.click(container.querySelector('[data-diff="easy"]') as HTMLElement);
 }
 
-/** Цикл «ответ → Продолжить» до экрана результатов (не больше 10 итераций). */
+/** Цикл «ответ → Продолжить» до результатов: не больше 10 итераций. */
 async function playToResults(user: ReturnType<typeof userEvent.setup>, container: HTMLElement) {
     for (let i = 0; i < 10; i++) {
         if (container.querySelector('#resultScreen.active')) return i;
@@ -73,13 +62,10 @@ beforeEach(() => {
     localStorage.clear();
     vi.stubGlobal('BroadcastChannel', ControlledChannel);
 });
-
-afterEach(() => {
-    vi.unstubAllGlobals();
-});
+afterEach(() => vi.unstubAllGlobals());
 
 describe('App', () => {
-    test('первый рендер: активна карта, 15 тренажёров, счёт из статистики', () => {
+    test('первый рендер: карта активна, 15 тренажёров, счёт из статистики', () => {
         const { services } = makeServices();
         services.stats.updateAfterRound(40);
         const { container } = render(<App services={services} />);
@@ -90,7 +76,7 @@ describe('App', () => {
         expect(screen.getByText('🏆 40')).toHaveClass('total-score');
     });
 
-    test('клик по соседнему тренажёру и transitionend открывают модалку сложности', async () => {
+    test('клик по соседнему и transitionend открывают модалку сложности', async () => {
         const user = userEvent.setup();
         const { services } = makeServices();
         const { container } = render(<App services={services} />);
@@ -101,7 +87,7 @@ describe('App', () => {
         expect(container.querySelector('#gameScreen')).not.toHaveClass('active');
     });
 
-    test('выбор сложности стартует игру: активен игровой экран, вопрос и 4 ответа', async () => {
+    test('выбор сложности стартует игру: игровой экран, вопрос и 4 ответа', async () => {
         const user = userEvent.setup();
         const { services } = makeServices();
         const { container } = render(<App services={services} />);
@@ -118,8 +104,8 @@ describe('App', () => {
         const user = userEvent.setup();
         const { services } = makeServices();
         const { container } = render(<App services={services} />);
-
         await startGame(user, container);
+
         const iterations = await playToResults(user, container);
 
         expect(iterations).toBeLessThanOrEqual(10);
