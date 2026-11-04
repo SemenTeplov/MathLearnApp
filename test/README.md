@@ -3,14 +3,20 @@
 ## Запуск
 
 ```bash
-npm test             # vitest run: 12 сьютов, 158 тестов
+npm test             # vitest run: 28 сьютов, 261 тест
 npm run test:watch   # watch-режим
-npm run test:coverage# покрытие (v8) + html-отчёт в coverage/
+npm run test:coverage# покрытие (v8) по группам + html-отчёт в coverage/
 npm run typecheck    # tsc --noEmit (src/ + test/, включая .tsx)
 ```
 
-Раннер — **vitest** (не Jest). Конфигурация — `vitest.config.ts`:
-`environment: 'jsdom'`, `globals: true`, `setupFiles: ['./test/setup.ts']`.
+Раннер — **vitest** (не Jest), среда — `jsdom`. Конфигурация — `vitest.config.ts`:
+`globals: true`, `setupFiles: ['./test/setup.ts']`, `coverage.provider: 'v8'`,
+`coverage.include` по слоям `src/` и `thresholds` по группам (80/60).
+
+`test/setup.ts` содержит только инфраструктуру: `import '@testing-library/jest-dom/vitest'`
+(матчеры `toBeInTheDocument`/`toHaveClass`/`toHaveTextContent`), мок `Audio` и
+безопасную заглушку `BroadcastChannel`. Доменных констант (`CONFIG`, `ZONES`, `MAPS`,
+`RATINGS`, `GAMEOVER`) в `setup.ts` нет — тесты импортируют боевой `src/core/config`.
 
 ## 1.8.3 — тесты на реальных импортах
 
@@ -22,25 +28,31 @@ npm run typecheck    # tsc --noEmit (src/ + test/, включая .tsx)
 
 | Было | Стало |
 |---|---|
-| `test/**/*.test.js` | `test/{core,data,services}/*.test.ts` |
-| `readSource()` + `eval` | `import` из `src/core` / `src/data` / `src/services` |
+| `test/**/*.test.js` | `test/{core,data,services,components,hooks}/*.test.ts(x)` |
+| `readSource()` + `eval` | `import` из `src/core` / `src/data` / `src/services` / `src/**` |
 | `test/ts-source.js` | удалён |
 | копия `CONFIG` в `test/setup.js` | `test/setup.ts` без `CONFIG`; `import { CONFIG }` |
 | копии `GameRules` / `ProblemGenerator` / `Scoring` | настоящие модули |
 | `StatsService.init(repo)` | `new StatsService(new MemoryRepository())` |
 | `allowJs: true` | `allowJs: false` |
 
-Итог: **158/158 в 12 сьютах**, `npx tsc --noEmit` — **0**, `eval`/`readSource` — **0**.
-Сьют `test/core/session-model.test.ts` (15 тестов) проверяет реальную `SessionModel`;
-`test/data/stats-service.test.ts` — реальный сервис через `MemoryRepository`.
+Итог: **261 тест в 28 сьютах**, `npx tsc --noEmit` — **0**, `eval`/`readSource` — **0**,
+`src/**` — **0 правок** (тесты подстраиваются под прод-API, а не наоборот).
+
+Сьюты, которые проверяют именно реальный прод-код: `test/core/session-model.test.ts`
+(15 тестов, `SessionModel`), `test/data/stats-service.test.ts` (26, `StatsService` через
+`MemoryRepository`), `test/components/App.test.tsx` (10, интеграция на реальных хуках
+и фейковом `Services`), `test/hooks/*` (32, `renderHook`).
 
 ## Структура
 
 ```
 test/
-├── setup.ts                       # мок Audio; CONFIG здесь нет
-├── core/
+├── setup.ts                       # jest-dom + мок Audio + заглушка BroadcastChannel
+├── core/                          # 12 файлов / 135 тестов
 │   ├── config.test.ts             # CONFIG: версия 3, каталог, зоны, константы (6)
+│   ├── errors.test.ts             # цепочка наследования и name (3)
+│   ├── error-handler.test.ts      # handleError, глобальные обработчики (8)
 │   ├── game-rules.test.ts         # checkAnswer, shouldEndGame, getRating (14)
 │   ├── generator.test.ts          # ProblemGenerator: диапазоны, 4 варианта (15)
 │   ├── scoring.test.ts            # calculateRoundScore, isRoundSuccessful (8)
@@ -50,55 +62,97 @@ test/
 │   ├── map-catalog.test.ts        # get / getDefault / has (9)
 │   ├── session-model.test.ts      # счётчики, getResults, reset (15)
 │   └── stats-schema.test.ts       # defaults, миграции 1→2→3 (17)
-├── data/
-│   └── stats-service.test.ts      # счёт/позиция, switchMap, ошибки (26)
-└── services/
-    └── audio-service.test.ts      # preload, play, обработка ошибок (8)
+├── data/                          # 4 файла / 40 тестов
+│   ├── stats-service.test.ts      # счёт/позиция, switchMap, ошибки (26)
+│   ├── local-repository.test.ts   # round-trip, порча, квота, недоступность (8)
+│   ├── repository.test.ts         # контракт «Not implemented» (3)
+│   └── memory-repository.test.ts  # save/load/clear в памяти (3)
+├── services/
+│   └── audio-service.test.ts      # preload, play, ошибки (9)
+├── components/                    # 7 файлов / 45 тестов
+│   ├── App.test.tsx               # интеграция: карта → игра → результаты (10)
+│   ├── GameScreen.test.tsx        # вопрос, 4 ответа, feedback, «+10» (10)
+│   ├── MapScreen.test.tsx         # 15 тренажёров, зоны, модалка, transitionend (9)
+│   ├── ResultsScreen.test.tsx     # оценка, карточки, кнопки (4)
+│   ├── MapSelectionModal.test.tsx # карты из props, selected, выбор (5)
+│   ├── Header.test.tsx            # счёт и кнопка карты (4)
+│   └── ErrorModal.test.tsx        # текст, «OK», оверлей (3)
+└── hooks/                         # 4 файла / 32 теста
+    ├── useGame.test.tsx           # ответы, счёт, жизни, таймер, выход (10)
+    ├── useMap.test.tsx            # движение, модалка, откат, запись (11)
+    ├── useResults.test.tsx        # оценка, статистика только за победу (5)
+    └── useSessionLock.test.tsx    # канал, одно сообщение, fallback (6)
 ```
 
-## Покрытие (baseline 1.8.3)
+## Как писать RTL-тесты
 
-`npm run test:coverage` — 97.12% statements / 90.57% branches для **загруженных**
-модулей. `coverage.include` пока не расширен на все файлы слоя, поэтому
-`error-handler.ts`, `local-repository.ts` и `repository.ts` в отчёт не входят.
+- **Запросы.** `getByRole` / `getByText` / `getByLabelText` — по умолчанию.
+  `container.querySelectorAll` — только для контрактных CSS-классов, которых нет
+  в ARIA (`map-trainer--current`, `feedback correct-fb`, `stat-card`).
+- **События.** `user-event` (`userEvent.setup()`) — клики и ввод. `fireEvent` — только
+  там, где `user-event` не выражает сценарий: `transitionend` игрока и клик по оверлею.
+- **`transitionend`.** Движение игрока — CSS-transition 600 мс, поэтому «прибытие»
+  эмулируется `fireEvent.transitionEnd(el, { propertyName: 'transform' })`; таймеры для
+  этого не нужны.
+- **Fake timers.** Только там, где таймеры есть в проде: 100 мс debounce `resize`
+  в `useMap` и 1500 мс плашки `+10` в `useGame`. Обязательно `act(() => vi.advanceTimersByTime(n))`
+  и `vi.useRealTimers()` в `afterEach`; `setTimeout`/`sleep` в тестах запрещены.
+- **Фейковый `Services`.** Собирается в каждом сьюте (общего `test/fixtures/` нет):
+  `{ audio: { play: vi.fn() }, stats: new StatsService(new MemoryRepository()) }`.
+  `AudioService`/`StatsService` в тестах не создаются в module scope.
+- **`BroadcastChannel`.** В `setup.ts` — безопасная заглушка (ничего не рассылает).
+  Управляемую (с перехватом `onmessage`/`close`) сьют ставит сам через `vi.stubGlobal`
+  в `beforeEach`, а `vi.unstubAllGlobals()` — в `afterEach`.
+- **Запрещено.** `eval`, `new Function`, `readSource`, `fs.readFileSync`, `require`,
+  копии `CONFIG`/логики в тестах, `.only`/`.skip` без объяснения, снимки всего DOM,
+  проверка приватных полей вместо публичного API. Файл сьюта — не больше 200 строк.
 
-| Модуль | Stmts | Branch | Funcs | Lines |
-|---|---|---|---|---|
-| `core/config.ts` | 100 | 100 | 100 | 100 |
-| `core/errors.ts` | 80 | 100 | 80 | 80 |
-| `core/game-rules.ts` | 100 | 100 | 100 | 100 |
-| `core/generator.ts` | 100 | 100 | 100 | 100 |
-| `core/map-catalog.ts` | 100 | 83.33 | 100 | 100 |
-| `core/map-layout.ts` | 100 | 88.88 | 100 | 100 |
-| `core/player-rules.ts` | 100 | 100 | 100 | 100 |
-| `core/player-state.ts` | 100 | 100 | 100 | 100 |
-| `core/scoring.ts` | 100 | 100 | 100 | 100 |
-| `core/session-model.ts` | 93.1 | 100 | 86.66 | 93.1 |
-| `core/stats-schema.ts` | 97.91 | 80 | 100 | 100 |
-| `data/memory-repository.ts` | 80 | 100 | 75 | 80 |
-| `data/repository.ts` | 0 | 100 | 0 | 0 |
-| `data/stats-service.ts` | 100 | 100 | 100 | 100 |
-| `services/audio-service.ts` | 94.44 | 75 | 100 | 94.44 |
-| **Итого** | **97.12** | **90.57** | **92.13** | **97.18** |
+## Покрытие (1.8.3)
 
-Целевые пороги 1.8.3: **80%** для `core`/`data`/`services`, **60–70%** для UI.
-За 100% не гоняемся.
+`npm run test:coverage`, срез 04.11.2026 — 28 сьютов, 261 тест:
 
-## Что дальше
+| Группа | Stmts | Branch | Funcs | Lines | Порог |
+|---|---|---|---|---|---|
+| `src/core/**` | 99.32 | 90.44 | 98.61 | 99.62 | 80 |
+| `src/data/**` | 100 | 100 | 100 | 100 | 80 |
+| `src/services/**` | 100 | 100 | 100 | 100 | 80 |
+| `src/components/**` | 93.44 | 87.75 | 100 | 98.14 | 60 |
+| `src/hooks/**` | 95.21 | 81.92 | 97.61 | 98.23 | 60 |
+| `src/App.tsx` | 87.17 | 100 | 83.33 | 87.17 | 60 |
+| **Итого** | **96.84** | **88.74** | **97.74** | **98.35** | — |
 
-- **React-тесты:** `@testing-library/react`, `@testing-library/user-event`,
-  `@testing-library/jest-dom`; 7 компонентных сьютов (`App`, `GameScreen`, `MapScreen`,
-  `ResultsScreen`, `MapSelectionModal`, `Header`, `ErrorModal`).
-- **Хуки:** `renderHook` для `useGame`, `useMap`, `useResults`, `useSessionLock`
-  (mock `BroadcastChannel`).
-- **Coverage:** `include` на все `src/core|data|services|components|hooks` + `App.tsx`,
-  пороги по группам; точечные тесты `error-handler`, `local-repository`, `repository`.
-- **E2E (опционально/позже):** Playwright, 5–7 критических сценариев
-  (движение, раунд, победа/провал, reload, вторая вкладка).
+Baseline 1.8.3 (до этапа 18) — 46.3% statements / 41.39% branches, потому что в отчёт
+попадали только загруженные модули. После `coverage.include` итог считается по всем
+слоям. `src/core/types.ts` в отчёте — `0/0` (только типы, исполняемых инструкций нет);
+это норма, модуль **не исключён** из `include` (D42).
 
-Подробности — `.gigacode/specs/spec_v1_8_3.md` и `.gigacode/rulles/rules_v_1_8_3.md`.
+Пороги (`vitest.config.ts`, `coverage.thresholds`) не понижаются: недостача добирается
+сценариями. `src/app/**` (composition root) и `src/main.tsx` намеренно вне `include`.
+
+## E2E — backlog 1.8.3 → 1.9
+
+Playwright **не установлен**, в `npm test` E2E не входит. Когда появится — сценарии
+(7), парные smoke-листу из корневого `README.md`:
+
+1. Карта: 3 зоны, 15 тренажёров, игрок перед первым; клик по соседнему → 600 мс → модалка.
+2. «Отмена»: индекс откатывается, статистика не пишется.
+3. Раунд 8/2: «🎉 Отлично!», «Заработано: 80 ✓», `ml_stats.totalScore === 80`.
+4. Провал (0 жизней): «💔 Игра окончена», «(не зачтено)», счёт не растёт.
+5. «На карту» + F5: счёт и позиция сохранены, один `--current` тренажёр.
+6. Вторая вкладка: «Игра уже запущена», консоль без ошибок приложения.
+7. Смена карты: `−1` для новой карты и сохранённый счёт прежней.
+
+Скрипт `npm run test:e2e` добавляется только вместе с установкой Playwright и
+отдельным конфигом; в `npm test` он не входит.
 
 ## История
+
+### 1.8.3 — этап 1: тесты на импортах
+
+**158/158 в 12 сьютах.** 12 сьютов переведены на `.test.ts`, `eval`/`readSource`/
+`test/ts-source.js` и копия `CONFIG` удалены, `allowJs: false`. Этап 18 добавил
+RTL-сетап, 7 компонентных и 4 хуковых сьюта, 5 точечных юнит-сьютов `core`/`data`,
+пороги покрытия 80/60 — итог **261 в 28 сьютах**.
 
 ### 1.8.2 — тесты красные по плану
 
