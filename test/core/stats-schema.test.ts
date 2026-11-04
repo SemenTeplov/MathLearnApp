@@ -1,13 +1,13 @@
-// Схема Stats v3: значения по умолчанию, миграции, доступ по текущей карте
-const { readSource } = require('../ts-source');
+// Боевая схема Stats v3: значения по умолчанию, миграции, доступ по текущей карте.
 
-eval(readSource('./js/errors/custom-errors.ts') +
-    '\nglobal.CorruptedDataError = CorruptedDataError;');
-eval(readSource('./js/model/map-catalog.js') + '\nglobal.MapCatalog = MapCatalog;');
-eval(readSource('./js/model/stats-schema.js') + '\nglobal.StatsSchema = StatsSchema;');
+import { describe, expect, test } from 'vitest';
+import { CONFIG } from '../../src/core/config';
+import { CorruptedDataError } from '../../src/core/errors';
+import { StatsSchema } from '../../src/core/stats-schema';
+import type { GameMap, Stats } from '../../src/core/types';
 
 /** Добавляет временную вторую карту и убирает её после теста. */
-function withMap(map, fn) {
+function withMap(map: GameMap, fn: () => void): void {
     CONFIG.MAPS.push(map);
     try {
         fn();
@@ -15,6 +15,9 @@ function withMap(map, fn) {
         CONFIG.MAPS.pop();
     }
 }
+
+/** Плоские поля версий 1–2, которых нет в актуальном Stats. */
+type LegacyStats = Stats & { totalScore?: number; currentTrainerIndex?: number };
 
 describe('StatsSchema — значения по умолчанию', () => {
     test('emptyMap() — нулевой счёт и стартовая позиция', () => {
@@ -82,9 +85,10 @@ describe('StatsSchema — миграции', () => {
 
     test('после миграции плоских полей не остаётся (Z14)', () => {
         const stats = StatsSchema.migrate({ version: 2, totalScore: 5, currentTrainerIndex: 7 });
+        const legacy = stats as LegacyStats;
 
-        expect(stats.totalScore).toBeUndefined();
-        expect(stats.currentTrainerIndex).toBeUndefined();
+        expect(legacy.totalScore).toBeUndefined();
+        expect(legacy.currentTrainerIndex).toBeUndefined();
     });
 
     test('неизвестная currentMap → math, данные карты сохраняются', () => {
@@ -123,7 +127,7 @@ describe('StatsSchema — ensureMaps', () => {
         const stats = StatsSchema.ensureMaps({
             version: 3,
             currentMap: 'math',
-            maps: { math: { totalScore: 5 } }
+            maps: { math: { totalScore: 5 } as { totalScore: number; currentTrainerIndex: number } }
         });
 
         expect(stats.maps.math).toEqual({ totalScore: 5, currentTrainerIndex: -1 });
@@ -138,5 +142,14 @@ describe('StatsSchema — ensureMaps', () => {
 
         expect(stats.currentMap).toBe('math');
         expect(stats.maps.chemistry.totalScore).toBe(1);
+    });
+
+    test('чинит отсутствующий объект maps', () => {
+        const stats = StatsSchema.ensureMaps({
+            version: 3,
+            currentMap: 'math'
+        } as unknown as Stats);
+
+        expect(stats.maps.math).toEqual({ totalScore: 0, currentTrainerIndex: -1 });
     });
 });

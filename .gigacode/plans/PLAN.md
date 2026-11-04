@@ -1,11 +1,11 @@
 # План — MathLingo
 
-**Версия:** 1.8.2  
-**Статус:** Этап 17 «ES-модули» (SPEC 1.8.2 — «Этап 2» миграции) — ✅ выполнено  
-**Базовая линия 1.8.1:** `npx tsc --noEmit` — **0 ошибок**, `npm test` — **156/156 в 12 сьютах** (проверено 03.11.2026), `js/` — 19 classic-файлов (13 `.ts` + 6 `.js`), `src/` — 20 файлов  
-**Создан на основе:** RULES 1.8.2 (`rules_v_1_8_2.md`: A52–A58, T44–T49, Z24–Z26) и SPEC 1.8.2 (`spec_v1_8_2.md`: TR-28…TR-41)  
-**Предыдущая версия плана:** 1.8.1 (`plans/PLAN_v1_8_1.md` — архив)  
-**Тип изменения:** архитектурная миграция — 19 классических скриптов и глобалы → один граф ES-модулей со слоями `core`/`data`/`services`/`app`. Поведение, разметка, CSS, тексты, `CONFIG`, `Stats` и ключи хранилища **не меняются**.
+**Версия:** 1.8.3  
+**Статус:** Этап 18 «Тесты на импортах» (SPEC 1.8.3). Этап 1 — миграция 12 сьютов — ✅ выполнен; этапы 18.1–18.7 — план  
+**Базовая линия 1.8.3 (проверено 04.11.2026):** `npx tsc --noEmit` — **0 ошибок**, `npm test` — **158/158 в 12 сьютах** (~5.6 с), покрытие загруженных модулей — **97.13%** statements / **90.58%** branches  
+**Создан на основе:** RULES 1.8.3 (`rules_v_1_8_3.md`: A59–A64, T50–T55, Z27–Z29) и SPEC 1.8.3 (`spec_v1_8_3.md`: TR-42…TR-50)  
+**Предыдущая версия плана:** 1.8.2 (`plans/PLAN_v1_8_2.md` — архив)  
+**Тип изменения:** миграция **тестов**, а не поведения. Сьюты проверяют прод-код через `import`, а не через `eval`/`readSource` и копии логики; добавляются React-тесты (RTL) и пороги покрытия 80/60. Поведение, разметка, CSS, тексты, `CONFIG`, `Stats` v3 и ключи хранилища **не меняются**; `src/**` **не правится**.
 
 ---
 
@@ -13,56 +13,52 @@
 
 | # | Решение | Следствие |
 |---|---------|-----------|
-| 1 | **Сначала структура, потом тесты** (A57/TR-39). Тесты на этапе 2 не трогаются и остаются **красными**; их переписывание на `import` — этап 3 | Ни один тестовый файл не меняется; «красный» прогон — ожидаемый результат, а не повод править тесты |
-| 2 | **Порядок слоёв:** `core` → `data` → `services` → `ui/types` → `app`+`main` → `tsconfig`+`index.html` → удаление `js/` → smoke → документация | После каждого шага `tsc --noEmit` = 0; удаление `js/` — отдельный последний шаг, чтобы тесты падали только в конце |
-| 3 | **`src/types.ts` удаляется только после смены `tsconfig`** (D18), а не в порядке таблицы TR-28 | Пока `js/` входит в программу `tsc`, глобальные типы нужны классическим файлам. Удаление раньше дало бы сотни TS2304 |
-| 4 | **`src/config.ts` удаляется вместе с потребителями** на шаге 17.5 (TR-32) | `GameScreen`, `useGame`, `useMap` переходят на `import { CONFIG } from '../core/config'`; `config` в нижнем регистре исчезает |
-| 5 | **`SessionService`/`SessionRepository` удаляются на 17.6**, после `bootstrap` (TR-36) | Пока `bootstrap.ts` жив, удаление сломало бы рантайм; `init(new SessionRepository())` — единственная ссылка |
-| 6 | **`StatsService` — класс** (T45/D5): `_repo` приходит в конструктор, `init()` удалён | `createServices()` делает `new StatsService(new LocalStorageRepository(CONFIG.STORAGE_PREFIX + 'stats'))` |
-| 7 | **`AudioService` — класс вместо IIFE** (T45): `_sounds`, `_isReady`, `try/catch`, `console.warn` сохраняются; `AudioKind` переезжает сюда | `useAudio.ts` удаляется (D4 спеки): импортёров нет, `AudioKind` нужен сервису |
-| 8 | **`ErrorHandler.handle/init` → `handleError`/`initGlobalErrorHandlers`** (T45/D6) | Явные функции вместо объекта-глобала; `main.tsx` вызывает `initGlobalErrorHandlers()` |
-| 9 | **Единственный composition root** (A54/TR-33): `createServices()` вызывается ровно один раз в `src/main.tsx`; `App({ services })`; хуки получают `services` первым аргументом | Сервисы не создаются в компонентах/хуках, не хранятся в модульных переменных, методы не деструктурируются (`this`) |
-| 10 | **Клики в `App`** идут через проп: `services.audio.play('click')` (интерпретация A53: запрещён **импорт** значений из `data`/`services`, но T46 передаёт `services` в `App`) | Альтернатива «перенести клики в хуки» записана в вопросах владельцу; компоненты сервисов не получают в любом случае |
-| 11 | **`CONFIG` — только импортом** (A55/TR-32); `ZONES`/`MAPS` — внутренние `const` | `src/config.ts` и реэкспорты удалены; `grep` по `config.` в `src/` пуст |
-| 12 | **Типы — обычные модули** (A56/TR-31): домен в `src/core/types.ts`, view-модели в `src/ui/types.ts`, геометрия — в домене | `declare global` исчезает; из-за `verbatimModuleSyntax` все типовые импорты — `import type` |
-| 13 | **Тесты на 1.8.2 — красные по расписанию** (D22): 9 сьютов / **113** тестов упадут (ENOENT на `./js/…`), 3 сьюта / **43** теста останутся зелёными (они дублируют логику в себе) | Красный список фиксируется в отчёте этапа; `allowJs: true` сохраняется до этапа 3 |
-| 14 | **Ветка `refactor/es-modules`**, атомарные коммиты по слоям, **без мержа** до зелёного этапа 3 (A58/TR-40) | `git add -A` запрещён (Z26): в дереве уже есть чужие правки `SPEC.md`/`RULES.md` |
+| 1 | **Этап 1 не переписывается.** Миграция 12 сьютов, удаление `eval`/`readSource`/копии `CONFIG`, `allowJs: false` уже сделаны и зелёные (158 тестов, `tsc` 0) | 18.0 — только фиксация этапа 1 в git; работа начинается с 18.1 |
+| 2 | **Порядок:** зависимости и `setup` → компоненты → хуки → coverage и точечные тесты данных → E2E-заготовка → документация → аудит | Каждый шаг заканчивается `tsc` 0 + зелёным прогоном; coverage включается только после того, как UI-сьюты написаны |
+| 3 | **`src/**` неприкосновенен** (Z28/TR-47): тест подстраивается под прод-API, а не наоборот | Если тест обнаруживает дефект (например, отрицательный ответ в `hard`, D12 спеки), он фиксируется в отчёте и выносится за пределы 1.8.3 |
+| 4 | **Фейковый `Services` — в каждом сьюте** (T51), без общего `test/fixtures/`: A60 требует «общие моки — только `test/setup.ts`», «тесты не импортируют друг друга» | Дублирование ~10 строк на файл осознанно; при росте числа сьютов вопрос выносится владельцу |
+| 5 | **Движение 600 мс в проде — CSS-transition + `onTransitionEnd`** (`Player.tsx`), а не `setTimeout` | Тест эмитит `transitionend` на `.map-player`; fake timers нужны только для 100 мс debounce `resize` и 1500 мс плашки `+10`. Уточнение буквы TR-48 |
+| 6 | **Coverage сравнивается «как с чем»:** 97.12/90.57 — это 15 загруженных модулей; после расширения `include` агрегат падает до **46.3/41.39** | Порог «не падать» применяется к тому же набору модулей; агрегат с UI сравнивается с целевыми порогами 80/60, а не с 97% |
+| 7 | **Пороги не понижаются** (A63/Z28): если UI-группа не добирает 60%, добавляются сценарии, а не исключения из отчёта | `coverage.include` фиксирует все модули слоя; «0% без объяснения» запрещён |
+| 8 | **`App.test.tsx` — интеграционный:** реальные хуки + фейковые сервисы | До `ResultsScreen` тест доходит циклом «ответ → Продолжить» (≤ 10 итераций) — исход детерминирован без подмены хуков |
+| 9 | **7 компонентных сьютов** по TR-47; `Path`/`Player`/`Trainer`/`Zone` отдельных сьютов не получают | Они покрываются через `MapScreen` (рендерит их все) — этого достаточно для порога 60% |
+| 10 | **`@testing-library/*` — единственные новые зависимости**: `@testing-library/react@^16`, `@testing-library/user-event@^14`, `@testing-library/jest-dom@^6` | `npm i -D` не обновляет существующие пакеты; React 19 совместим с RTL 16 |
+| 11 | **Coverage-конфиг живёт в `vitest.config.ts`**, `coverage/` — в `.gitignore` | В коммит попадают только конфиг и тесты, не HTML-отчёт |
+| 12 | **Ветка — текущая `feature/001`**, коммиты по шагам; новая ветка не создаётся, пуш и мерж — по согласованию | Тестовая миграция не трогает прод-код, отдельная ветка не нужна; `git add -A` запрещён (Z29) |
 
 ---
 
 ## 🎯 Цель
 
-Один граф модулей вместо 19 `<script>`-тегов и глобальных переменных:
+Вернуть тестам роль страховки: они должны падать, когда ломается прод-код, и проходить, когда он цел.
 
-- каждый файл `src/` — модуль с явными `import`/`export`, `CONFIG` — только импортом;
-- `index.html` — `#root` + **один** `<script type="module" src="/src/main.tsx">`;
-- `js/` удалён целиком; мёртвый код (`SessionService`, `SessionRepository`, `src/config.ts`, `src/bootstrap.ts`, `src/types.ts`, `src/hooks/useAudio.ts`, корневой `main.tsx`) удалён;
-- `npx tsc --noEmit` — **0 ошибок**; `npm run dev` — работает, консоль без ошибок;
-- поведение, разметка, CSS (21 файл), тексты, `CONFIG`, `Stats` v3 и ключи `ml_stats`/`ml_session_lock` — **1:1**;
-- `npm test` — **красный** (9 сьютов / 113 тестов), и это записано в отчёте: тесты переписываются на `import` на этапе 3.
-
-Никаких новых фич, зависимостей, Context/Zustand, `@vitejs/plugin-react`, правок CSS и «заодно» починки тестов.
+- **Ноль** `eval` / `new Function` / `readSource` / `fs.readFileSync` / `require` в `test/**`.
+- Все сьюты — `.test.ts`/`.test.tsx` и **импортируют** `src/core`, `src/data`, `src/services`, `src/components`, `src/hooks`.
+- `GameRules`, `ProblemGenerator`, `Scoring`, `SessionModel` тестируются **настоящие**, без копий.
+- `StatsService` — только `new StatsService(new MemoryRepository())`; `init(repo)` нет.
+- **7** компонентных сьютов (RTL) + **4** хуковых (`renderHook`) + **5** точечных сьютов данных (`error-handler`, `errors`, `local-repository`, `repository`, `memory-repository`).
+- Пороги покрытия по группам: `core`/`data`/`services` — **80%**, UI (`components`/`hooks`/`App.tsx`) — **60%**; без погони за 100%.
+- `npx tsc --noEmit` — **0**; `npm test` — зелёный; `npm run test:coverage` — пороги зелёные; `src/**` — 0 правок.
+- E2E (Playwright) — **по желанию и позже**, в 1.8.3 не блокирует.
 
 ---
 
-## 📐 Что именно меняет 1.8.2
+## 📐 Что именно меняет 1.8.3
 
 | Источник | Требование | Следствие для плана |
-|----------|-----------|---------------------|
-| **TR-28** | Перенос 19 файлов по таблице «было → стало»; `js/` удаляется целиком | Шаг 17.1–17.2 (перенос), 17.6 (удаление `js/`) |
-| **TR-29** | Явные `export`/`import`; никаких `window`/`globalThis`; типы — только `import type` | Шаги 17.1–17.5; проверка `grep` на 17.7/17.9 |
-| **TR-30** | Шесть `.js` → `.ts`: `map-catalog`, `stats-schema`, `player-rules`, `player-state`, `audio-service`, `map-layout` | 17.1 (`core`) и 17.3 (`services`); JSDoc → сигнатуры |
-| **TR-31** | `declare global` → обычные экспорты; `core/types.ts` + `ui/types.ts`; геометрия в домене | 17.1 (`core/types.ts`), 17.4 (`ui/types.ts`), 17.5 (удаление `src/types.ts`) |
-| **TR-32** | `src/config.ts` удалён; `GameScreen`/`useGame`/`useMap` — на `CONFIG` | 17.5 |
-| **TR-33** | `createServices()` + `src/main.tsx`; `App({ services })`; хуки первым аргументом | 17.5 (`app/types.ts`, `createServices.ts`, `src/main.tsx`, `App`, хуки) |
-| **TR-34** | `index.html` — только `#root` + один module-скрипт; CSS импортами | 17.5b |
-| **TR-35** | `tsconfig.json` по шаблону T47 (`Bundler`, `verbatimModuleSyntax`, `isolatedModules`, `types: ["vite/client"]`, `allowJs: true`) | 17.5b |
-| **TR-36** | Мёртвый код: `SessionService`, `SessionRepository`, `bootstrap`, `config`, корневой `types`, `useAudio`, корневой `main` | 17.5 (src-обвязка) + 17.6 (`js/`) |
-| **TR-37** | Матрица слоёв: `core ← data ← services ← app`; `components` без `data`/`services`/`hooks` | 17.1–17.5; проверка на 17.7 |
-| **TR-38** | Контракты `config`, `errors`, `error-handler`, `StatsService`, `AudioService`; публичные имена T44 | «Контракты модулей» ниже |
-| **TR-39** | `test/**` не меняется; тесты красные; `allowJs: true` до этапа 3 | 17.6–17.7 (red-list) |
-| **TR-40** | Ветка `refactor/es-modules` от `a6f6ffa`; атомарные коммиты; без мержа | 17.0, 17.9 |
-| **TR-41** | Проверки `tsc`/`dev`/`grep` + ручной smoke | 17.7, 17.9 |
+|---|---|---|
+| **TR-42** | Удалены `eval`/`readSource`/копия `CONFIG`; `setup.ts` без `CONFIG`; `allowJs: false` | Этап 1 — ✅ выполнено (18.0 фиксирует) |
+| **TR-43** | 12 сьютов `.test.ts` с импортами прод-кода, зеркальные каталоги | Этап 1 — ✅ выполнено; 18.4 добавляет новые сьюты в те же каталоги |
+| **TR-44** | Настоящие `GameRules`/`ProblemGenerator`/`Scoring` | Этап 1 — ✅ выполнено; 18.4 добирает `error-handler` и `errors` |
+| **TR-45** | `StatsService` только через конструктор + `MemoryRepository` | Этап 1 — ✅ выполнено; 18.4 добавляет `local-repository`/`repository` |
+| **TR-46** | `test/core/session-model.test.ts` на реальной модели, 15 сценариев | Этап 1 — ✅ выполнено |
+| **TR-47** | `@testing-library/*`; 7 компонентных сьютов; фейковый `Services` | 18.1 (зависимости/setup), 18.2 (сьюты) |
+| **TR-48** | 4 хуковых сьюта, `renderHook`, fake timers, mock `BroadcastChannel` | 18.3 |
+| **TR-49** | Coverage `include` + пороги 80/60; точечные тесты `error-handler`, `local-repository`, `repository` | 18.4 |
+| **TR-50** | E2E Playwright — опционально, отдельный скрипт | 18.5 (только backlog, без установки) |
+| **A59–A64** | Импорты вместо копий; зеркальная структура; конструктор + `MemoryRepository`; поведение вместо реализации; покрытие-порог; детерминизм | Все шаги 18.1–18.7 |
+| **T50–T55** | Структура/имена тестов, контракты двойников, минимум RTL, coverage-конфиг, набор проверок | 18.1–18.4, 18.7 |
+| **Z27–Z29** | Запреты в тестах, «запрещено ради зелёного», запреты в git/CI | Раздел «Запреты», критерий 149 |
 
 ---
 
@@ -70,560 +66,565 @@
 
 | Область | Факт |
 |---------|------|
-| Поведение игры | 10 вопросов, 3 жизни, `+10` за верный ответ, пороги `CONFIG.RATINGS`, «Игра окончена» при `lives <= 0` |
-| `CONFIG` | `TOTAL_QUESTIONS 10`, `MAX_LIVES 3`, `START_DIFFICULTY 'easy'`, `POINTS_BASE 10`, `RATINGS` (100/70/40/0), `GAMEOVER`, `VERSION 3`, `STORAGE_PREFIX 'ml_'`, `DEFAULT_MAP 'math'`, 3 зоны по 5 тренажёров — **значения те же** |
-| `Stats` / Storage | ключ `ml_stats`, `Stats` v3, миграции `1 → 2 → 3`, `switchMap` сбрасывает позицию в `−1` |
-| Разметка и CSS | 21 файл `css/**` — **0 правок**; те же `id` (`#root`, `#mapScreen`, `#gameScreen`, `#resultScreen`), классы, тексты, эмодзи; inline `style="display: contents"` у `#root` |
-| Звук | `audio/click.mp3`, `win.mp3`, `lose.mp3`; ошибки глотаются, `console.warn` сохраняется |
-| Зависимости | `package.json`: React 19.3.1, Vite 8.3.5, TypeScript 5.9.3, vitest 5.0.5 — **без новых пакетов** |
-| `test/**` | 0 правок: ни удаления, ни `skip`, ни ослаблений (A57/Z25) |
-| `jest.config.js` | не трогаем — вне области (SPEC, «Что не входит») |
+| `src/**` | **38 файлов, 0 правок**: ни `core`, ни `data`, ни `services`, ни `components`, ни `hooks`, ни `App.tsx`/`main.tsx` (Z28/TR-47) |
+| Поведение игры | 10 вопросов, 3 жизни, `+10` за верный ответ, `RATINGS` (100/70/40/0), `GAMEOVER`, «Игра окончена» при `lives <= 0` |
+| `CONFIG` / `Stats` | значения 1.8.2, `Stats` v3, миграции `1 → 2 → 3`, ключи `ml_stats`, `ml_session_lock` |
+| Разметка и CSS | 21 файл `css/**`, `id` (`#root`, `#mapScreen`, `#gameScreen`, `#resultScreen`), классы, тексты, эмодзи — без изменений |
+| Звук | `audio/click.mp3`, `win.mp3`, `lose.mp3`; ошибки по-прежнему глотаются |
+| Существующие 12 сьютов | Сценарии сохраняются; удаление/`skip`/ослабление запрещено (Z28). Допустимо только **добавление** проверок (например, ветка `play` без `preload` в `audio-service`, 42-я строка) |
+| `package.json` | Только **добавление** трёх `devDependencies`; `scripts` не меняются (`test:e2e` появится вместе с Playwright) |
+| `index.html`, `jest.config.js` | Вне области — не трогаем |
 
 ---
 
-## 📎 Исходное состояние (проверено 03.11.2026)
+## 📎 Исходное состояние (проверено 04.11.2026)
 
 | Проверка | Факт | Вывод |
-|----------|------|-------|
-| `npx tsc --noEmit` | **0 ошибок** | Исходная точка зелёная |
-| `npm test` | **156/156** в **12** сьютах, ~6.6 с | Базовая линия; после 1.8.2 — красная (9/113) |
-| `js/` | **19** файлов: 13 `.ts` + 6 `.js`; каталоги `errors`, `model`, `storage`, `service`, `logic` | Переносятся **17**, удаляются **2** (`session-service.ts`, `session-repository.ts`); каталог `js/` исчезает |
-| `src/` | **20** файлов: `App.tsx`, `bootstrap.ts`, `config.ts`, `types.ts`, 10 компонентов, 6 хуков | Станет 38: `App.tsx`, `main.tsx`, `app/`×2, `core/`×13, `data/`×4, `services/`×1, `ui/`×1, `components/`×10, `hooks/`×5 |
-| Глобалы в `src/` | **73** обращения к **14** идентификаторам (`AudioService` 19, `config` 17, `StatsService` 11, `PlayerRules` 5, `PlayerState` 4, `MapLayout` 4, `GameRules` 3, `SessionModel` 2, `ProblemGenerator` 2, `CONFIG` 2, `SessionService` 1, `Scoring` 1, `MapCatalog` 1, `ErrorHandler` 1) | Всё это — работа 17.1–17.5 |
-| `index.html` | 19 `<script src="js/…">` + 1 `<script type="module" src="/main.tsx">`; 6 `<link rel="stylesheet">` | Переписывается на 17.5b |
-| `tsconfig.json` | `moduleResolution: "Node"`, `types: []`, `include: ["js", "src", "*.tsx"]`, `allowJs: true` | Переписывается по T47 на 17.5b |
-| `main.tsx` (корень) | 26 строк: `bootstrap()` → `createRoot(<App/>)` | Переезжает в `src/main.tsx` (D7) |
-| `src/bootstrap.ts` | `AudioService.preload()`, `StatsService.init(repo)`, `SessionService.init(new SessionRepository())`, `ErrorHandler.init()` | Становится `src/app/createServices.ts` |
-| `src/config.ts` | `export const config: Config = CONFIG` (7 строк) | Удаляется (TR-32) |
-| `src/types.ts` | 171 строка: `declare global` + все доменные и view-типы | Делится на `core/types.ts` + `ui/types.ts` |
-| `src/hooks/useMap.ts` | **200 строк** — ровно лимит GIGACODE | После импортов ≈207; шапку сокращаем (D25) |
-| `src/hooks/useAudio.ts` | 22 строки, **ни одного импортёра** | Удаляется (D4) |
-| Тестовый харнесс | `test/ts-source.js` (`readSource`), `test/setup.js` (`global.CONFIG`, мок `Audio`) | Не меняется; 9 сьютов после 1.8.2 упадут |
-| `package.json` | `dev: vite`, `typecheck: tsc --noEmit`, `test: vitest run`; `build` = `typecheck` | Не меняется |
-| `vite.config.ts` | **отсутствует** | `include` в T47 его «не находит» — это норма (см. D21) |
-| `jest.config.js` | присутствует, не используется | Вне области (SPEC) |
-| Git | ветка `fix/fix_statstic`, `HEAD a6f6ffa` («fix(1.8.1)»); `SPEC.md`/`RULES.md` modified, 1.8.2-доки untracked | Ветка создаётся от `a6f6ffa`; чужие правки не коммитим |
-| `.gigacode/tasks/TASKS.md` | версия 1.8.1, этапы 0–16 ✅ | Синхронизировать на 17 (17.8); архив — `TASKS_v1_8_1.md` |
+|---|---|---|
+| `npx tsc --noEmit` | **0** | Исходная точка зелёная |
+| `npm test` | **158/158** в **12** сьютах, ~5.6 с | `core` 124 (10 сьютов), `data` 26, `services` 8 |
+| `test/` | `setup.ts` (только мок `Audio`), `core/`×10, `data/`×1, `services/`×1 | Зеркальная структура этапа 1 на месте |
+| `test/setup.ts` | `vi.stubGlobal('Audio', …)`; **нет** `CONFIG`, **нет** `jest-dom`, `BroadcastChannel` не мокается | 18.1 добавляет `jest-dom` и заглушку канала |
+| `tests: components/hooks` | **0 файлов** | Весь UI-слой (61+251+39 statements) не покрыт |
+| `package.json` devDeps | `@vitest/coverage-v8`, `jsdom`, `typescript`, `vitest`, `vite`, `@types/react*` | Нет `@testing-library/react`, `user-event`, `jest-dom` |
+| `vitest.config.ts` | `provider: 'v8'`, `reporter: ['text','json','html']`; **нет** `include`, **нет** `thresholds` | Покрытие считается только по загруженным модулям |
+| Coverage (текущий конфиг) | 15 модулей: **97.13%** stmts / **90.58%** branches | Это «этап 1», а не весь `src/` |
+| Coverage (целевой `include`) | всего **46.3%** / **41.39%**: `core` 93.58/82.35, `data` 67.69/50.0, `services` 94.44/75.0, `components` 0/61, `hooks` 0/251, `App.tsx` 0/39 | Реальная точка старта для 18.4 |
+| Не покрыто в `core`/`data` | `error-handler.ts` 0/14, `local-repository.ts` 0/17, `repository.ts` 0/3, `errors.ts` 8/10, `memory-repository.ts` 4/5, `session-model.ts` 27/29 | Нужны точечные сьюты, иначе `data` остаётся 67.69% |
+| `vitest` CLI | `npx vitest run --coverage --coverage.include=…` работает; запись отчёта вне `coverage/` нужна в песочнице | `coverage/` под `.gitignore` |
+| Git | ветка `feature/001`; этап 1 **не закоммичен**: 7 `M` (`README`, `test/README`, `GIGACODE`, `SPEC`, `RULES`, `tsconfig`, `vitest.config`), 14 `D` (12 старых `.test.js`, `setup.js`, `ts-source.js`), 6 `??` (новые сьюты, `setup.ts`, `spec_v1_8_3.md`, `rules_v_1_8_3.md`) | 18.0 фиксирует этап 1 адресными `git add` |
 
-### Чего не хватает после 1.8.1
+### Чего не хватает после этапа 1
 
-1. **Графа модулей** — связи держатся на порядке `<script>` и глобалах.
-2. **Слоёв** `core`/`data`/`services` — домен и React перемешаны в `src/`.
-3. **Composition root** — `bootstrap()` вызывает глобальные объекты, `StatsService.init(repo)`.
-4. **Типов как модулей** — `declare global` + `src/config.ts`-реэкспорт.
-5. **Одного входа** — `index.html` с 19 скриптами и `<link>`; `vite build` не работает.
-6. **Тестов на импортах** — 9 сьютов читают `js/…` через `eval`; это этап 3.
-7. **Документации 1.8.2** — README/GIGACODE/TASKS/SPEC всё ещё про классические скрипты.
+1. **React-тестов** — ни один компонент и ни один хук не проверяется.
+2. **`@testing-library/*`** — зависимости не установлены, `setup.ts` без `jest-dom`.
+3. **Заглушки `BroadcastChannel`** — `useSessionLock` в тестах опирается на реальный API jsdom.
+4. **Coverage-политики** — нет `include`, нет `thresholds`, отчёт врёт «97%» про весь `src/`.
+5. **Точечных сьютов данных** — `error-handler`, `local-repository`, `repository` не проверяются вовсе.
+6. **Синхронизации документации** — README/test/README/GIGACODE описывают этап 1 как финал; SPEC 1.8.3 в статусе «В работе», TASKS без этапа 18.
 
 ---
 
-## 🏗️ Архитектура (целевая)
+## 🏗️ Архитектура тестов (целевая)
 
 ```
-index.html ─── #root (display: contents) + <script type="module" src="/src/main.tsx">
-                    │
-src/main.tsx ─── CSS-импорты → createServices() → audio.preload → error handlers → render
-                    │
-              App({ services }) ─── компоненты (только props)
-                    │
-              хуки(services, …) ─── useGame / useMap / useResults / useMapSelection / useSessionLock
-
-Направление импортов:  core  ←  data  ←  services  ←  app
-                       (домен)                          (composition root)
+src/core/**        →  test/core/**        *.test.ts     (unit: чистый домен)
+src/data/**        →  test/data/**        *.test.ts     (unit: репозитории, StatsService)
+src/services/**    →  test/services/**    *.test.ts     (unit: AudioService)
+src/components/**  →  test/components/**  *.test.tsx    (RTL: разметка + поведение по пропсам)
+src/hooks/**       →  test/hooks/**       *.test.tsx    (renderHook: состояние и эффекты)
+src/App.tsx        →  test/components/App.test.tsx      (интеграция: хуки + компоненты)
 ```
 
-| Слой | Содержимое | Может импортировать | Запрещено |
+| Уровень | Что проверяет | Чем | Изоляция |
 |---|---|---|---|
-| `core` | `config`, `types`, `errors`, `error-handler`, `session-model`, `map-catalog`, `stats-schema`, `game-rules`, `generator`, `scoring`, `player-rules`, `player-state`, `map-layout` | `core`, стандартную библиотеку | `data`, `services`, `ui`, `app`, React, DOM, `localStorage` (исключение — `window.addEventListener` в `error-handler.ts`) |
-| `data` | `repository`, `local-repository`, `memory-repository`, `stats-service` | `core`, `data` | `services`, `ui`, `app`, React |
-| `services` | `audio-service` | `services`, при необходимости `core/types` | `data`, `ui`, `app`, React |
-| `ui/types` | view-модели | `core/types` | всё остальное |
-| `app` | `createServices`, `types` (`Services`) | `core`, `data`, `services` | `components`, `hooks` |
-| `App.tsx` | оболочка: экраны, навигация, модалки | `components`, `hooks`, `core`, `ui/types`, **тип** `Services` | значения из `data`/`services`, `createServices` |
-| `hooks` | `useGame`, `useMap`, `useResults`, `useMapSelection`, `useSessionLock` | `core`, `data`, `services`, `ui/types`, **тип** `Services` | создание сервисов, `components` |
-| `components` | 10 компонентов, разметка 1:1 | `core`, `ui/types`, другие компоненты, React | `data`, `services`, `app`, `hooks` |
+| Unit домена | Формулы, миграции, правила, геометрия | `import` из `src/core`, `src/data` | Без DOM; `MemoryRepository` вместо `localStorage` |
+| Компонент | То, что видит пользователь: роли, тексты, контрактные классы (`correct`, `wrong`, `--current/--near/--far`, `selected`) | RTL + `user-event` | Только props; `Services` не передаётся в компоненты |
+| Хук | Состояние, эффекты, таймеры, звук, статистика | `renderHook` + фейковый `Services` | Явные `services`-двойники, `BroadcastChannel` — заглушка |
+| Интеграция (`App`) | Переходы экранов, модалки, полный раунд | Реальные хуки + фейковый `Services` | `CONFIG.MAPS` меняется в `try/finally` и восстанавливается |
 
-**Поток данных 1.8.2 (пример 8/2):** `App` → `useGame(services, deps)` → `SessionModel` (core) + `ProblemGenerator` (core) → `services.audio.play('click')`; конец раунда → `useResults(services, …)` → `GameRules.getRating` (core) → `services.stats.updateAfterRound(80)` → `services.audio.play('win')` → `ResultsScreen` (props).
+**Правила именования** (A60/T50): имя файла = имя модуля; `.test.ts` — не-React; `.test.tsx` — компоненты и хуки с JSX; один сьют — один модуль; тесты не импортируют друг друга; общие моки — только `test/setup.ts`.
 
 ---
 
-## 🧩 Контракты модулей
+## 🧩 Контракты тестовых двойников
 
-### `src/core/config.ts`
-
-```ts
-import type { Config, GameMap, Zone } from './types';
-
-const ZONES: Zone[] = [
-    { id: 'addition', title: 'Сложение', color: '#4CAF50', trainersCount: 5 },
-    { id: 'subtraction', title: 'Вычитание', color: '#2196F3', trainersCount: 5 },
-    { id: 'multiplication', title: 'Умножение', color: '#FF9800', trainersCount: 5 }
-];
-
-const MAPS: GameMap[] = [{ id: 'math', title: 'Математика', zones: ZONES }];
-
-export const CONFIG: Config = { /* значения 1.8.1, включая ZONES, MAPS */ };
-```
-
-### `src/core/types.ts` / `src/ui/types.ts`
-
-- `core`: `Difficulty`, `Problem`, `GameResult`, `MapData`, `Stats`, `SessionState`, `ErrorInfo`, `Rating`, `Zone`, `GameMap`, `Config`, `Point`, `TrainerPoint`, `MapBand`, `MapGeometry` — каждый `export interface` / `export type`, без `declare global`.
-- `ui`: `MapViewData`, `MapModalTarget`, `ResultsView`, `GameSessionView`, `GameFeedbackView`; импорт домена — `import type { … } from '../core/types'`.
-- `SessionState` сохраняется, даже если не используется: часть доменного контракта раунда.
-
-### `src/core/errors.ts` и `src/core/error-handler.ts`
+### Фейковый `Services` (в каждом сьюте, T51)
 
 ```ts
-export class StorageError extends Error { /* name = 'StorageError' */ }
-export class CorruptedDataError extends StorageError {}
-export class StorageUnavailableError extends StorageError {}
-export class QuotaExceededError extends StorageError {}
-export class SessionError extends Error {}
+function makeServices(overrides: Record<string, unknown> = {}): Services {
+    const stats = {
+        load: vi.fn(), save: vi.fn(),
+        getCurrentMap: vi.fn(() => 'math'),
+        getTotalScore: vi.fn(() => 0),
+        updateAfterRound: vi.fn(),
+        getTrainerIndex: vi.fn(() => -1),
+        saveTrainerIndex: vi.fn(),
+        switchMap: vi.fn(() => true),
+        reset: vi.fn(),
+        ...overrides
+    } as unknown as StatsService;
 
-// error-handler.ts
-import type { ErrorInfo } from './types';
-
-export function handleError(error: Error, context: string): ErrorInfo; // 1:1 с ErrorHandler.handle
-export function initGlobalErrorHandlers(): void;                        // 1:1 с ErrorHandler.init
-```
-
-### `src/core/session-model.ts`, `game-rules.ts`, `generator.ts`, `scoring.ts`, `map-catalog.ts`, `stats-schema.ts`, `player-rules.ts`, `player-state.ts`, `map-layout.ts`
-
-- Классы/объекты сохраняют API 1.8.1: `SessionModel` (поля `_lives`, `_roundScore`, `_correct`, `_wrong`, `_currentQuestionIndex`, `_difficulty`, `_completed`; геттеры/сеттеры, `recordCorrect`, `recordIncorrect`, `advanceQuestion`, `reset`, `getResults`), `ProblemGenerator`, `PlayerState`.
-- `GameRules.shouldEndGame(session: SessionModel)` — тип `SessionModel` импортируется через `import type` (цикла нет).
-- `StatsSchema.migrate(data: unknown): Stats`; внутри — `Record<string, unknown> & Partial<Stats>` и `typeof`-сужения, **без `any`**; семантика миграций `1 → 2 → 3` и `ensureMaps` 1:1.
-- `PlayerRules`: `export type PlayerAction = 'play' | 'move' | 'ignore'`; `normalizeIndex(index: number | null | undefined, total: number)` — поведение с `null`/`NaN`/отрицательным `total` сохраняется.
-- `MapLayout`: сигнатуры `buildLayout(zones: Zone[], width: number): MapGeometry`, `getPlayerPoint(trainers: TrainerPoint[], index: number): Point | null`, `buildRoadPath(trainers: Point[]): string`; округление и фолбэк ширины — без изменений.
-
-### `src/data/*`
-
-```ts
-export class Repository { save(data: unknown): void; load(): unknown; clear(): void; } // тела бросают Not implemented
-export class LocalStorageRepository extends Repository { constructor(key: string); /* 1:1 */ }
-export class MemoryRepository extends Repository {}
-
-// stats-service.ts
-import type { Repository } from './repository';
-import type { MapData, Stats } from '../core/types';
-
-export class StatsService {
-    constructor(repo: Repository);
-    load(): Stats; save(stats: Stats): void;
-    getCurrentMap(): string; getTotalScore(): number;
-    updateAfterRound(roundScore: number): void;
-    getTrainerIndex(): number; saveTrainerIndex(index: number): void;
-    switchMap(mapId: string): boolean; reset(): void;
+    const audio = { preload: vi.fn(), play: vi.fn() } as unknown as AudioService;
+    return { audio, stats };
 }
 ```
 
-`init()` отсутствует; `_repo` не бывает `null`; `try/catch` и `handleError` — 1:1 с 1.8.1.
+- Тип — `import type { Services } from '../../src/app/types'`.
+- Значения по умолчанию дают «чистую» карту: `math`, счёт 0, игрок перед первым тренажёром (`-1`).
+- Методы-`vi.fn()` возвращают то, что нужно сценарию; проверяется **вызов с аргументами** (`updateAfterRound(80)`, `switchMap('english')`, `saveTrainerIndex(0)`).
 
-### `src/services/audio-service.ts`
-
-```ts
-export type AudioKind = 'click' | 'win' | 'lose';
-
-export class AudioService {
-    _sounds: Map<string, HTMLAudioElement>;
-    _isReady: boolean;
-    preload(): void;          // те же имена, new Audio('audio/' + name + '.mp3')
-    play(kind: AudioKind): void; // cloneNode().play().catch(() => {})
-}
-```
-
-### `src/app/types.ts`, `src/app/createServices.ts`, `src/main.tsx`
+### `StatsService` в юнит-тестах (A61)
 
 ```ts
-// app/types.ts
-export interface Services { audio: AudioService; stats: StatsService; }
-
-// app/createServices.ts
-export function createServices(): Services {
-    const stats = new StatsService(new LocalStorageRepository(CONFIG.STORAGE_PREFIX + 'stats'));
-    return { audio: new AudioService(), stats };
-}
+const repo = new MemoryRepository();
+const service = new StatsService(repo);
+repo.save({ version: 1, totalScore: 30 }); // подготовка
 ```
 
-`src/main.tsx`:
+`init(repo)` не существует; ошибки репозитория — `vi.spyOn(repo, 'load' | 'save')`; `handleError` мокается один раз на файл через `vi.mock`.
 
-1. CSS-импорты в прежнем порядке: `base`, `buttons`, `screens`, `game`, `results`, `map`;
-2. `const services = createServices();`
-3. `services.audio.preload();`
-4. `initGlobalErrorHandlers();`
-5. проверка `#root` → `createRoot(...).render(<StrictMode><App services={services} /></StrictMode>)`.
+### Таймеры и события (A64)
 
-### `App.tsx` и хуки
-
-| Хук | Сигнатура 1.8.2 |
+| Механизм | Как в тесте |
 |---|---|
-| `useMap` | `useMap(services: Services): UseMap` |
-| `useResults` | `useResults(services: Services, onRoundFinished: (ok: boolean) => void): UseResults` |
-| `useGame` | `useGame(services: Services, deps: UseGameDeps): UseGame` |
-| `useMapSelection` | `useMapSelection(services: Services, onMapChanged: () => void): UseMapSelection` |
-| `useSessionLock` | без изменений: `useSessionLock(showError: ShowError): void` |
+| Движение 600 мс | `fireEvent.transitionEnd(player, { propertyName: 'transform' })` — прод слушает `onTransitionEnd`, а не `setTimeout` |
+| Debounce `resize` 100 мс | `vi.useFakeTimers()` → `act(() => vi.advanceTimersByTime(100))` → `vi.useRealTimers()` в `afterEach` |
+| Плашка `+10` 1.5 с | fake timers + `act` до и после `advanceTimersByTime(1500)` |
+| Выход из игры | `vi.spyOn(window, 'confirm').mockReturnValue(true \| false)` |
+| Вторая вкладка | класс-заглушка `BroadcastChannel` с `postMessage`, `close`, `onmessage` |
 
-`App({ services }: AppProps)`, `AppProps { services: Services }`. Компоненты сервисов не получают. Вызовы — только через экземпляр: `services.stats.load()`, `services.audio.play('click')` (не деструктурировать).
+В `setup.ts` — только безопасная заглушка канала (чтобы jsdom не открывал реальные каналы и не протекал `ml_session_lock`); сценарии 18.3 переопределяют её управляемой версией в своём файле.
 
----
+### Поиск элементов (A62)
 
-## 🗺️ Карта переноса
-
-| Было | Стало | Действие |
-|---|---|---|
-| `js/model/config.ts` | `src/core/config.ts` | перенос; `export const CONFIG: Config`, `ZONES`/`MAPS` — внутренние |
-| `js/model/session-model.ts` | `src/core/session-model.ts` | перенос; `export class SessionModel` |
-| `js/model/map-catalog.js` | `src/core/map-catalog.ts` | `.js → .ts`; `export const MapCatalog` |
-| `js/model/stats-schema.js` | `src/core/stats-schema.ts` | `.js → .ts`; `export const StatsSchema` |
-| `js/logic/game-rules.ts` | `src/core/game-rules.ts` | перенос; `export const GameRules` |
-| `js/logic/generator.ts` | `src/core/generator.ts` | перенос; `export class ProblemGenerator` |
-| `js/logic/scoring.ts` | `src/core/scoring.ts` | перенос; `export const Scoring` |
-| `js/logic/player-rules.js` | `src/core/player-rules.ts` | `.js → .ts`; `PlayerRules`, `export type PlayerAction` |
-| `js/logic/player-state.js` | `src/core/player-state.ts` | `.js → .ts`; `export class PlayerState` |
-| `js/logic/map-layout.js` | `src/core/map-layout.ts` | `.js → .ts`; `export const MapLayout` |
-| `js/errors/custom-errors.ts` | `src/core/errors.ts` | перенос; 5 классов с `export` |
-| `js/errors/error-handler.ts` | `src/core/error-handler.ts` | `handleError`, `initGlobalErrorHandlers` |
-| `js/storage/repository.ts` | `src/data/repository.ts` | перенос; `export class Repository` |
-| `js/storage/local-repository.ts` | `src/data/local-repository.ts` | перенос |
-| `js/storage/memory-repository.ts` | `src/data/memory-repository.ts` | перенос; **остаётся** (D8) |
-| `js/storage/session-repository.ts` | — | **удалить** (17.6) |
-| `js/service/stats-service.ts` | `src/data/stats-service.ts` | перенос; **класс**, `init()` удалён |
-| `js/service/session-service.ts` | — | **удалить** (17.6) |
-| `js/service/audio-service.js` | `src/services/audio-service.ts` | `.js → .ts`; **класс**, `AudioKind` |
-| `src/types.ts` | `src/core/types.ts` + `src/ui/types.ts` | разделить, убрать `declare global` |
-| `src/config.ts` | — | **удалить** (17.5) |
-| `src/bootstrap.ts` | `src/app/createServices.ts` | переписать в `createServices()` |
-| `main.tsx` (корень) | `src/main.tsx` | перенос + CSS + порядок инициализации |
-| `src/hooks/useAudio.ts` | — | **удалить** (D4) |
-
-### Импорты по модулям
-
-| Модуль | Значения (`import`) | Типы (`import type`) |
-|---|---|---|
-| `core/config.ts` | — | `Config`, `GameMap`, `Zone` (`./types`) |
-| `core/session-model.ts` | `CONFIG` | `Difficulty`, `GameResult` |
-| `core/map-catalog.ts` | `CONFIG` | `GameMap` |
-| `core/stats-schema.ts` | `CONFIG`, `CorruptedDataError`, `MapCatalog` | `Stats`, `MapData` |
-| `core/game-rules.ts` | `CONFIG` | `GameResult`, `Rating`, `SessionModel` |
-| `core/generator.ts` | — | `Difficulty`, `Problem` |
-| `core/scoring.ts` | `CONFIG` | — |
-| `core/player-rules.ts` | — | — (экспортирует `PlayerAction`) |
-| `core/player-state.ts` | — | — |
-| `core/map-layout.ts` | — | `Zone`, `Point`, `TrainerPoint`, `MapGeometry` |
-| `core/error-handler.ts` | `errors` | `ErrorInfo` |
-| `data/local-repository.ts` | `Repository`, `errors` | — |
-| `data/memory-repository.ts` | `Repository` | — |
-| `data/stats-service.ts` | `StatsSchema`, `MapCatalog`, `handleError`, `errors` | `Repository`, `Stats`, `MapData` |
-| `services/audio-service.ts` | — | — |
-| `ui/types.ts` | — | доменные типы из `../core/types` |
-| `app/types.ts` | — | `AudioService`, `StatsService` |
-| `app/createServices.ts` | `CONFIG`, `LocalStorageRepository`, `StatsService`, `AudioService` | `Services` |
-| `components/*` | `PlayerRules`, `CONFIG` (только `GameScreen`, `MapScreen`) | пропсы: доменные и view-типы |
-| `hooks/*` | модули `core`; сервисы — через `services` | `Services`, доменные и view-типы |
-| `App.tsx` | хуки, компоненты | `Services`, `Difficulty`, `GameResult` |
+- `getByRole`, `getByText`, `getByLabelText` — основной способ.
+- CSS-классы — только контрактные: `correct`, `wrong`, `map-trainer--current/--near/--far`, `selected`, `.active`.
+- `document.querySelector` — не основной способ; допустим точечно для проверки класса у элемента, найденного по роли/тексту.
 
 ---
 
-## 🚀 Этап 17: ES-модули (SPEC 1.8.2 = «Этап 2»)
+## 🚀 Этап 18: тесты на импортах (SPEC 1.8.3 = этапы 2–5 спеки)
 
-Порядок жёсткий: **слой → `tsc` 0 → коммит**, затем один вход, удаление `js/`, smoke, документация. `test/**` не трогаем ни на одном шаге.
+Порядок жёсткий: **зависимости → компоненты → хуки → coverage → E2E-backlog → документация → аудит**. После каждого шага — `npx tsc --noEmit` = 0 и зелёный `npm test`; `npm run test:coverage` — на 18.4 и в аудите.
 
-| Шаг | Что делается | Файлы | Метка |
-|-----|--------------|-------|-------|
-| 17.0 | ветка, baseline, копии | — | `baseline 1.8.1` |
-| 17.1 | `src/core` (13 модулей, 6 `.js → .ts`) | `src/core/**` | `core` |
-| 17.2 | `src/data` (4 модуля, `StatsService` — класс) | `src/data/**` | `data` |
-| 17.3 | `src/services` (`AudioService` — класс) | `src/services/audio-service.ts` | `services` |
-| 17.4 | view-типы | `src/ui/types.ts` | `types-ui` |
-| 17.5 | composition root + оболочка + `tsconfig` + `index.html` | `src/app/**`, `src/main.tsx`, `App.tsx`, хуки, компоненты, `tsconfig.json`, `index.html` | `app`, `build` |
-| 17.6 | удаление `js/` и мёртвого кода | `js/**`, `session-*` | `remove-js` |
-| 17.7 | красный список + smoke + отчёт | `/tmp/ml-1.8.2-*.txt` | `red-list`, `smoke` |
-| 17.8 | документация | README, test/README, GIGACODE, SPEC, TASKS | `docs 1.8.2` |
-| 17.9 | финальный аудит | — | `final-audit` |
+| Шаг | Что делается | Файлы | Метка коммита |
+|---|---|---|---|
+| 18.0 | фиксация этапа 1 | `test/**`, `tsconfig.json`, `vitest.config.ts`, доки 1.8.3 | `test(1.8.3): импорты` |
+| 18.1 | `@testing-library/*`, `jest-dom`, заглушка `BroadcastChannel` | `package.json`, `package-lock.json`, `test/setup.ts` | `test(1.8.3): rtl-setup` |
+| 18.2 | 7 компонентных сьютов | `test/components/**` | `test(1.8.3): components` |
+| 18.3 | 4 хуковых сьюта | `test/hooks/**` | `test(1.8.3): hooks` |
+| 18.4 | coverage `include` + пороги + точечные тесты `core`/`data` | `vitest.config.ts`, `test/core/error-handler.test.ts`, `test/data/*.test.ts` | `test(1.8.3): coverage` |
+| 18.5 | E2E — только backlog, без установки | `TASKS.md`, `README.md` | `docs(1.8.3): e2e-backlog` |
+| 18.6 | синхронизация документации | README, test/README, GIGACODE, SPEC, TASKS, plans | `docs 1.8.3` |
+| 18.7 | финальный аудит | — | `final-audit` |
 
-### 17.0. Подготовка
+### 18.0. Фиксация этапа 1 (TR-42…TR-46)
 
-- `git status --short` — зафиксировать: `SPEC.md`/`RULES.md` modified, `spec_v1_8_2.md`/`rules_v_1_8_2.md`/`PLAN_v1_8_1.md` untracked. **Не коммитить чужие правки** (Z26: никакого `git add -A`).
-- `git switch -c refactor/es-modules` — от `HEAD` (`a6f6ffa`).
-- Baseline в `/tmp/ml-1.8.2-baseline.txt`: `npx tsc --noEmit` (0), `npm test` (156/12), `git rev-parse HEAD`, `git branch --show-current`.
-- Копии для откатов: `/tmp/ml-1.8.2-backup/{js,src,index.html,tsconfig.json,main.tsx}`.
-- Прогноз красного списка: **9 сьютов / 113 тестов** (`config` 6, `map-catalog` 9, `session-model` 15, `stats-schema` 16, `player-rules` 13, `player-state` 7, `map-layout` 18, `audio-service` 5, `stats-service` 24); зелёными останутся **3 / 43** (`scoring` 8, `game-rules` 12, `generator` 23) — они дублируют логику у себя.
+- `git status --short` — зафиксировать: 7 `M`, 14 `D`, 6 `??`. **Никакого `git add -A`** (Z29): в дереве есть чужие правки `SPEC.md`/`RULES.md`.
+- Адресно: `git add test tsconfig.json vitest.config.ts README.md GIGACODE.md .gigacode/specs/SPEC.md .gigacode/rulles/RULES.md`. `git add test` фиксирует и добавления, и удаления внутри каталога (Git ≥ 2.0); полный `git add -A` запрещён.
+- `git add .gigacode/specs/spec_v1_8_3.md .gigacode/rulles/rules_v_1_8_3.md` (источники, если нужно закоммитить вместе с тестами).
+- Коммит: `test(1.8.3): сьюты на импортах — этап 1`. Пуш — только по согласованию.
 
-**Критерий:** ветка `refactor/es-modules`; baseline-файл и копии есть; `tsc` 0. **Охватывает:** A58, TR-40, Z26.
+**Проверка:** `git status --short` — дерево чистое, кроме нового `PLAN.md`/архива; `npx tsc --noEmit` → 0; `npm test` → 158/12.
 
-### 17.1. Слой `core` (TR-28, TR-29, TR-30, TR-31, TR-37)
+**Критерий:** этап 1 в истории одним коммитом; `git diff --name-only` не содержит `src/**`. **Охватывает:** TR-42–TR-46, Z29.
 
-Создать 13 модулей: `types`, `config`, `errors`, `error-handler`, `session-model`, `map-catalog`, `stats-schema`, `game-rules`, `generator`, `scoring`, `player-rules`, `player-state`, `map-layout`.
+### 18.1. Зависимости и `setup` (TR-47/T50/T52)
 
-- Все `const`/`class`/`function` — с `export`; всё используемое — импортом (никаких глобалов).
-- Шесть `.js` типизировать по таблице TR-30; JSDoc-аннотации заменить сигнатурами, краевые случаи (`undefined`, `NaN`, пустые массивы, фолбэки) сохранить 1:1.
-- `CONFIG` — `export const`; `ZONES`/`MAPS` — внутренние `const`.
-- `src/types.ts` пока **остаётся** (глобальные типы нужны ещё не перенесённому `js/`); модули его не используют.
+```bash
+npm i -D @testing-library/react @testing-library/user-event @testing-library/jest-dom
+```
 
-**Проверка:** `npx tsc --noEmit` → 0; `grep -R "window\.\|localStorage\|from 'react'" src/core` — только `window.addEventListener` в `error-handler.ts`; `grep -R "declare global" src/core` — пусто.
+- `test/setup.ts`: добавить `import '@testing-library/jest-dom/vitest';` (даёт `toBeInTheDocument`, `toHaveClass`, `toHaveTextContent` и типы).
+- Оставить мок `Audio`; **не** добавлять `CONFIG`, `ZONES`, `MAPS`, `RATINGS`, `GAMEOVER` (A59/Z27).
+- Добавить заглушку `BroadcastChannel`:
 
-**Критерий:** 13 модулей компилируются по отдельности; ни одного `window.X =`, `global.`, `declare global`; `CONFIG` только импортом. **Охватывает:** TR-28/29/30/31, A52/A53/A55/A56, T44.
+```ts
+class BroadcastChannelStub {
+    onmessage: ((event: MessageEvent) => void) | null = null;
+    postMessage = vi.fn();
+    close = vi.fn();
+    constructor(public name: string) {}
+}
+vi.stubGlobal('BroadcastChannel', BroadcastChannelStub);
+```
 
-### 17.2. Слой `data` (TR-28, TR-36, TR-38)
+- Если `tsc` не видит типов `jest-dom`, добавить в `tsconfig.types` ссылку на пакет **только после проверки** (вероятнее, augmentation из `setup.ts` достаточно, т.к. файл входит в `include`).
 
-Создать `repository.ts`, `local-repository.ts`, `memory-repository.ts`, `stats-service.ts`.
+**Проверка:** `npm ls @testing-library/react @testing-library/user-event @testing-library/jest-dom` — установлены; `npx tsc --noEmit` → 0; `npm test` → по-прежнему 158/12 (изменения `setup` не ломают этап 1); `npx vitest run --coverage` запускается.
 
-- `StatsService` — **класс**; `constructor(repo: Repository)`; `init()` удалён; `_repo` не `null`; `load/save/...` 1:1, включая `try/catch` и `handleError`.
-- `LocalStorageRepository` бросает `QuotaExceededError`/`StorageUnavailableError`/`CorruptedDataError` — как в 1.8.1.
-- `MemoryRepository` остаётся (D8) — контракт и тестовый двойник этапа 3.
-- `SessionService`/`SessionRepository` пока **не трогаем** (их удаление — 17.6, пока жив `bootstrap`).
+**Критерий:** три зависимости в `devDependencies`; `setup.ts` без доменных констант; канал замокан глобально. **Охватывает:** TR-47 (setup), T50, T51, A59, A64.
 
-**Проверка:** `npx tsc --noEmit` → 0; `grep -R "SessionService\|SessionRepository" src/data` — пусто; `grep -R "react" src/data` — пусто.
+### 18.2. Компонентные сьюты (TR-47/T52, A62)
 
-**Критерий:** в `data` нет React/`services`; `StatsService` создаётся только конструктором. **Охватывает:** TR-28/36/38, T44/T45, A53.
+Семь файлов в `test/components/`. Все — на пропсах, без `Services`, кроме `App`.
 
-### 17.3. Слой `services` (TR-28, TR-30, TR-38)
-
-Создать `src/services/audio-service.ts`: класс `AudioService` вместо IIFE, `AudioKind`, `_sounds`, `_isReady`, `preload`, `play`, `try/catch` + `console.warn` — 1:1.
-
-**Проверка:** `npx tsc --noEmit` → 0; `grep -n "AudioKind" src/services/audio-service.ts` — есть; `grep -R "AudioService" src/services` — только объявление.
-
-**Критерий:** класс, не глобал; ошибки звука глотаются. **Охватывает:** TR-30/38, T45, D4.
-
-### 17.4. View-типы (TR-31)
-
-Создать `src/ui/types.ts`: `MapViewData`, `MapModalTarget`, `ResultsView`, `GameSessionView`, `GameFeedbackView`; импорт домена — только `import type`.
-
-**Проверка:** `npx tsc --noEmit` → 0; `grep -R "declare global" src/ui` — пусто.
-
-**Критерий:** 5 view-типов, все `export`, домен — из `../core/types`. **Охватывает:** TR-31, A56.
-
-### 17.5. Composition root, оболочка и один вход (TR-32…TR-35)
-
-**17.5a — код (коммит `refactor(app)`):**
-
-- `src/app/types.ts` (`Services`), `src/app/createServices.ts`.
-- `src/main.tsx` — перенос корневого `main.tsx`: `createServices()`, `audio.preload()`, `initGlobalErrorHandlers()`, `#root`, `render(<App services={services} />)`. CSS-импорты добавляются на 17.5b (до `types: ["vite/client"]` они не типизируются).
-- `App.tsx`: `App({ services }: AppProps)`; `useMap(services)`, `useResults(services, …)`, `useGame(services, …)`, `useMapSelection(services, …)`; клики — `services.audio.play('click')` (D20); типы — `import type`.
-- Хуки: `services` первым аргументом; `config` → `CONFIG`; `StatsService`/`AudioService` → `services.stats`/`services.audio`; `readMapState(services)`.
-- Компоненты: `GameScreen` — `CONFIG`; `MapScreen` — `PlayerRules` + типы; остальные — `import type` пропсов.
-- Удалить `src/config.ts`, `src/bootstrap.ts`, `src/hooks/useAudio.ts`, корневой `main.tsx`.
-
-**17.5b — сборка (коммит `refactor(build)`):**
-
-- `tsconfig.json` по T47: `moduleResolution: "Bundler"`, `jsx: "react-jsx"`, `strict`, `noEmit`, `isolatedModules`, `verbatimModuleSyntax`, `types: ["vite/client"]`, `allowJs: true`, `include: ["src", "test", "vite.config.ts", "vitest.config.ts"]`.
-- `src/main.tsx` — 6 CSS-импортов в прежнем порядке (`base`, `buttons`, `screens`, `game`, `results`, `map`).
-- `index.html` по T48: `head` (`charset`/`viewport`/`title`), `#root` c `style="display: contents"`, один `<script type="module" src="/src/main.tsx">`; ни `<link>`, ни классических скриптов.
-- Удалить `src/types.ts` (теперь компилируется только `src/`, глобалы не нужны).
-
-**Проверка:** `npx tsc --noEmit` → 0; `grep -R "declare global" src` — пусто; `grep -REn "window\.[A-Za-z_$]+ *=" src` — пусто; `grep -R "global\." src` — пусто; `grep -R "from '.*config'" src` — только `core/config`; `grep -c '<script' index.html` → 1; `npm run dev` — приложение открывается, консоль чистая.
-
-**Критерий:** один module-скрипт, `createServices()` один раз, `tsc` 0, dev работает; `js/` на диске ещё есть (index.html на него больше не ссылается). **Охватывает:** TR-32/33/34/35/36 (src-часть), A54/T46/T47/T48.
-
-### 17.6. Удаление `js/` и мёртвого кода (TR-36, TR-39)
-
-- `git rm -r js/` (включая `session-service.ts`, `session-repository.ts`).
-- Проверить: `test ! -d js`; `grep -R "SessionService\|SessionRepository\|bootstrap" src test` — пусто (кроме истории в документации); `find src -name '*.js'` — пусто.
-- `npx tsc --noEmit` → 0; `npm run dev` — работает (ничего из `js/` не импортируется).
-- `npm test` → **красный**: 9 сьютов / 113 тестов (ENOENT на `./js/…`); 3 сьюта / 43 — зелёные.
-
-**Критерий:** каталога `js/` нет; тесты красные ровно по прогнозу; `git diff --name-only` не содержит `test/**`. **Охватывает:** TR-28/36/39, A57, Z24/Z25.
-
-### 17.7. Красный список и smoke (TR-39, TR-41)
-
-1. `npx vitest run 2>&1 | tee /tmp/ml-1.8.2-red.txt` — зафиксировать **файл/причину** для каждого красного сьюта; сверить с прогнозом 17.0 (113/9 и 43/3). Если число другое — записать фактическое, не «подгонять».
-2. `npx tsc --noEmit` → 0.
-3. `npm run dev` — ручной smoke (ниже), консоль без ошибок и предупреждений Vite о неразрешённых импортах.
-4. `localStorage.ml_stats` — `version: 3`, структура и суммы прежние; вторая вкладка — модалка «Игра уже запущена».
+#### `GameScreen.test.tsx` (~9)
 
 | # | Сценарий | Ожидание |
 |---|---|---|
-| 1 | Первый запуск | Карта «Математика», счёт 0, игрок перед первым тренажёром |
-| 2 | Клик по дальнему / соседнему тренажёру | Дальний — игнор; соседний — движение 600 мс, затем модалка сложности |
-| 3 | Выбор сложности | Игра: 10 вопросов, 3 жизни, прогресс, «+10» за верный ответ |
-| 4 | 8 верных + 2 неверных | «🎉 Отлично!», «Правильных: 8», «Заработано: 80 ✓», звук `win` |
-| 5 | 0 жизней | «💔 Игра окончена», звук `lose`, очки не начислены |
-| 6 | «Играть снова» / «На карту» | Новый раунд / карта с обновлённым счётом; commit/revert позиции |
-| 7 | 🌍 → другая карта → возврат | Текущая выделена, счёт и позиция по правилам 1.8.1 |
-| 8 | F5 и вторая вкладка | Позиция/счёт на месте; вторая вкладка — «Игра уже запущена» |
-| 9 | Консоль | Нет ошибок и предупреждений Vite |
+| 1 | Рендер вопроса | текст вопроса; 4 `role=button` с вариантами; счёт `🏆 0`; `1/10`; 3 ❤️ |
+| 2 | Верный ответ (`correctIndex === selectedIndex`) | у кнопки класс `correct`, остальные без `wrong`; кнопки `disabled`; `onAnswer(index)` |
+| 3 | Неверный ответ | у выбранной класс `wrong`, у правильной `correct` |
+| 4 | Feedback верный | `.feedback` с классом `correct-fb show`, заголовок «✅ Правильно!», сообщение |
+| 5 | Feedback неверный | `wrong-fb show`, «❌ Неправильно», «Правильный ответ: N.» |
+| 6 | Нет ответа | `.feedback.hidden`; кнопки активны |
+| 7 | «Продолжить» | `onNext` вызван один раз |
+| 8 | «✕» | `onExit` вызван |
+| 9 | Плашка `+10` | при `floatingScore = 10` виден `+10`, при `null` — `display: none` |
 
-**Критерий:** red-list и smoke записаны в `/tmp/ml-1.8.2-red.txt` (и в сводке отчёта); 9 сценариев зелёные. **Охватывает:** TR-39/41, A57, критерии 130–131.
+#### `MapScreen.test.tsx` (~8)
 
-### 17.8. Документация (обязательство агента)
+| # | Сценарий | Ожидание |
+|---|---|---|
+| 1 | Карта | **15** кнопок `.map-trainer`; 3 зоны по 5; подписи «Сложение/Вычитание/Умножение» |
+| 2 | Контрактные классы | при `currentTrainerIndex = 0`: `--current` у №1, `--near` у №2, `--far` у №3+ |
+| 3 | Старт (`-1`) | `--near` у №1, `--far` у остальных, `--current` нет |
+| 4 | Клик по тренажёру | `onTrainerClick(zone, number, index)` с аргументами из `data-zone`/`data-trainer`/`data-index` |
+| 5 | Модалка открыта | заголовок «Сложение · Тренажёр 1» (зона + номер); 3 кнопки `data-diff`; «Отмена» |
+| 6 | Выбор сложности | `onSelectDifficulty('easy' \| 'medium' \| 'hard')` |
+| 7 | «Отмена» | `onCancel` вызван, модалки в DOM нет |
+| 8 | Прибытие игрока | `transitionend` на `.map-player` при `isMoving` → `onPlayerArrived`; без `isMoving` — не вызывается |
 
-- **`README.md`**: структура — вместо `js/` слои `src/core`/`data`/`services`/`app`; «Запуск»/«Тесты» — 156 тестов остаются, но 9 сьютов красные до этапа 3 (причина — `readSource('./js/…')`); статус-таблица — строка 1.8.2; убрать утверждения «классические слои/порядок скриптов»; smoke-чек-лист — 9 сценариев 1.8.2.
-- **`test/README.md`**: «Как тесты читают исходники» — 9 сьютов читают `js/…` и падают после 1.8.2; разъяснение red-list и этапа 3; числа 156/12 не меняются.
-- **`GIGACODE.md`**: обзор (ES-модули, один вход), структура (`src/core`, `data`, `services`, `app`, `ui`; `js/` нет), запуск/`tsconfig` (T47), стиль (типы — в `core/types`/`ui/types`, `import type`), архитектура (слои и matrix), раздел «Классические слои в React» и пример `index.html` с 19 скриптами — **удалить/переписать**, «Лимит файла» — без изменений.
-- **`.gigacode/specs/SPEC.md`**: статус 1.8.2 → **Выполнено** (после 17.7).
-- **`.gigacode/tasks/TASKS.md`**: архив `TASKS_v1_8_1.md`, версия 1.8.2, **этап 17** (17.0–17.9), red-list 113/9, `tsc` 0, ветка без мержа.
-- **`.gigacode/plans/`**: `PLAN.md` — эта версия (1.8.2); `PLAN_v1_8_1.md` — архив (создан).
+#### `App.test.tsx` (~10, интеграционный)
 
-**Критерий:** числа и структура в README/test/README/GIGACODE совпадают с фактическим прогоном; SPEC/TASKS/PLAN — 1.8.2; архивы 1.8.1 на месте. **Охватывает:** SPEC «Что не входит» (док-синк — отдельный шаг), обязательство 10.
+| # | Сценарий | Ожидание |
+|---|---|---|
+| 1 | Первый рендер | `#mapScreen.active`, 15 тренажёров, счёт `🏆 0` из `stats.getTotalScore` |
+| 2 | Клик по соседнему | `isMoving`; `transitionend` → модалка сложности |
+| 3 | Старт игры | выбор сложности → `#gameScreen.active`, вопрос и 4 ответа |
+| 4 | Завершение раунда | цикл «ответ → Продолжить» ≤ 10 раз → `#resultScreen.active`, «Правильных», «Играть снова», «На карту» |
+| 5 | Модалка выбора карты | клик по 🌍 → «Выбор карты», текущая карта с классом `selected` |
+| 6 | Смена карты | вторая карта в `CONFIG.MAPS` (push/finally), `switchMap` → `true`: `switchMap('english')` вызван, модалка закрыта, `getCurrentMap` перечитан |
+| 7 | Та же карта | `switchMap(false)` → модалка остаётся, `audio.play` не растёт |
+| 8 | Модалка ошибки | управляемая заглушка `BroadcastChannel`: `onmessage` → «Игра уже запущена», «OK» закрывает |
+| 9 | «На карту» с результатов | возврат на `#mapScreen.active` |
+| 10 | Звук кликов | `audio.play('click')` на переходах (не в компонентах) |
 
-### 17.9. Финальный прогон и аудит
+> `App` рендерит **реальные** хуки: `useMap`, `useResults`, `useMapSelection`, `useSessionLock`, `useGame`. Поэтому сценарии 2–4 и 8 заодно дают покрытие хукам — но 18.3 всё равно нужен для адресных веток.
+
+#### `ResultsScreen.test.tsx` (~4)
+
+| # | Сценарий | Ожидание |
+|---|---|---|
+| 1 | Победа 8/2 | `rating.icon` 🎉, «Отлично!», `8` и «Правильных» в первой карточке, `earnings` из props |
+| 2 | Счёт и очки | `roundScore` в `.stat-value`, подпись «Очков» |
+| 3 | «Играть снова» | `onPlayAgain` |
+| 4 | «На карту» | `onBackToMap` |
+
+#### `MapSelectionModal.test.tsx` (~5)
+
+| # | Сценарий | Ожидание |
+|---|---|---|
+| 1 | Список карт | «Математика», «Английский» (props, без `CONFIG`) |
+| 2 | Текущая карта | класс `selected` у текущей, у остальных нет |
+| 3 | Выбор другой | `onSelect('english')` |
+| 4 | Та же карта | `onSelect('math')` вызван; no-op реализует `useMapSelection` — проверяется в `App.test.tsx` (сценарий 7) |
+| 5 | «Закрыть» | `onClose` |
+
+#### `Header.test.tsx` (~3)
+
+| # | Сценарий | Ожидание |
+|---|---|---|
+| 1 | Счёт | `🏆 80` для `totalScore = 80`; `🏆 0` для нуля |
+| 2 | Состав `Header` | только `.total-score` и кнопка карты; жизней здесь нет (они в `GameScreen`) — фиксируем фактический контракт 1.8.2 |
+| 3 | Кнопка карты | `aria-label="Выбор карты"`, клик → `onOpenMapSelection` |
+
+> Уточнение: TR-47/T52 перечисляют «жизни (❤️/🖤)» для `Header`, но в 1.8.2 жизни рендерятся в `GameScreen` (`.lives`), а `Header` — счёт + 🌍. План следует **фактическому API** (`src/**` не меняется); жизни проверяются в `GameScreen`. Отклонение зафиксировано в D-таблице.
+
+#### `ErrorModal.test.tsx` (~3)
+
+| # | Сценарий | Ожидание |
+|---|---|---|
+| 1 | Текст | заголовок и сообщение из props |
+| 2 | «OK» | `onClose` |
+| 3 | Клик по оверлею | `onClose`; клик по карточке — **не** закрывает |
+
+**Проверка шага:** `npx vitest run test/components` — зелёные; `npx tsc --noEmit` → 0; `grep -c "fireEvent" test/components` — минимум (только `transitionend` и оверлей, где `user-event` не выражает сценарий); `grep -rn "document.querySelector" test/components` — 0 или с комментарием.
+
+**Критерий:** 7 файлов, ≥ 40 тестов; покрытие `src/components/**` ≥ 60%; `Path`/`Player`/`Trainer`/`Zone` покрыты через `MapScreen`. **Охватывает:** TR-47, T52, A62, A64, Z27.
+
+### 18.3. Хуковые сьюты (TR-48/T53)
+
+Четыре файла в `test/hooks/`. `renderHook` из `@testing-library/react`, фейковый `Services`, реальные `core`-модули.
+
+#### `useGame.test.tsx` (~10)
+
+| # | Сценарий | Ожидание |
+|---|---|---|
+| 1 | `start('easy')` | вопрос есть, `lives 3`, `progress 10`, `questionNumber 1`, `roundScore 0` |
+| 2 | Верный ответ | `roundScore +10`, `floatingScore 10`, `feedback.isCorrect`, `selectedIndex = correctIndex`, `audio.play('click')` |
+| 3 | Неверный ответ | `lives 2`, `feedback.isCorrect false`, `floatingScore null` |
+| 4 | Повторный `answer` | второй вызов игнорируется (`answeredRef`), счёт и жизни не меняются |
+| 5 | `next` | `questionNumber 2`, `progress 20`, `feedback null`, `selectedIndex null`, новый вопрос |
+| 6 | Раунд 10/10 | после 10-го `next` — `onRoundFinished` с `{ correct: 10, total: 10, roundScore: 100, lives: 3, completed: true }` |
+| 7 | Провал 0/3 | три неверных + `next` → `onRoundFinished` с `{ correct: 0, wrong: 3, total: 3, lives: 0, completed: true }` |
+| 8 | Плашка `+10` | fake timers: после 1500 мс `floatingScore null` |
+| 9 | `exit` + confirm(true) | `onExitToMap` вызван, `audio.play('click')` |
+| 10 | `exit` + confirm(false) | `onExitToMap` не вызван |
+
+#### `useMap.test.tsx` (~10)
+
+| # | Сценарий | Ожидание |
+|---|---|---|
+| 1 | Старт | `stats` из сервиса, `mapData.geometry` из `MapLayout.buildLayout(zones, 600)` (в jsdom `clientWidth = 0` → `FALLBACK_WIDTH`) |
+| 2 | Клик по текущему (`getTrainerIndex → 0`) | `isModalOpen`, `modalTarget` = `{ zoneTitle, trainerNumber }` |
+| 3 | Клик по соседнему (из `-1` в `0`) | `isMoving true`, `currentTrainerIndex` сдвинулся, `audio.play('click')` |
+| 4 | `arrived()` (после 3) | движение завершено (`isMoving false`), открылась модалка |
+| 5 | Клик по дальнему | `ignore`: ни звука, ни движения, ни модалки |
+| 6 | `cancel()` (после 3) | индекс откатился к `previous`, модалка закрыта, звук |
+| 7 | `chooseDifficulty('hard')` | `selectedDifficulty = 'hard'`, модалка закрыта |
+| 8 | `gameFinished(true)` (после перехода на соседний и прибытия) | `stats.saveTrainerIndex(commitWin())` — сохранён новый индекс, `totalScore` перечитан; повторный `gameFinished` — no-op (replay) |
+| 9 | `gameFinished(false)` (после перехода) | `revert()` → `saveTrainerIndex(index)` — индекс отката, без победного закрепления |
+| 10 | `exitGame()` (после перехода) | откат индекса без записи в статистику |
+
+Дополнительно: 100 мс debounce `resize` — fake timers + `act`; `window.dispatchEvent(new Event('resize'))`.
+
+#### `useResults.test.tsx` (~5)
+
+| # | Сценарий | Ожидание |
+|---|---|---|
+| 1 | Победа 8/2 | `view.rating` 🎉, `earnings: 'Заработано: 80 ✓'`, `onRoundFinished(true)` |
+| 2 | Провал | `GAMEOVER` 💔, `earnings: '… (не зачтено)'`, `onRoundFinished(false)` |
+| 3 | Победа → статистика | `stats.updateAfterRound(80)`, `audio.play('win')` |
+| 4 | Провал → статистика | `updateAfterRound` **не** вызван, `audio.play('lose')` |
+| 5 | Повторный `show` | `view` перезаписывается новыми данными, старые не утекают |
+
+#### `useSessionLock.test.tsx` (~5)
+
+| # | Сценарий | Ожидание |
+|---|---|---|
+| 1 | Монтаж | канал создаётся, `postMessage('hello')` |
+| 2 | `onmessage` | `showError('Игра уже запущена', …)` один раз |
+| 3 | Два сообщения | `showError` вызван один раз (`locked`) |
+| 4 | Cleanup | `close()`, `localStorage.removeItem('ml_session_lock')` |
+| 5 | Fallback | `new BroadcastChannel` бросает: свободный ключ → запись `ml_session_lock`; занятый → `showError` |
+
+**Проверка шага:** `npx vitest run test/hooks` — зелёные; `npx tsc --noEmit` → 0; `grep -rn "sleep\|setTimeout(" test/hooks` — 0 (только `advanceTimersByTime`); `vi.useRealTimers()` в `afterEach`.
+
+**Критерий:** 4 файла, ≥ 28 тестов; покрытие `src/hooks/**` ≥ 60% (ожидается 70+); `useGame`/`useResults` не создают сервисы. **Охватывает:** TR-48, T53, A61, A64, Z27.
+
+### 18.4. Покрытие: `include`, пороги, точечные тесты (TR-49/T54, A63)
+
+**18.4a — конфиг** (`vitest.config.ts`):
+
+```ts
+coverage: {
+    provider: 'v8',
+    reporter: ['text', 'json', 'html'],
+    include: [
+        'src/core/**/*.ts',
+        'src/data/**/*.ts',
+        'src/services/**/*.ts',
+        'src/components/**/*.tsx',
+        'src/hooks/**/*.ts',
+        'src/App.tsx'
+    ],
+    exclude: ['src/**/*.d.ts', 'src/main.tsx'],
+    thresholds: {
+        'src/core/**':        { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/data/**':        { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/services/**':    { statements: 80, branches: 80, functions: 80, lines: 80 },
+        'src/components/**':  { statements: 60, branches: 60, functions: 60, lines: 60 },
+        'src/hooks/**':       { statements: 60, branches: 60, functions: 60, lines: 60 },
+        'src/App.tsx':        { statements: 60, branches: 60, functions: 60, lines: 60 }
+    }
+}
+```
+
+**18.4b — недостающие юнит-сьюты:**
+
+| Файл | Сценарии | Закрывает |
+|---|---|---|
+| `test/core/error-handler.test.ts` (~6) | `handleError` для `CorruptedDataError`/`QuotaExceededError`/`StorageUnavailableError`/`SessionError` → `{ action, userMessage }`; неизвестная ошибка → `console.error` + `throw`; `initGlobalErrorHandlers` вешает `error` и `unhandledrejection` (`vi.spyOn(window, 'addEventListener')`) | `error-handler` 0/14 |
+| `test/core/errors.test.ts` (~3) | `instanceof`-цепочка пяти классов, `name` каждого, `SessionError` — экземпляр `Error` (не `StorageError`) | `errors.ts` 8/10 → 10/10 (строки 40–41 — конструктор `SessionError`) |
+| `test/data/local-repository.test.ts` (~8) | round-trip `save`/`load`; отсутствие ключа → `null`; `SyntaxError` → `CorruptedDataError`; `setItem` с `name: 'QuotaExceededError'`/`code: 22` → `QuotaExceededError`; прочий throw → `StorageUnavailableError`; `getItem` throw → `StorageUnavailableError`; `clear` | `local-repository` 0/17 |
+| `test/data/repository.test.ts` (~3) | `save`/`load`/`clear` базового класса бросают `Not implemented` | `repository` 0/3 |
+| `test/data/memory-repository.test.ts` (~3) | `save`/`load`, `load` до записи → `null`, `clear` | `memory-repository` 4/5 |
+
+**18.4c — прогон и фиксация:**
+
+```bash
+npm run test:coverage 2>&1 | tee /tmp/ml-1.8.3-coverage.txt
+```
+
+Зафиксировать по группам: `core`, `data`, `services`, `components`, `hooks`, `App`, итог. Если группа ниже порога — **добавить сценарии**, не исключения и не снижение порога (Z28). `src/core/types.ts` попадёт в отчёт как 0% при 0 statements — это норма (типы не исполняются); пометить в отчёте, а не исключать.
+
+**Ожидаемые значения после 18.4:**
+
+| Группа | Сейчас | Ожидаемо | Чем добирается |
+|---|---|---|---|
+| `core` | 93.58 / 82.35 (277/296) | ≥ 95 | `error-handler` 14/14, `errors` 10/10, `session-model` +2 |
+| `data` | 67.69 / 50.0 (44/65) | ≥ 80 (факт ~95–100) | `local-repository` 17, `repository` 3, `memory` +1 |
+| `services` | 94.44 / 75.0 (17/18) | ≥ 90 | `audio-service` ветка `play` без `preload` |
+| `components` | 0/61 | ≥ 60 | 7 сьютов (MapScreen тянет 4 компонента) |
+| `hooks` | 0/251 | ≥ 60 | 4 сьюта + `App` |
+| `App.tsx` | 0/39 | ≥ 60 | `App.test.tsx` |
+| **Итого** | **46.3 / 41.39** | **≥ 70** (минимум по порогам — 516/730 ≈ 70.7%) | — |
+
+**Критерий:** `npm run test:coverage` зелёный по всем порогам; ни одного модуля с 0% без объяснения; итог не ниже 70%. **Охватывает:** TR-49, T54, A63, D14 спеки.
+
+### 18.5. E2E — backlog, не блокер (TR-50)
+
+- Playwright **не устанавливается**; в `npm test` E2E не входит (Z28).
+- Когда появится — 7 сценариев из TR-50: карта и 600 мс, «Отмена» без записи, 8/2 → 80, провал, «На карту» + F5, вторая вкладка, смена карты (`−1` и сохранённый счёт).
+- Записать в `TASKS.md`/`README.md` как backlog 1.8.3 → 1.9; отдельный скрипт `npm run test:e2e` — только вместе с установкой.
+
+**Критерий:** задокументировано; `package.json` без `@playwright/test`; `npm test` не изменился. **Охватывает:** TR-50, D15, Z28.
+
+### 18.6. Документация
+
+- **`README.md`**: числа — 158 + новые (≈ 253 в 28 сьютах), RTL-тесты, coverage по группам; убрать формулировки «следующие этапы 1.8.3»; smoke-раздел — без изменений.
+- **`test/README.md`**: добавить `components/` и `hooks/` в структуру, раздел «Как писать RTL-тесты» (запросы, `user-event`, fake timers, `transitionend`), таблицу покрытия и порогов, baseline 46.3 → цель.
+- **`GIGACODE.md`**: раздел «Тесты» — зеркальная структура, запрет `eval`/копий логики, RTL-правила, пороги 80/60; ссылки на A59–A64/T50–T55.
+- **`.gigacode/specs/SPEC.md`**: статус 1.8.3 → **Выполнено** (после 18.4).
+- **`.gigacode/tasks/TASKS.md`**: архив `TASKS_v1_8_2.md`; версия 1.8.3; этап 18 (18.0–18.7) со статусами; карта покрытия 1.8.3.
+- **`.gigacode/plans/`**: `PLAN.md` — эта версия (1.8.3); `PLAN_v1_8_2.md` — архив.
+
+**Критерий:** числа в README/test/README/GIGACODE совпадают с фактическим прогоном; SPEC/TASKS/PLAN — 1.8.3; архивы 1.8.2 на месте. **Охватывает:** обязательство 9/10, SPEC «Что не входит».
+
+### 18.7. Финальный аудит
 
 | # | Проверка | Ожидание |
-|---|----------|----------|
-| 1 | `npx tsc --noEmit` | 0 ошибок |
-| 2 | `npm test` | 113/156 красных в 9 сьютах; 43/156 зелёных в 3; причины — ENOENT |
-| 3 | `grep -R "declare global" src` | пусто |
-| 4 | `grep -REn "window\.[A-Za-z_$]+ *=" src` | пусто |
-| 5 | `grep -R "global\." src` | пусто |
-| 6 | `grep -c '<script' index.html` | 1 |
-| 7 | `test ! -d js && echo ok` | ok |
-| 8 | `grep -R "SessionService\|SessionRepository\|bootstrap" src test` | пусто |
-| 9 | `grep -R "localStorage" src/core src/components` | пусто |
-| 10 | `grep -R "from '../config'\|from './config'" src` | только `core/config` |
-| 11 | `wc -l src/hooks/useMap.ts` | ≤ 200 |
-| 12 | `git diff --name-only` + `git status --short` | код: `src/**`, `index.html`, `tsconfig.json`, удалённый `js/**`; доки; **ничего** в `css/`, `audio/`, `test/`, `package*.json`, `jest.config.js` |
-| 13 | `git branch --show-current` | `refactor/es-modules`; в `main`/`fix/fix_statstic` нет коммитов 1.8.2 |
-| 14 | `npm run dev` | 9 сценариев 17.7 без регрессий |
+|---|---|---|
+| 1 | `npx tsc --noEmit` | 0 |
+| 2 | `npm test` | все сьюты зелёные (28 файлов, ≈ 253 теста) |
+| 3 | `npm run test:coverage` | пороги зелёные |
+| 4 | `grep -RIn --include='*.ts' --include='*.tsx' "eval(\|readSource\|ts-source" test` | пусто |
+| 5 | `grep -RIn "global\.CONFIG\|setupZones\|setupMaps" test` | пусто |
+| 6 | `grep -RIn "require(" test` | пусто |
+| 7 | `grep -RIn "class ProblemGenerator\|const calculateRoundScore\|const shouldEndGame\|const getRating" test` | пусто |
+| 8 | `grep -RIn "new StatsService(new MemoryRepository())" test` | есть |
+| 9 | `test -f test/core/session-model.test.ts` | есть |
+| 10 | `ls test/components/*.test.tsx \| wc -l` | 7 |
+| 11 | `ls test/hooks/*.test.tsx \| wc -l` | 4 |
+| 12 | `grep -RIn "\.only(\|\.skip(" test` | пусто |
+| 13 | `git diff --name-only` + `git status --short` | только `test/**`, `vitest.config.ts`, `package*.json`, доки; **`src/**` пусто**; `coverage/` не в индексе |
+| 14 | `wc -l` новых файлов | каждый ≤ 200 (GIGACODE) |
+| 15 | `grep -RIn "document.querySelector" test` | 0 или единичные с комментарием |
 
-**Критерий:** все пункты зелёные; 6–7 атомарных коммитов (`core`, `data`, `services`, `types-ui`, `app`, `build`, `remove-js`, `docs`); **мержа нет**. **Охватывает:** TR-40/41, A58, Z26.
-
----
-
-## ✅ Критерии завершения (1.8.2, 119–135)
-
-119. **Единый граф модулей** (A52/TR-28/TR-41): `test ! -d js`; `grep -c '<script' index.html` → `1`; `grep -R '<script src="js/'` пусто; в `src/` нет `.js`.
-120. **Явные импорты** (A52/TR-29): `grep -R "declare global" src` пусто; `grep -REn "window\.[A-Za-z_$]+ *=" src` пусто; `grep -R "global\." src` пусто; `CONFIG` только из `core/config`; `config.` в `src/` не встречается.
-121. **Типы** (A56/TR-31): `src/core/types.ts` + `src/ui/types.ts`; геометрия — в домене; `declare global` нет; все типовые импорты — `import type`; удаление любого импорта даёт ошибку `tsc`, а не «тихий» глобал.
-122. **Шесть `.js → .ts`** (TR-30): `map-catalog`, `stats-schema`, `player-rules`, `player-state`, `audio-service`, `map-layout`; JSDoc заменён сигнатурами; `undefined`/`NaN`/фолбэки — 1:1.
-123. **`core` без DOM/React/Storage** (A53/TR-37): `grep -R "localStorage\|react\|document\." src/core` пусто; исключение — `window.addEventListener` в `error-handler.ts`.
-124. **Composition root** (A54/TR-33): `new StatsService`/`new LocalStorageRepository`/`new AudioService` — только в `src/app/createServices.ts`; `createServices()` вызывается один раз (`src/main.tsx`); `bootstrap()` нет.
-125. **Сервисы через пропсы** (T46): `App({ services })`; `useMap(services)`, `useResults(services, cb)`, `useGame(services, deps)`, `useMapSelection(services, cb)`; компоненты сервисов не получают; методы не деструктурируются.
-126. **Мёртвый код удалён** (TR-36): `SessionService`, `SessionRepository`, `src/config.ts`, `src/bootstrap.ts`, `src/types.ts`, `src/hooks/useAudio.ts`, корневой `main.tsx`; `grep -R "SessionService\|SessionRepository\|bootstrap" src test` пусто.
-127. **`tsconfig`** (T47/TR-35): `moduleResolution: "Bundler"`, `verbatimModuleSyntax`, `isolatedModules`, `types: ["vite/client"]`, `allowJs: true`, `include: ["src", "test", ...]`; `npx tsc --noEmit` → 0.
-128. **`index.html`** (T48/TR-34): `#root` с `display: contents`; один `<script type="module" src="/src/main.tsx">`; CSS только импортами в порядке `base` → `buttons` → `screens` → `game` → `results` → `map`; ни `<link>`, ни классических скриптов.
-129. **Контракты и имена** (T44/T45/TR-38): публичные имена совпадают; `StatsService` — класс без `init()`; `AudioService` — класс с `AudioKind`; `handleError`/`initGlobalErrorHandlers`; `SessionModel`/`ProblemGenerator`/`PlayerState` — API 1.8.1.
-130. **Поведение** (TR-41): 9 сценариев 17.7; 8/2 → 80 / «🎉 Отлично!» / «Правильных: 8»; 0/3 → «💔 Игра окончена»; карта 600 мс; модалки; вторая вкладка; `ml_stats` v3.
-131. **Тесты** (A57/TR-39): `git diff --name-only` без `test/**`; 9 сьютов / 113 тестов красные (ENOENT), 3 сьюта / 43 зелёные; красный список зафиксирован; ничего не удалено, не заскиплено, не ослаблено.
-132. **Инварианты** (SPEC): `CONFIG` (значения), `Stats` v3, ключи `ml_stats`/`ml_session_lock`, разметка/id/классы/тексты/эмодзи, 21 CSS-файл, звуки — без изменений; `package.json` без новых зависимостей.
-133. **Локализация изменений** (TR-40/Z26): изменены только `src/**`, `index.html`, `tsconfig.json`, `js/**` (удалён), документация; `css/`, `audio/`, `test/`, `package.json`, `package-lock.json`, `jest.config.js` — 0 правок.
-134. **Ветка и коммиты** (A58/TR-40): `refactor/es-modules` от `a6f6ffa`; атомарные коммиты по слоям; нет мержа в `main`/`fix/fix_statstic`; пуш — только по согласованию.
-135. **Документация** (обязательство): README/test/README/GIGACODE/SPEC/TASKS/PLAN — 1.8.2; `PLAN_v1_8_1.md`, `TASKS_v1_8_1.md` — архивы; README фиксирует красный список и этап 3.
+**Критерий:** все пункты зелёные; коммиты `test(1.8.3): …` по шагам + `docs 1.8.3`; мерж/пуш — по согласованию. **Охватывает:** TR-49/50, T55, A59–A64, Z27–Z29.
 
 ---
 
-## 📏 Бюджет строк (лимит GIGACODE — 200)
+## ✅ Критерии завершения (1.8.3, 136–149)
 
-| Файл | Сейчас | После | Как уложиться |
-|---|---|---|---|
-| `src/core/types.ts` | — (в `src/types.ts` 171) | **≈130** | домен + JSDoc, без view-моделей; `declare global` и `export {}` уходят |
-| `src/ui/types.ts` | — | **≈45** | 5 view-моделей, один `import type` |
-| `src/core/stats-schema.ts` | 145 | **≈160** | сигнатуры + `Record<string, unknown>` для миграций |
-| `src/core/map-layout.ts` | 138 | **≈155** | типы методов, без изменения логики |
-| `src/core/session-model.ts` | 105 | **≈112** | импорты и `export` |
-| `src/core/generator.ts` | 139 | **≈142** | `export class`, типы |
-| `src/data/stats-service.ts` | 105 | **≈115** | класс + импорты |
-| `src/services/audio-service.ts` | 61 | **≈72** | класс вместо IIFE |
-| `src/main.tsx` | 26 (корень) | **≈32** | CSS-импорты + `createServices` |
-| `src/App.tsx` | 155 | **≈162** | пропсы + импорты типов |
-| `src/hooks/useGame.ts` | 175 | **≈185** | `CONFIG`, `services`, типы |
-| `src/hooks/useMap.ts` | 200 | **≈200** | **на границе:** сократить шапку на 2–3 строки и ужать импорты (D25) |
-| `src/hooks/useResults.ts` | 44 | **≈52** | `services`, типы |
-| `src/hooks/useMapSelection.ts` | 49 | **≈56** | `services`, `CONFIG` |
-| компоненты (10) | 99–118 | **+1…4 строки** | `import type` / `CONFIG` |
+136. **Ни одного `eval`/`readSource`** (A59/TR-42): grep по `test/**` пуст; `test/ts-source.js` отсутствует; `typescript` в тестах не используется.
+137. **Все тесты импортируют прод-код** (A59/TR-43): каждый сьют содержит `from '../../src/…'`; ни `require`, ни `module.exports`, ни `declare global`.
+138. **Нет копий логики** (TR-44): объявлений `class ProblemGenerator`, `const calculateRoundScore`, `const shouldEndGame`, `const getRating` в `test/**` нет.
+139. **`StatsService` — конструктор** (A61/TR-45): только `new StatsService(new MemoryRepository())`; `StatsService.init` отсутствует; `handleError` — `vi.mock` один раз на файл.
+140. **`session-model.test.ts`** (TR-46): 15 сценариев на реальной модели, оценки — через реальный `GameRules.getRating`.
+141. **7 компонентных сьютов** (TR-47): `App`, `GameScreen`, `MapScreen`, `ResultsScreen`, `MapSelectionModal`, `Header`, `ErrorModal`; все зелёные; `jest-dom`-матчеры используются.
+142. **4 хуковых сьюта** (TR-48): `useGame`, `useMap`, `useResults`, `useSessionLock`; `renderHook`; `BroadcastChannel` замокан, а не удалён.
+143. **Coverage** (A63/TR-49): `include` покрывает все слои; пороги `core`/`data`/`services` = 80, UI = 60; прогон зелёный; итог ≥ 70%; 100% не требуется.
+144. **`src/**` не изменён** (Z28/TR-47): `git diff --name-only` не содержит `src/`; ни один тест не требует правки прод-кода.
+145. **Прогон** (TR-49/T55): `npx tsc --noEmit` — 0; `npm test` — зелёный (все сьюты); `npm run test:coverage` — зелёный.
+146. **Существующие сценарии сохранены** (Z28): 12 сьютов этапа 1 не удалены и не ослаблены; допустимы только добавления; числа 158+ выросли, а не упали.
+147. **Coverage не падает** относительно baseline 1.8.3 для того же набора модулей: `core`/`data`/`services` не ниже 93.58/67.69/94.44 stmts (цель — выше) и 82.35/50.0/75.0 branches.
+148. **E2E не в `npm test`** (TR-50/Z28): Playwright не установлен, `npm test` не изменился; backlog записан.
+149. **Git-дисциплина** (Z29): нет `git add -A`; `coverage/`, `node_modules`, `dist` не закоммичены; ветка `feature/001`; мерж/пуш — по согласованию.
 
-Если `useMap.ts` выйдет за 200 — сначала сокращать шапку/комментарии, **не** выносить новые модули (структура фиксирована TR-28).
+---
+
+## 📏 Бюджет строк (лимит GIGACODE — 200 строк на файл)
+
+| Файл | Оценка | Как уложиться |
+|---|---|---|
+| `test/components/App.test.tsx` | ≈ 180 | Хелпер `answerUntilResults()` и локаторы в начале файла |
+| `test/components/GameScreen.test.tsx` | ≈ 130 | `makeProps()` с дефолтами, точечные переопределения |
+| `test/components/MapScreen.test.tsx` | ≈ 150 | `buildMapData()` через `MapLayout.buildLayout(CONFIG.ZONES, 600)` |
+| `test/components/ResultsScreen.test.tsx` | ≈ 60 | Один `makeProps()` |
+| `test/components/MapSelectionModal.test.tsx` | ≈ 60 | Локальный массив карт |
+| `test/components/Header.test.tsx` | ≈ 40 | — |
+| `test/components/ErrorModal.test.tsx` | ≈ 45 | — |
+| `test/hooks/useGame.test.tsx` | ≈ 170 | `answers(n)` / `wrong(n)` хелперы |
+| `test/hooks/useMap.test.tsx` | ≈ 180 | Фикстуры `zones`/`mapData`, `act`-хелперы |
+| `test/hooks/useResults.test.tsx` | ≈ 90 | `makeResult()` |
+| `test/hooks/useSessionLock.test.tsx` | ≈ 110 | Управляемая заглушка канала в `beforeEach` |
+| `test/core/error-handler.test.ts` | ≈ 70 | Таблица ошибок → `test.each` |
+| `test/core/errors.test.ts` | ≈ 40 | — |
+| `test/data/local-repository.test.ts` | ≈ 120 | `withLocalStorage()`-хелпер, `test.each` для квоты |
+| `test/data/repository.test.ts` | ≈ 35 | `test.each` по трём методам |
+| `test/data/memory-repository.test.ts` | ≈ 40 | — |
+| `test/services/audio-service.test.ts` | +≈ 15 | Дополнение: `play` без `preload` (ветка `_isReady`) |
+
+Если файл выходит за 200 — сокращать фикстуры и дублирующиеся `expect`, **не** дробить сьют на два (A60: один сьют — один модуль) и не выносить общий мок в `setup.ts`.
 
 ---
 
 ## 📂 Структура файлов (дельта)
 
 ```
-index.html                                  # [ИЗМ] #root + один module-скрипт (T48)
-tsconfig.json                               # [ИЗМ] T47: Bundler, vite/client, include src
-src/
-  main.tsx                                  # [NEW] CSS → createServices → preload → handlers → render
-  App.tsx                                   # [ИЗМ] App({ services }), импорты типов
-  app/
-    createServices.ts                       # [NEW] единственная точка создания сервисов
-    types.ts                                # [NEW] interface Services
-  core/
-    config.ts                               # [NEW] CONFIG (из js/model/config.ts)
-    types.ts                                # [NEW] домен (из src/types.ts + geometry)
-    errors.ts                               # [NEW] 5 исключений
-    error-handler.ts                        # [NEW] handleError, initGlobalErrorHandlers
-    session-model.ts                        # [NEW] class SessionModel
-    map-catalog.ts                          # [NEW] .js → .ts
-    stats-schema.ts                         # [NEW] .js → .ts
-    game-rules.ts                           # [NEW]
-    generator.ts                            # [NEW]
-    scoring.ts                              # [NEW]
-    player-rules.ts                         # [NEW] .js → .ts
-    player-state.ts                         # [NEW] .js → .ts
-    map-layout.ts                           # [NEW] .js → .ts
-  data/
-    repository.ts                           # [NEW]
-    local-repository.ts                     # [NEW]
-    memory-repository.ts                    # [NEW]
-    stats-service.ts                        # [NEW] класс
-  services/
-    audio-service.ts                        # [NEW] класс, AudioKind
-  ui/
-    types.ts                                # [NEW] view-модели
-  components/                               # [ИЗМ] import type; GameScreen → CONFIG
-  hooks/                                    # [ИЗМ] services первым аргументом
-    useSessionLock.ts                       # [без изм.]
-    useAudio.ts                             # [УДАЛ]
-  bootstrap.ts                              # [УДАЛ]
-  config.ts                                 # [УДАЛ]
-  types.ts                                  # [УДАЛ]
-main.tsx (корень)                           # [УДАЛ] переехал в src/main.tsx
-js/                                         # [УДАЛ] целиком (19 файлов)
-test/                                       # [без изм.] (красный до этапа 3)
-css/ audio/                                 # [без изм.] 21 + 3 файла
-.gigacode/
-  plans/PLAN.md                             # этот файл (1.8.2)
-  plans/PLAN_v1_8_1.md                      # архив 1.8.1
-  specs/SPEC.md                             # статус 1.8.2 — выполнено (17.8)
-  specs/spec_v1_8_2.md                      # источник (не меняется)
-  rulles/RULES.md, rules_v_1_8_2.md         # источник (не меняется)
-  tasks/TASKS.md                            # версия 1.8.2, этап 17
-  tasks/TASKS_v1_8_1.md                     # архив (17.8)
+test/
+├── setup.ts                                # [ИЗМ] + jest-dom, + заглушка BroadcastChannel
+├── core/
+│   ├── error-handler.test.ts               # [NEW] 14 statements
+│   ├── errors.test.ts                      # [NEW] 2 пропущенных statements
+│   └── … (10 сьютов этапа 1)               # [без изм.], допустимы добавления
+├── data/
+│   ├── local-repository.test.ts            # [NEW] 17 statements
+│   ├── repository.test.ts                  # [NEW] 3 statements
+│   ├── memory-repository.test.ts           # [NEW] 4/5 statements (1 пропущенный)
+│   └── stats-service.test.ts               # [без изм.]
+├── services/
+│   └── audio-service.test.ts               # [без изм.], + ветка play без preload
+├── components/                             # [NEW] 7 файлов, *.test.tsx
+│   ├── App.test.tsx
+│   ├── GameScreen.test.tsx
+│   ├── MapScreen.test.tsx
+│   ├── ResultsScreen.test.tsx
+│   ├── MapSelectionModal.test.tsx
+│   ├── Header.test.tsx
+│   └── ErrorModal.test.tsx
+└── hooks/                                  # [NEW] 4 файла, *.test.tsx
+    ├── useGame.test.tsx
+    ├── useMap.test.tsx
+    ├── useResults.test.tsx
+    └── useSessionLock.test.tsx
+
+vitest.config.ts                            # [ИЗМ] coverage.include + thresholds
+package.json / package-lock.json            # [ИЗМ] +3 devDependencies, scripts без изменений
+README.md, test/README.md, GIGACODE.md      # [ИЗМ] числа, RTL, coverage
+.gigacode/specs/SPEC.md                     # [ИЗМ] статус 1.8.3 — выполнено
+.gigacode/specs/spec_v1_8_3.md              # источник (не меняется)
+.gigacode/rulles/RULES.md                   # [ИЗМ] уже указывает на rules_v_1_8_3.md
+.gigacode/rulles/rules_v_1_8_3.md           # источник (не меняется)
+.gigacode/tasks/TASKS.md                    # [ИЗМ] версия 1.8.3, этап 18
+.gigacode/tasks/TASKS_v1_8_2.md             # архив (18.6)
+.gigacode/plans/PLAN.md                     # этот файл (1.8.3)
+.gigacode/plans/PLAN_v1_8_2.md              # архив 1.8.2
+src/**                                      # [без изм.] 38 файлов
+css/ (21), audio/ (3), index.html           # [без изм.]
 ```
 
 ---
 
 ## 🚫 Запреты
 
-### Z24 (миграция) — буквально
+### Z27 (тесты) — буквально
 
-- Оставлять `declare global`, `window.*`-мосты, `globalThis.*`, `global.*` в `src/`.
-- Подключать код тегами `<script>` (кроме одного module-скрипта) и `<link>` для CSS.
-- Реэкспортировать `CONFIG` (`src/config.ts`) и использовать `config` в нижнем регистре.
-- Создавать сервисы в хуках/компонентах, хранить их в модульных переменных, вызывать `init(repo)`, деструктурировать методы.
-- Менять значения `CONFIG`, формат `Stats` v3, ключи `ml_stats`/`ml_session_lock`.
-- Менять разметку, id, классы, тексты, CSS, звуки; добавлять зависимости (`@vitejs/plugin-react`, Context/Zustand).
-- Переписывать тесты, включать `allowJs: false`, «чинить» `vite build`.
-- Мержить ветку до зелёного `npm test` (этап 3).
+- `eval`, `new Function`, `readSource`, `fs.readFileSync`, `require`; копии прод-логики вместо импорта.
+- `global.CONFIG` и собственная копия `CONFIG` в `test/setup.ts`.
+- `StatsService.init(...)`; создание сервисов в module scope.
+- Проверка приватных полей (`_lives`, `_sounds`, `_repo`) вместо публичного API.
+- Снимки всего DOM-дерева; тесты, завязанные на порядок CSS/Tailwind-классов.
+- `setTimeout`/`sleep` вместо fake timers и `waitFor`.
+- `test.only`, `describe.skip`, `it.skip` без объяснения в отчёте.
 
-### Z25 (тесты) — буквально
+### Z28 (ради зелёного) — буквально
 
-- Удалять, скипать, ослаблять тесты или менять `test/**`.
-- Подгонять пути `readSource` под новую структуру в рамках этапа 2.
-- Объявлять успех по «частично зелёному» прогону; скрывать красный список из отчёта.
+- Удалять, скипать или ослаблять существующие сценарии.
+- Менять `src/**` под тест (наоборот: тест подстраивается под прод-API).
+- Понижать пороги покрытия, чтобы пройти.
+- Объявлять успех по частичному прогону или по «покрытие потом».
+- Добавлять E2E в обязательный `npm test`.
 
-### Z26 (git) — буквально
+### Z29 (git/CI) — буквально
 
-- Коммитить `node_modules`, `dist`, кэш Vite.
-- Делать `git add -A` (в дереве есть посторонние изменения документации).
-- Мержить `refactor/es-modules` в основную ветку.
+- Коммитить `coverage/`, `node_modules`, `dist`, кэш Vite.
+- Делать `git add -A` (в дереве есть посторонние файлы документации).
+- Мержить ветку с красными тестами.
 - Переписывать историю (`rebase -i`, `reset --hard`) без согласования.
 
-### Дополнительно для 1.8.2
+### Дополнительно для 1.8.3
 
-- Оставлять `src/core` зависящим от React, DOM, `localStorage` (кроме `window.addEventListener` в `error-handler`).
-- Импортировать `services`/`data` в компоненты; передавать сервисы пропсами в компоненты.
-- Добавлять `any`, `var`, `@ts-ignore`, `@ts-expect-error` вместо типов.
-- «Заодно» чинить `npm test`, `vite build`, `jest.config.js`, `package.json`.
+- Импортировать компоненты в тесты хуков и наоборот; завязывать юнит-тест на разметку.
+- Подменять `Math.random` «по месту», оставляя недетерминированный генератор в других сьютах.
+- Оставлять открытые каналы/таймеры между тестами (`beforeEach`/`afterEach`).
+- «Заодно» править `src/**`, `vite build`, `jest.config.js`, `package.json`-скрипты.
+- Выносить общие фикстуры в `test/fixtures/` в обход A60 (вопрос владельцу, если понадобится).
 
 ---
 
-## 📦 Вне области (SPEC 1.8.2)
+## 📦 Вне области (SPEC 1.8.3)
 
-- Переписывание тестов на `import`, `allowJs: false`, зелёный `npm test` — **этап 3**.
-- Любое изменение поведения, разметки, CSS, текстов, констант, формата `Stats`, ключей хранилища.
-- Новые фичи, глобальное состояние (Context/Zustand), `@vitejs/plugin-react`, Fast Refresh.
-- `vite build` как критерий: если заработает — побочный эффект, правок под него нет.
-- Удаление `jest.config.js`, чистка `package.json`, README/GIGACODE/TASKS — **до шага 17.8**.
-- Слияние ветки в `main`/`fix/fix_statstic` (только после этапа 3).
+- Поведение игры, разметка, CSS, тексты, `CONFIG`, формат `Stats`, ключи `ml_stats`/`ml_session_lock`.
+- Починка `vite build`, `@vitejs/plugin-react`, ассеты, чистка `package.json` (этапы 4–5 плана 1.8.2).
+- 100% покрытие и тесты ради покрытия.
+- E2E как блокер 1.8.3; установка Playwright.
+- Переписывание `src/**` под тесты.
+- Изменение 12 сьютов этапа 1 сверх добавлений; понижение порогов.
 
 ---
 
@@ -631,22 +632,19 @@ css/ audio/                                 # [без изм.] 21 + 3 файла
 
 | # | Требование | Уточнение | Как решаем |
 |---|---|---|---|
-| D18 | TR-28: `src/types.ts` → split | Пока `js/` в программе `tsc`, глобальные типы нужны классическим файлам | Split в 17.1/17.4, **удаление** `src/types.ts` — на 17.5b после `include: ["src", …]`; `tsc` доказывает отсутствие глобалов |
-| D19 | TR-32: `src/config.ts` удалить | Удаление раньше сломало бы `GameScreen`/`useGame`/`useMap` | Удаляется на 17.5a вместе с их переходом на `CONFIG` |
-| D20 | A53: `App` не импортирует значения `services` | T46 передаёт `services` в `App` пропсом; клики в `App` (`playAgain`, `backToMap`, `closeError`) нужно озвучивать | `services.audio.play('click')` через проп; **импорта** значений нет. Альтернатива — перенести клики в хуки (вопрос владельцу) |
-| D21 | T47: `include: [..., "vite.config.ts"]` | Файла нет | Шаблон безвреден (SPEC TR-35); `tsc` не находит — не ошибка |
-| D22 | TR-39: «старые сьюты упадут» | 3 из 12 сьютов (`scoring`, `game-rules`, `generator`) дублируют логику у себя и останутся зелёными | Красный список — 9 сьютов / **113** тестов, не «все 156»; фиксируем фактическое |
-| D23 | TR-36: удалить `SessionService`/`SessionRepository` | Их вызывает `bootstrap.ts`, живой до 17.5 | Удаляются на 17.6 вместе с `js/`; до этого шага остаются нетронутыми |
-| D24 | TR-29: побочные импорты только CSS | `src/main.tsx` — единственное место побочных импортов | В `main.tsx` только `import '../css/*.css'`; остальные импорты — с именами |
-| D25 | GIGACODE: ≤ 200 строк | `useMap.ts` уже 200 | После импортов ≈207: сокращаем шапку на 2–3 строки и ужимаем импорты; файл не дробим |
-| D26 | SPEC: документация — в конце | README/GIGACODE/TASKS описывают `js/` | Синхронизация — отдельный шаг 17.8, после smoke |
-| D27 | TR-39: `test/setup.js` не менять | Он объявляет `global.CONFIG` и мок `Audio` | Остаётся как есть; новый код его глобалов не использует; этап 3 решит судьбу |
-| D28 | D4 спеки: `useAudio.ts` удалить | `AudioKind` нужен `AudioService` | `AudioKind` объявляется в `services/audio-service.ts`; хук удаляется на 17.5a |
-| D29 | A53: `components` не знают `data`/`services` | `MapScreen` использует `PlayerRules` | `PlayerRules` — `core`, разрешено (таблица A53); `GameScreen` — `CONFIG` из `core` |
-| D30 | T45: `StatsService` — класс | `_repo` раньше был `null` + `init()` | `private`-подобное поле `_repo` в конструкторе; `init()` нет; поведение 1:1 |
-| D31 | D6 спеки: `ErrorHandler` → функции | `handleError` бросает для неизвестных ошибок (как 1.8.1) | Сохраняем `throw error`; `StatsService` ловит `CorruptedDataError`/`StorageUnavailableError` |
-| D32 | TR-40: коммиты по слоям | `tsconfig` без `main`/`index` не даёт зелёного `dev` | 17.5 = два коммита (`app` и `build`); промежуточный 17.5a не гарантирует `dev`, критерий шага — после 17.5b |
-| D33 | SPEC: `SessionState` не используется | Часть доменного контракта раунда | Оставляем в `core/types.ts` (TR-31) |
+| D34 | TR-48: «600 мс — fake timers + `advanceTimersByTime(600)`» | В проде движение завершает CSS-transition и `onTransitionEnd` (`Player.tsx`), а `MOVE_MS` — константа для геометрии/тестов домена | В хуке и компоненте эмитим `transitionend`; fake timers — для 100 мс debounce и 1500 мс плашки. Домен `PlayerRules.MOVE_MS` проверяется в `player-rules.test.ts` |
+| D35 | T51: фейковый `Services` в каждом сьюте | 7 + 4 файла × ~10 строк дублирования | Дублируем; общий `test/fixtures/` не вводим — A60 «общие моки только в `setup.ts`». Вопрос владельцу при росте |
+| D36 | TR-47/T52: `Header` проверяет жизни (❤️/🖤) | В 1.8.2 жизни рендерит `GameScreen` (`.lives`), `Header` — счёт + 🌍 | Следуем фактическому API: жизни — в `GameScreen.test.tsx`, `Header` — счёт и кнопка; `src/**` не правим |
+| D37 | TR-49: «coverage не должен падать относительно baseline 97.12/90.57» | 97.12/90.57 — только 15 загруженных модулей; с `include` всех слоёв агрегат 46.3/41.39 | Сравниваем по сопоставимому набору: `core`/`data`/`services` не ниже текущих значений; агрегат — по порогам 80/60 и цели ≥ 70% |
+| D38 | T54: `include` добавляет `error-handler`, `local-repository`, `repository` | Эти модули сейчас 0% (14 + 17 + 3 statements) | 18.4b — точечные сьюты до порогов; исключать нельзя |
+| D39 | A60: «общие моки — только `test/setup.ts`» | `BroadcastChannel` нужен управляемым в `useSessionLock`, а также в `App` | В `setup.ts` — безопасная заглушка по умолчанию; сьюты переопределяют её `vi.stubGlobal` в своём файле (A64 разрешает) |
+| D40 | TR-48: `useSessionLock` мокает `BroadcastChannel` | jsdom может предоставлять реальный канал; реальный `postMessage` между тестами непредсказуем | Глобальная заглушка в `setup.ts`; fallback-сценарий — класс, бросающий в конструкторе |
+| D41 | TR-47: «снимки всего дерева запрещены; точечные `toMatchObject`/`toHaveClass`» | `App` — интеграционный, DOM большой | Проверяем контракт: `.active` у экрана, наличие ключевых ролей/текстов; без snapshot |
+| D42 | SPEC: `test/core/types.ts` в `include` | Файл типовой, 0 statements | Попадает в отчёт как 0% при 0/0 — не влияет на группу; помечаем в отчёте |
+| D43 | TR-49: порог `services` 80 | Сейчас `audio-service` 17/18 (75% branches) | Добавляем сценарий `play` без `preload` (ветвь `_isReady`); не понижаем порог |
+| D44 | TR-47: «в тестах нет `document.querySelector` как основного способа поиска» | Для проверки класса у элемента, найденного по роли, `querySelector` иногда короче | Допускаем единичные вхождения с комментарием; основа — `getByRole`/`getByText`/`getByLabelText` |
+| D45 | TR-50: E2E «5–7 сценариев» | Playwright не установлен, сценарии требуют `npm run dev` и браузера | Backlog в TASKS/README; `npm test` E2E не включает; установка — отдельной задачей |
+| D46 | Z28: «не менять `src/**`» | Тест `hard`-генератора может выявить отрицательные ответы (D12 спеки) | Фиксируем наблюдение в отчёте; поведение не меняем, баг — отдельной задачей |
 
 ---
 
@@ -654,86 +652,75 @@ css/ audio/                                 # [без изм.] 21 + 3 файла
 
 | Требование | Где реализуется | Шаг | Критерии |
 |---|---|---|---|
-| TR-28. Перенос файлов | `src/core`, `src/data`, `src/services`, удаление `js/` | 17.1–17.6 | 119, 126 |
-| TR-29. Явные импорты | все модули; `CONFIG` из `core/config` | 17.1–17.5 | 120 |
-| TR-30. `.js → .ts` | 6 файлов | 17.1, 17.3 | 122 |
-| TR-31. Типы | `core/types.ts`, `ui/types.ts` | 17.1, 17.4, 17.5b | 121 |
-| TR-32. `src/config.ts` | удалён; `GameScreen`, `useGame`, `useMap` | 17.5a | 120, 126 |
-| TR-33. Composition root | `src/app/*`, `src/main.tsx`, `App`, хуки | 17.5a | 124, 125 |
-| TR-34. `index.html` | `index.html`, CSS в `src/main.tsx` | 17.5b | 128 |
-| TR-35. `tsconfig` | `tsconfig.json` | 17.5b | 127 |
-| TR-36. Мёртвый код | список удалений | 17.5a, 17.6 | 126 |
-| TR-37. Слои | матрица импортов | 17.1–17.5 | 123 |
-| TR-38. Контракты | `stats-service`, `audio-service`, `error-handler` | 17.2, 17.3 | 129 |
-| TR-39. Тесты | `test/**` без изменений | 17.6, 17.7 | 131 |
-| TR-40. Ветка | `refactor/es-modules`, коммиты | 17.0, 17.9 | 134 |
-| TR-41. Проверки | команды + smoke | 17.7, 17.9 | 130, 133 |
-| A52. ES-модули | все модули, `index.html` | весь этап | 119, 120 |
-| A53. Слои | `core ← data ← services ← app` | 17.1–17.5 | 123, 125 |
-| A54. Один root | `createServices()` | 17.5a | 124 |
-| A55. `CONFIG` | `core/config.ts` | 17.1, 17.5a | 120 |
-| A56. Типы-модули | `core/types`, `ui/types` | 17.1, 17.4 | 121 |
-| A57. Тесты red | `test/**` не трогаем | 17.6, 17.7 | 131 |
-| A58. Ветка | `refactor/es-modules` | 17.0, 17.9 | 134 |
-| T44–T46. Структура/контракты/хуки | контракты выше | 17.1–17.5 | 124, 125, 129 |
-| T47–T49. Сборка/вход/проверки | `tsconfig`, `index.html`, `main.tsx` | 17.5b, 17.7 | 127, 128, 130 |
-| Z24–Z26. Запреты | раздел «Запреты» | весь этап | 119–135 |
+| TR-42. Нет `eval`/`readSource`/`CONFIG`-копии | `test/**`, `setup.ts`, `tsconfig` | этап 1, 18.0 | 136, 145 |
+| TR-43. 12 сьютов на `.test.ts` | `test/core`, `test/data`, `test/services` | этап 1, 18.0 | 137, 146 |
+| TR-44. Настоящие реализации | те же сьюты, без копий | этап 1, 18.4b | 138 |
+| TR-45. `StatsService` + `MemoryRepository` | `stats-service.test.ts`, новые сьюты данных | этап 1, 18.4b | 139 |
+| TR-46. `session-model.test.ts` | `test/core/session-model.test.ts` | этап 1 | 140 |
+| TR-47. React-тесты | `test/components/**`, `setup.ts`, `package.json` | 18.1, 18.2 | 141 |
+| TR-48. Тесты хуков | `test/hooks/**` | 18.3 | 142 |
+| TR-49. Покрытие 80/60 | `vitest.config.ts`, точечные сьюты | 18.4 | 143, 147 |
+| TR-50. E2E опционально | TASKS/README backlog | 18.5 | 148 |
+| A59. Импорты, не копии | все сьюты | 18.1–18.4 | 136–139 |
+| A60. Зеркальная структура | `test/{core,data,services,components,hooks}` | 18.2–18.4 | 141, 142 |
+| A61. Конструктор + `MemoryRepository` | `test/data/*` | 18.4b | 139 |
+| A62. Поведение, не реализация | компонентные сьюты | 18.2 | 141 |
+| A63. Покрытие-порог | `vitest.config.ts` | 18.4 | 143, 147 |
+| A64. Детерминизм | таймеры, моки, `try/finally` | 18.2–18.4 | 142, 145 |
+| T50–T55. Структура/двойники/проверки | контракты, аудит | 18.1–18.4, 18.7 | 136–149 |
+| Z27–Z29. Запреты | раздел «Запреты» | все шаги | 149 |
 
 ---
 
 ## ⚠️ Риски и примечания
 
-- **`verbatimModuleSyntax` (R1).** Смешение type/value-импортов даёт TS1484 на каждом шаге; после слоя — `tsc`, иначе ошибки накопятся. `import type` — для всех типов, включая `Repository` в конструкторе `StatsService`.
-- **Потеря `this` (R2).** `services.stats.load()` — только через экземпляр; `const { load } = services.stats` запрещён (A54).
-- **Циклы (R3).** `hooks → app → hooks` не возникает: `Services` — только тип в `app/types.ts`; `createServices` хуки не импортирует. `core/game-rules` → `core/session-model` — только `import type`.
-- **Порядок CSS (R4).** Импорты в `src/main.tsx` строго `base`, `buttons`, `screens`, `game`, `results`, `map`; `map.css` сам собирает `map_items/**` через `@import` (Vite/postcss). Проверить карту/игру/результаты визуально.
-- **Кэш Vite (R5).** После переезда `main.tsx` перезапустить `npm run dev`; при «старых путях» удалить `node_modules/.vite`.
-- **Тесты «зеленеют» случайно (R6).** 3 сьюта зелёные, потому что дублируют логику; это **не** признак успеха этапа 2 — критерий только `tsc` 0 + red-list.
-- **Соблазн «заодно» (R7).** Z24–Z26 прямо запрещают править тесты, `vite build`, `jest.config.js`, `package.json`.
-- **`tsc` и `test/**` в программе (R8).** При `allowJs: true` JS-тесты входят в программу, но `checkJs` выключен — ошибок не дают; `test/setup.js` с `vi`/`global` не проверяется.
-- **StrictMode (R9).** `createServices()` вызывается **вне** React (в `main.tsx`), двойного создания нет; хуки получают уже готовый экземпляр.
-- **`#root` (R10).** `style="display: contents"` сохраняется: `.app` остаётся прямым flex-элементом `body`; иначе поедет раскладка.
-- **`index.html` и Vite (R11).** `src="/src/main.tsx"` — корневой путь Vite; прямого открытия файла и `python -m http.server` нет (как и раньше).
-- **Слои и `localStorage` (R12).** `localStorage` остаётся только в `data/local-repository.ts` и `hooks/useSessionLock.ts`; в `core`/`components` — `grep` пуст.
-- **Документация (R13).** README/GIGACODE содержат десятки упоминаний `js/` и «порядка скриптов»; на 17.8 менять разделы целиком, а не отдельные строки, иначе останутся противоречия.
-- **Лимит 200 строк (R14).** `useMap.ts` на границе; следить после импортов, не дробить файл.
-- **Песочница.** `npm test`/`npm run dev` пишут `node_modules/.vite` вне сессионного workspace — при работе в песочнице может требоваться расширение доступа; это окружение, а не проект.
+- **`clientWidth = 0` в jsdom (R1).** `useMap.measure()` читает `element.clientWidth` → 0 → остаётся `MapLayout.FALLBACK_WIDTH` (600). Это ожидаемо и детерминированно; пиксельные координаты не проверяем (контракт — классы `--current/--near/--far`).
+- **CSS-transition в jsdom (R2).** Браузерных переходов нет: `transitionend` эмитится вручную. Тест, который «ждёт 600 мс», будет падать по таймауту — это антипаттерн, см. D34.
+- **`user-event` + fake timers (R3).** При активных fake timers `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })`; иначе промисы событий не разрешаются. Предпочтительно: fake timers — только в сьютах с таймерами, `user-event` — на реальных.
+- **`act()` и предупреждения (R4).** Состояние хуков меняется из эффектов и промисов: `await waitFor(...)` для асинхронных обновлений; `act` — только где без него предупреждение.
+- **React 19 + RTL 16 (R5).** `@testing-library/react@^16` требует `@testing-library/dom` (peer) — ставится транзитивно; `jest-dom@^6` — импорт `@testing-library/jest-dom/vitest`. Проверить `npm ls` после установки.
+- **Заглушка `BroadcastChannel` (R6).** Реальный канал в jsdom может переносить `hello` между тестами и оставлять `ml_session_lock`; глобальная заглушка в `setup.ts` + `localStorage.clear()` в `beforeEach` там, где это важно.
+- **`confirm` (R7).** `useGame.exit()` вызывает `window.confirm`; в jsdom он `undefined` → нужно `vi.spyOn(window, 'confirm')`. Без мока выход «не сработает» и тест будет ложно-зелёным.
+- **Тяжёлый `App.test.tsx` (R8).** До результатов — до 10 циклов «ответ → Продолжить»; при генераторе на `Math.random` исход не важен (победа/провал/лимит вопросов), но цикл должен завершаться по лимиту итераций, а не по «ожиданию».
+- **Пороги и glob-ключи (R9).** `thresholds` с `'src/core/**'` считает по группе; `src/app/**` намеренно вне `include` (это composition root), `types.ts` — 0/0. Убедиться, что `npx vitest run --coverage` не падает на пустых группах.
+- **Песочница (R10).** Отчёт coverage пишется в `coverage/`; вне сессионного workspace это read-only — для замеров использовать `--coverage.reportsDirectory=<tmp>`. Это окружение, а не проект.
+- **Соблазн «упростить» (R11).** Любая копия формулы в тесте («как считается рейтинг») — нарушение A59; ожидаемые значения берём из `CONFIG`/реального модуля либо фиксируем литералом **один раз** в `expect` (100/70/40/0).
+- **Лимит 200 строк (R12).** Самые крупные — `App`, `useMap`, `useGame`; сокращать фикстуры, не дробить сьют (A60).
+- **`allowJs: false` и типы `jest-dom` (R13).** Augmentation приходит из `setup.ts`; если `tsc` не видит `toHaveClass` — добавить `types` в `tsconfig` **после** проверки, не ослабляя `strict`.
 
 ### Вопросы владельцу (если не согласовано)
 
-1. **Клики в `App`:** оставить `services.audio.play('click')` через проп (D20) или перенести в хуки (`useResults`/`useMap` получают метод)? По умолчанию — проп.
-2. **Коммиты:** 6–7 атомарных коммитов в `refactor/es-modules` — ок? Пуш — только по согласованию.
-3. **`useMap.ts`:** допустимо сократить шапку/комментарии, чтобы остаться ≤ 200 строк?
-4. **`TASKS.md`:** архив `TASKS_v1_8_1.md` + обновление на месте (как `PLAN_v1_8_1.md`)?
+1. **Коммиты:** 18.0 — один коммит этапа 1, далее по шагам (`rtl-setup`, `components`, `hooks`, `coverage`, `docs`) — ок? Пуш/мерж — по согласованию.
+2. **Общие фикстуры:** допустимо ли позже вынести `makeServices` в `test/fixtures/`, если дублирование начнёт мешать (сейчас — inline по A60)?
+3. **E2E:** подтверждаем, что Playwright остаётся в backlog 1.9 и в 1.8.3 не устанавливается?
+4. **`Header` и жизни:** подтверждаем следование фактическому API (жизни в `GameScreen`), без правки `src/**`?
 
 ---
 
-## ✅ Ожидаемый результат 1.8.2
+## ✅ Ожидаемый результат 1.8.3
 
-- **Один граф модулей:** 19 classic-файлов и 14 глобалов заменены `src/core`/`data`/`services`/`app`; `index.html` — `#root` + один module-скрипт.
-- **`CONFIG`** — только `import { CONFIG }`; `declare global`, `window.*`-мосты, `src/config.ts` — отсутствуют.
-- **`createServices()`** — единственная точка создания; `App({ services })`, хуки первым аргументом; компоненты сервисов не знают.
-- **`tsc --noEmit` — 0**; `npm run dev` — работает, консоль чистая; 9 smoke-сценариев зелёные.
-- **Поведение 1:1:** 8/2 → 80/🎉/«Правильных: 8», 0/3 → 💔, карта 600 мс, `ml_stats` v3, CSS и разметка без правок.
-- **Тесты:** 113/156 красные в 9 сьютах (ENOENT на `js/…`), 43/156 зелёные в 3; `test/**` не изменён; список зафиксирован — база для этапа 3.
-- **Ветка `refactor/es-modules`** с атомарными коммитами, без мержа; документация и `TASKS` — 1.8.2, архивы 1.8.1 на месте.
+- **Тесты проверяют прод-код:** 28 сьютов (`12` + `5` данных + `7` компонентных + `4` хуковых), ≈ 253 теста, все зелёные; ни одного `eval`/`readSource`/копии логики.
+- **UI под тестами:** 7 компонентных сьютов (RTL + `user-event` + `jest-dom`) и 4 хуковых (`renderHook`, fake timers, управляемый `BroadcastChannel`).
+- **Покрытие:** `core` ≥ 80 (факт ~95+), `data` ≥ 80, `services` ≥ 80, `components`/`hooks`/`App` ≥ 60, итог ≥ 70%; `coverage.include` — все слои; 100% не цель.
+- **`tsc --noEmit` — 0**, `npm test` — зелёный, `npm run test:coverage` — зелёный; `src/**` — **0 правок**.
+- **Документация 1.8.3:** README/test/README/GIGACODE с новыми числами, SPEC — «Выполнено», TASKS — этап 18, PLAN — эта версия, `PLAN_v1_8_2.md` и `TASKS_v1_8_2.md` — архивы.
+- **E2E** — backlog 1.9, не блокер; `npm test` E2E не включает.
 
 ---
 
 ## 📌 Краткая памятка агенту
 
-✅ Ветка `refactor/es-modules` от `a6f6ffa`; `tsc` 0 после каждого слоя
-✅ `core` → `data` → `services` → `ui/types` → `app`+`main` → `tsconfig`+`index` → удалить `js/` → smoke → доки
-✅ `CONFIG` только `import { CONFIG } from '…/core/config'`; `config.` нет
-✅ `StatsService`/`AudioService` — классы; `createServices()` один раз; хуки принимают `services` первым аргументом
-✅ `handleError`/`initGlobalErrorHandlers` вместо `ErrorHandler`
-✅ `src/core/types.ts` + `src/ui/types.ts`; все типовые импорты — `import type`
-✅ `index.html` = `#root` + `<script type="module" src="/src/main.tsx">`; CSS — импорты в прежнем порядке
-✅ `test/**` не трогать; 9 сьютов/113 тестов красные — это ожидаемо, зафиксировать
-✅ CSS 21 файл, разметка, тексты, `CONFIG`, `Stats` — 0 правок
+✅ Этап 1 уже зелёный (158/12, `tsc` 0) — только коммит (18.0), не переписывать
+✅ Порядок: `setup` → компоненты → хуки → coverage + точечные сьюты → backlog E2E → доки → аудит
+✅ RTL: `getByRole`/`getByText`, `user-event`, `jest-dom`, точечные `toHaveClass`
+✅ Хуки: `renderHook`, фейковый `Services` в файле, `BroadcastChannel` — заглушка
+✅ Движение: `transitionend` на `.map-player`; timers — только 100 мс и 1500 мс
+✅ Coverage: `include` все слои + пороги 80/60; `core`/`data`/`services` не ниже baseline
+✅ `StatsService` — `new StatsService(new MemoryRepository())`; `handleError` — `vi.mock` один раз
+✅ `tsc` 0 и `npm test` после каждого шага; `src/**` — 0 правок
 
-❌ `declare global`, `window.* =`, `global.`, `<script src="js/…">`, `<link>`
-❌ `src/config.ts`, `bootstrap.ts`, `useAudio.ts`, `SessionService`, `SessionRepository`, корневой `main.tsx`
-❌ сервисы в компонентах/хуках, module-level синглтоны, `init(repo)`, деструктуризация методов
-❌ правки тестов, `allowJs: false`, `vite build`, `jest.config.js`, новые зависимости
-❌ мерж до зелёного `npm test` (этап 3); `git add -A`
+❌ `eval`, `readSource`, `fs.readFileSync`, `require`, копии логики, `global.CONFIG`
+❌ `StatsService.init`, сервисы в module scope, приватные поля в проверках
+❌ Снимки всего DOM, `sleep`/`setTimeout` в тестах, `test.only`/`skip`
+❌ Правки `src/**` ради тестов, понижение порогов, E2E в `npm test`
+❌ `git add -A`, коммит `coverage/`, мерж с красными тестами

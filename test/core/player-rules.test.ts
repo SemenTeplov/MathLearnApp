@@ -1,7 +1,7 @@
-// Загружаем чистые правила игрока
-const fs = require('fs');
+// Боевые PlayerRules: действия по клику и нормализация индекса.
 
-eval(fs.readFileSync('./js/logic/player-rules.js', 'utf8') + '\nglobal.PlayerRules = PlayerRules;');
+import { describe, expect, test } from 'vitest';
+import { PlayerRules } from '../../src/core/player-rules';
 
 describe('PlayerRules — константы', () => {
     test('старт — перед первым тренажёром', () => {
@@ -65,9 +65,15 @@ describe('PlayerRules.normalizeIndex', () => {
     test('нечисловое значение → −1', () => {
         expect(PlayerRules.normalizeIndex(undefined, 15)).toBe(-1);
         expect(PlayerRules.normalizeIndex(null, 15)).toBe(-1);
+        expect(PlayerRules.normalizeIndex(Number.NaN, 15)).toBe(-1);
+    });
+
+    test('дробный индекс округляется вниз', () => {
+        expect(PlayerRules.normalizeIndex(7.9, 15)).toBe(7);
     });
 
     test('пустая карта → −1', () => {
         expect(PlayerRules.normalizeIndex(3, 0)).toBe(-1);
+        expect(PlayerRules.normalizeIndex(3, -5)).toBe(-1);
     });
 });

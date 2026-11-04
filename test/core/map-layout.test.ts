@@ -1,9 +1,10 @@
-// Загружаем чистую геометрию карты
-const fs = require('fs');
+// Боевая геометрия карты: полосы, тренажёры, путь и точка игрока.
 
-eval(fs.readFileSync('./js/logic/map-layout.js', 'utf8') + '\nglobal.MapLayout = MapLayout;');
+import { describe, expect, test } from 'vitest';
+import { MapLayout } from '../../src/core/map-layout';
+import type { TrainerPoint, Zone } from '../../src/core/types';
 
-const zones = [
+const zones: Zone[] = [
     { id: 'addition', title: 'Сложение', color: '#4CAF50', trainersCount: 5 },
     { id: 'subtraction', title: 'Вычитание', color: '#2196F3', trainersCount: 5 },
     { id: 'multiplication', title: 'Умножение', color: '#FF9800', trainersCount: 5 }
@@ -91,6 +92,17 @@ describe('MapLayout.buildLayout', () => {
         expect(layout.height).toBe(0);
         expect(layout.roadPath).toBe('');
     });
+
+    test('зона с нулём тренажёров не создаёт полосу-призрак', () => {
+        const layout = MapLayout.buildLayout([
+            { id: 'empty', title: 'Пусто', color: '#000000', trainersCount: 0 },
+            zones[0]
+        ], 600);
+
+        expect(layout.trainers).toHaveLength(5);
+        expect(layout.bands[0].height).toBe(0);
+        expect(layout.bands[1].top).toBe(0);
+    });
 });
 
 describe('MapLayout.buildRoadPath', () => {
@@ -146,6 +158,6 @@ describe('MapLayout.getPlayerPoint', () => {
 
     test('пустой список → null', () => {
         expect(MapLayout.getPlayerPoint([], 0)).toBeNull();
-        expect(MapLayout.getPlayerPoint(null, 0)).toBeNull();
+        expect(MapLayout.getPlayerPoint(null as unknown as TrainerPoint[], 0)).toBeNull();
     });
 });

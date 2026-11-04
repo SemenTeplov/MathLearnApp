@@ -38,13 +38,14 @@ npm run dev        # http://localhost:5173
 ```bash
 npm run typecheck  # tsc --noEmit — 0 ошибок
 npm run build      # = typecheck
-npm test           # vitest: 156 тестов в 12 сьютах (9 сьютов красные до этапа 3 — см. «Тесты»)
+npm test           # vitest: 158 тестов в 12 сьютах (1.8.3 — зелёные)
 npx vite build     # прод-сборка: побочный эффект 1.8.2, собирается (53 модуля)
 ```
 
-> ⚠️ **Тесты на 1.8.2 красные по плану.** Сьюты читают старые `./js/…` через `readSource` +
-> `eval`; после переноса в `src/` 9 сьютов падают с `ENOENT`, 3 сьюта зелёные. Тесты не
-> менялись — их переписывание на `import` вынесено в этап 3 (см. `test/README.md`).
+> ✅ **Тесты на 1.8.3 зелёные.** 12 сьютов переведены на `.test.ts` и импортируют прод-код
+> из `src/core`/`src/data`/`src/services`; `eval`, `readSource` и копия `CONFIG` удалены,
+> `allowJs: false`. React-тесты и пороги покрытия — следующие этапы 1.8.3
+> (см. `test/README.md`, `spec_v1_8_3.md`).
 
 > ℹ️ **Прод-сборка.** `npx vite build` в 1.8.2 впервые собирается: классических `<script>`
 > больше нет, Vite бандлит один граф модулей. Ограничение: `audio/` подключается в рантайме
@@ -145,31 +146,32 @@ npm install   # один раз: vitest, jsdom, typescript
 npm test
 ```
 
-156 тестов в `test/` (vitest + jsdom): правила игры, генератор, очки, правила и состояние
-игрока (`test/logic/`), статистика и звуковой сервис (`test/service/`), конфиг, каталог карт,
-схема `Stats` и счётчики раунда (`test/model/`), геометрия карты (`test/map/`).
+158 тестов в `test/` (vitest + jsdom): домен — `test/core/` (правила игры, генератор,
+очки, игрок, карта, `CONFIG`, `Stats`), данные — `test/data/` (`StatsService` через
+`MemoryRepository`), сервисы — `test/services/` (звук).
 
-На **1.8.2** тесты намеренно **не менялись**: они читают `./js/…` через `readSource` +
-`eval` и после переноса кода в `src/` падают с `ENOENT`. Фактический прогон:
+На **1.8.3** тесты переписаны на `import`: `eval`, `readSource` и `test/ts-source.js`
+удалены, копия `CONFIG` из `test/setup.js` убрана, `allowJs: false`. Копии
+`GameRules`/`ProblemGenerator`/`Scoring` заменены настоящими модулями. Прогон:
 
 | Группа | Сьюты | Тесты | Статус |
 |---|---|---|---|
-| `scoring`, `game-rules`, `generator` | 3 | 43 | ✅ зелёные (дублируют логику в тесте) |
-| `config`, `map-catalog`, `session-model`, `stats-schema`, `player-rules`, `player-state`, `map-layout`, `audio-service`, `stats-service` | 9 | 113 | ❌ красные (`ENOENT: ./js/…`) |
+| `test/core/**` | 10 | 124 | ✅ зелёные |
+| `test/data/**` | 1 | 26 | ✅ зелёные |
+| `test/services/**` | 1 | 8 | ✅ зелёные |
 
-Это ожидаемый результат миграции (TR-39): переписывание тестов на `import` — **этап 3**,
-до него `allowJs: true` и `npm test` красный. `test/**`, `test/setup.js` и
-`test/ts-source.js` в 1.8.2 не изменялись.
+React-тесты (`@testing-library/react`) и пороги покрытия 80/60 — следующие этапы
+1.8.3; E2E — опционально. Подробности — `test/README.md` и `spec_v1_8_3.md`.
 
-## Статус и smoke-тест (dev, 1.8.2)
+## Статус и smoke-тест (dev, 1.8.3)
 
-Срез на **03.11.2026** (1.8.2 — ES-модули; экраны на React с 1.8.0):
+Срез на **04.11.2026** (1.8.3 — тесты на импортах; экраны на React с 1.8.0):
 
 | Проверка | Команда | Результат |
 |---|---|---|
-| Версия | — | **1.8.2**: `src/core`/`data`/`services`/`ui`/`app`, один module-скрипт, `js/` удалён |
+| Версия | — | **1.8.3**: тесты `.test.ts` на `src/**`, без `eval`/`readSource`, `allowJs: false` |
 | Типы | `npm run typecheck` | ✅ **0 ошибок** |
-| Тесты | `npm test` | ⚠️ **43/156** зелёных (3 сьюта); 9 сьютов / 113 тестов красные по плану (этап 3) |
+| Тесты | `npm test` | ✅ **158/158** в 12 сьютах |
 | Dev-сервер | `npm run dev` | ✅ `http://localhost:5173`, консоль без ошибок приложения |
 | Прод-сборка | `npx vite build` | ✅ собирается (53 модуля); ⚠️ `audio/` не копируется в `dist` |
 

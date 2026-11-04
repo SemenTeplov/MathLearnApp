@@ -74,7 +74,7 @@ css/                        # 21 файл, без изменений с 1.5.0 (A
   game_items/               # Стили игровых элементов
   result_items/             # Стили результатов
 audio/                      # click.mp3, win.mp3, lose.mp3
-test/                       # 12 сьютов / 156 тестов (в 1.8.2 — красные до этапа 3)
+test/                       # 12 сьютов / 158 тестов (1.8.3 — зелёные, без eval)
 .gigacode/
   rulles/RULES.md           # Конституция проекта (актуальная версия)
   specs/SPEC.md             # Спецификация поведения (актуальная версия)
@@ -99,24 +99,24 @@ npm run dev          # http://localhost:5173 — режим разработки
 npm run typecheck    # tsc --noEmit: 0 ошибок
 npm run build        # = typecheck (Vite-сборка вызывается отдельно)
 npx vite build       # прод-сборка: собирается с 1.8.2; audio/ в dist не копируется
-npm test             # vitest run: 156 тестов; в 1.8.2 — 9 сьютов красные по плану
+npm test             # vitest run: 158 тестов в 12 сьютах (1.8.3 — зелёные)
 npm run test:watch   # vitest в watch-режиме
 ```
 
 **`tsconfig.json` (T47):** `target: ESNext`, `module: ESNext`,
 `moduleResolution: Bundler`, `jsx: react-jsx`, `strict`, `noEmit`, `esModuleInterop`,
 `skipLibCheck`, `isolatedModules`, `verbatimModuleSyntax`, `types: ["vite/client"]`,
-`allowJs: true`, `include: ["src", "test", "vite.config.ts", "vitest.config.ts"]`.
+`allowJs: false`, `include: ["src", "test", "vite.config.ts", "vitest.config.ts"]`.
 
 - `types: ["vite/client"]` нужен для `import '../css/*.css'`.
 - `verbatimModuleSyntax` требует `import type` для всех типов (TS1484).
-- `allowJs: true` сохраняется до этапа 3: `test/*.test.js`, `test/setup.js` и
-  `test/ts-source.js` ещё JavaScript.
+- `allowJs: false` — все тесты `.ts`/`.tsx`; `test/setup.ts` и `vitest.config.ts` тоже
+  проверяются TypeScript.
 
-**Тесты 1.8.2.** Тесты не менялись (TR-39): 9 сьютов / 113 тестов падают с `ENOENT` на
-`./js/…`, 3 сьюта / 43 теста (`scoring`, `game-rules`, `generator`) зелёные. Это
-ожидаемое состояние этапа: переписывание на `import` и `allowJs: false` — этап 3.
-Подробности — `test/README.md`.
+**Тесты 1.8.3.** 12 сьютов / 158 тестов: `test/core` (10), `test/data` (1),
+`test/services` (1). Все импортируют прод-код из `src/**`; `eval`, `readSource`,
+`test/ts-source.js` и копия `CONFIG` удалены. React-тесты и coverage 80/60 —
+следующие этапы 1.8.3. Подробности — `test/README.md` и `spec_v1_8_3.md`.
 
 ## Стиль кодирования и соглашения об именовании
 
@@ -319,6 +319,6 @@ npm run test:watch   # vitest в watch-режиме
 - **Новые звуки:** добавьте MP3-файл в `audio/`, имя — в `SOUND_NAMES` в
   `src/services/audio-service.ts` (и в тип `AudioKind`), вызовите
   `services.audio.play(kind)` в хуке.
-- **Тесты:** новый тест — файл `*.test.js` в `test/logic/`, `test/model/`, `test/service/`
-  или `test/map/`; до этапа 3 исходники читаются через `readSource()` из
-  `test/ts-source.js`, после — обычным `import`.
+- **Тесты:** новый тест — `*.test.ts` в `test/core/`, `test/data/`, `test/services/`
+  (React — `*.test.tsx` в `test/components/` или `test/hooks/`); исходники только через
+  `import` из `src/**`; `eval`/`readSource` и копии логики запрещены.

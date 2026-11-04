@@ -1,7 +1,7 @@
-// Загружаем машину состояний игрока
-const fs = require('fs');
+// Боевая машина состояний PlayerState: moveTo / revert / commitWin.
 
-eval(fs.readFileSync('./js/logic/player-state.js', 'utf8') + '\nglobal.PlayerState = PlayerState;');
+import { describe, expect, test } from 'vitest';
+import { PlayerState } from '../../src/core/player-state';
 
 describe('PlayerState', () => {
     test('на старте обе позиции совпадают — это игра на текущем', () => {
