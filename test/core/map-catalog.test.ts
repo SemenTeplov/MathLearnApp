@@ -1,10 +1,12 @@
-// Каталог карт: get / getDefault / has
-const fs = require('fs');
+// Боевой каталог карт: get / getDefault / has.
 
-eval(fs.readFileSync('./js/model/map-catalog.js', 'utf8') + '\nglobal.MapCatalog = MapCatalog;');
+import { describe, expect, test } from 'vitest';
+import { CONFIG } from '../../src/core/config';
+import { MapCatalog } from '../../src/core/map-catalog';
+import type { GameMap } from '../../src/core/types';
 
 /** Добавляет временную вторую карту и убирает её после теста. */
-function withMap(map, fn) {
+function withMap(map: GameMap, fn: () => void): void {
     CONFIG.MAPS.push(map);
     try {
         fn();
@@ -26,9 +28,9 @@ describe('MapCatalog — get', () => {
         expect(MapCatalog.get('chemistry').id).toBe('math');
     });
 
-    test('undefined → карта по умолчанию', () => {
+    test('undefined/null → карта по умолчанию', () => {
         expect(MapCatalog.get(undefined).id).toBe('math');
-        expect(MapCatalog.get(null).id).toBe('math');
+        expect(MapCatalog.get(null as unknown as string).id).toBe('math');
     });
 
     test('вторая карта каталога доступна по своему id', () => {
@@ -59,6 +61,6 @@ describe('MapCatalog — getDefault / has', () => {
 
     test('has() отклоняет неизвестную карту', () => {
         expect(MapCatalog.has('chemistry')).toBe(false);
-        expect(MapCatalog.has(undefined)).toBe(false);
+        expect(MapCatalog.has(undefined as unknown as string)).toBe(false);
     });
 });

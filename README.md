@@ -4,7 +4,8 @@
 
 Браузерная мини-игра для тренировки устного счёта. Главный экран — карта с зонами и
 тренажёрами, сложность выбирается при клике на тренажёр. Есть жизни, объяснения решений,
-оценка результата, общий счёт между сессиями и звуковое сопровождение.
+оценка результата, общий счёт между сессиями и звуковое сопровождение. Код — один граф
+ES-модулей на TypeScript: домен, данные, сервисы и React-слой связаны явными `import`.
 
 ## Возможности
 
@@ -37,13 +38,16 @@ npm run dev        # http://localhost:5173
 ```bash
 npm run typecheck  # tsc --noEmit — 0 ошибок
 npm run build      # = typecheck
-npm test           # vitest: 156 тестов в 12 сьютах (9 сьютов красные до этапа 3 — см. «Тесты»)
+npm test           # vitest: 261 тест в 28 сьютах (1.8.3 — зелёные)
+npm run test:coverage  # покрытие v8 по группам + пороги 80/60
 npx vite build     # прод-сборка: побочный эффект 1.8.2, собирается (53 модуля)
 ```
 
-> ⚠️ **Тесты на 1.8.2 красные по плану.** Сьюты читают старые `./js/…` через `readSource` +
-> `eval`; после переноса в `src/` 9 сьютов падают с `ENOENT`, 3 сьюта зелёные. Тесты не
-> менялись — их переписывание на `import` вынесено в этап 3 (см. `test/README.md`).
+> ✅ **Тесты на 1.8.3 зелёные.** Все сьюты импортируют прод-код из `src/**`;
+> `eval`, `readSource` и копия `CONFIG` удалены, `allowJs: false`.
+> 12 доменных сьютов + RTL-тесты (`@testing-library/react`): 7 компонентных,
+> 4 хуковых и 5 точечных `core`/`data`; coverage — **96.84%** statements /
+> **88.74%** branches при порогах 80/60 (см. `test/README.md`, `spec_v1_8_3.md`).
 
 > ℹ️ **Прод-сборка.** `npx vite build` в 1.8.2 впервые собирается: классических `<script>`
 > больше нет, Vite бандлит один граф модулей. Ограничение: `audio/` подключается в рантайме
@@ -140,35 +144,46 @@ npx vite build     # прод-сборка: побочный эффект 1.8.2,
 ## Тесты
 
 ```bash
-npm install   # один раз: vitest, jsdom, typescript
+npm install   # один раз: vitest, jsdom, typescript, @testing-library/*
 npm test
+npm run test:coverage
 ```
 
-156 тестов в `test/` (vitest + jsdom): правила игры, генератор, очки, правила и состояние
-игрока (`test/logic/`), статистика и звуковой сервис (`test/service/`), конфиг, каталог карт,
-схема `Stats` и счётчики раунда (`test/model/`), геометрия карты (`test/map/`).
+**261 тест в 28 сьютах** (vitest + jsdom): домен — `test/core/`, данные —
+`test/data/` (`StatsService` через `MemoryRepository`), сервисы — `test/services/`
+(звук), UI — `test/components/` и `test/hooks/` (`@testing-library/react` +
+`user-event` + `jest-dom`).
 
-На **1.8.2** тесты намеренно **не менялись**: они читают `./js/…` через `readSource` +
-`eval` и после переноса кода в `src/` падают с `ENOENT`. Фактический прогон:
+На **1.8.3** все тесты переписаны на `import`: `eval`, `readSource` и
+`test/ts-source.js` удалены, копия `CONFIG` из `test/setup.js` убрана,
+`allowJs: false`. Копии `GameRules`/`ProblemGenerator`/`Scoring` заменены настоящими
+модулями. Прогон:
 
-| Группа | Сьюты | Тесты | Статус |
-|---|---|---|---|
-| `scoring`, `game-rules`, `generator` | 3 | 43 | ✅ зелёные (дублируют логику в тесте) |
-| `config`, `map-catalog`, `session-model`, `stats-schema`, `player-rules`, `player-state`, `map-layout`, `audio-service`, `stats-service` | 9 | 113 | ❌ красные (`ENOENT: ./js/…`) |
+| Группа | Сьюты | Тесты | Покрытие (stmts/branch) | Статус |
+|---|---|---|---|---|
+| `test/core/**` | 12 | 135 | 99.32 / 90.44 | ✅ зелёные |
+| `test/data/**` | 4 | 40 | 100 / 100 | ✅ зелёные |
+| `test/services/**` | 1 | 9 | 100 / 100 | ✅ зелёные |
+| `test/components/**` | 7 | 45 | 93.44 / 87.75 | ✅ зелёные |
+| `test/hooks/**` | 4 | 32 | 95.21 / 81.92 | ✅ зелёные |
+| `src/App.tsx` | — | — | 87.17 / 100 | ✅ |
+| **Итого** | **28** | **261** | **96.84 / 88.74** | ✅ |
 
-Это ожидаемый результат миграции (TR-39): переписывание тестов на `import` — **этап 3**,
-до него `allowJs: true` и `npm test` красный. `test/**`, `test/setup.js` и
-`test/ts-source.js` в 1.8.2 не изменялись.
+Пороги покрытия — `coverage.thresholds` в `vitest.config.ts`: **80%**
+(`core`/`data`/`services`) и **60%** (`components`/`hooks`/`App.tsx`); пороги не
+понижаются. E2E (Playwright) в `npm test` не входит — backlog 1.8.3 → 1.9
+записан в `test/README.md`. Подробности — `test/README.md` и `spec_v1_8_3.md`.
 
-## Статус и smoke-тест (dev, 1.8.2)
+## Статус и smoke-тест (dev, 1.8.3)
 
-Срез на **03.11.2026** (1.8.2 — ES-модули; экраны на React с 1.8.0):
+Срез на **04.11.2026** (1.8.3 — тесты на импортах; экраны на React с 1.8.0):
 
 | Проверка | Команда | Результат |
 |---|---|---|
-| Версия | — | **1.8.2**: `src/core`/`data`/`services`/`ui`/`app`, один module-скрипт, `js/` удалён |
+| Версия | — | **1.8.3**: тесты `.test.ts(x)` на `src/**`, без `eval`/`readSource`, `allowJs: false` |
 | Типы | `npm run typecheck` | ✅ **0 ошибок** |
-| Тесты | `npm test` | ⚠️ **43/156** зелёных (3 сьюта); 9 сьютов / 113 тестов красные по плану (этап 3) |
+| Тесты | `npm test` | ✅ **261/261** в 28 сьютах |
+| Покрытие | `npm run test:coverage` | ✅ **96.84%** stmts / **88.74%** branches, пороги 80/60 |
 | Dev-сервер | `npm run dev` | ✅ `http://localhost:5173`, консоль без ошибок приложения |
 | Прод-сборка | `npx vite build` | ✅ собирается (53 модуля); ⚠️ `audio/` не копируется в `dist` |
 
@@ -226,7 +241,7 @@ css/
   game_items/       # Стили игровых элементов
   result_items/     # Стили результатов
 audio/              # Звуки (click, win, lose)
-test/               # Тесты (vitest + jsdom), не менялись в 1.8.2
+test/               # 28 сьютов / 261 тест: core, data, services, components, hooks
 ```
 
 TypeScript используется везде, включая все шесть бывших `.js`-файлов
@@ -242,7 +257,8 @@ TypeScript используется везде, включая все шесть
 - **React 19.3.1 + @types/react** — все экраны и модалки (карта, игра, результаты, шапка)
 - **ES-модули** — один граф импортов, один `<script type="module">`
 - **Vite 8** — dev-сервер и прод-сборка (побочный эффект 1.8.2)
-- **vitest + jsdom** — тесты
+- **vitest + jsdom** — тесты (домен, данные, сервисы, RTL для компонентов и хуков)
+- **@testing-library/react + user-event + jest-dom** — компонентные и хуковые тесты
 
 ## Документация процесса
 

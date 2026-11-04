@@ -74,7 +74,7 @@ css/                        # 21 файл, без изменений с 1.5.0 (A
   game_items/               # Стили игровых элементов
   result_items/             # Стили результатов
 audio/                      # click.mp3, win.mp3, lose.mp3
-test/                       # 12 сьютов / 156 тестов (в 1.8.2 — красные до этапа 3)
+test/                       # 28 сьютов / 261 тест (1.8.3 — зелёные, без eval)
 .gigacode/
   rulles/RULES.md           # Конституция проекта (актуальная версия)
   specs/SPEC.md             # Спецификация поведения (актуальная версия)
@@ -99,24 +99,51 @@ npm run dev          # http://localhost:5173 — режим разработки
 npm run typecheck    # tsc --noEmit: 0 ошибок
 npm run build        # = typecheck (Vite-сборка вызывается отдельно)
 npx vite build       # прод-сборка: собирается с 1.8.2; audio/ в dist не копируется
-npm test             # vitest run: 156 тестов; в 1.8.2 — 9 сьютов красные по плану
+npm test             # vitest run: 261 тест в 28 сьютах (1.8.3 — зелёные)
 npm run test:watch   # vitest в watch-режиме
+npm run test:coverage# coverage v8 по группам + пороги 80/60 + html в coverage/
 ```
 
 **`tsconfig.json` (T47):** `target: ESNext`, `module: ESNext`,
 `moduleResolution: Bundler`, `jsx: react-jsx`, `strict`, `noEmit`, `esModuleInterop`,
 `skipLibCheck`, `isolatedModules`, `verbatimModuleSyntax`, `types: ["vite/client"]`,
-`allowJs: true`, `include: ["src", "test", "vite.config.ts", "vitest.config.ts"]`.
+`allowJs: false`, `include: ["src", "test", "vite.config.ts", "vitest.config.ts"]`.
 
 - `types: ["vite/client"]` нужен для `import '../css/*.css'`.
 - `verbatimModuleSyntax` требует `import type` для всех типов (TS1484).
-- `allowJs: true` сохраняется до этапа 3: `test/*.test.js`, `test/setup.js` и
-  `test/ts-source.js` ещё JavaScript.
+- `allowJs: false` — все тесты `.ts`/`.tsx`; `test/setup.ts` и `vitest.config.ts` тоже
+  проверяются TypeScript.
 
-**Тесты 1.8.2.** Тесты не менялись (TR-39): 9 сьютов / 113 тестов падают с `ENOENT` на
-`./js/…`, 3 сьюта / 43 теста (`scoring`, `game-rules`, `generator`) зелёные. Это
-ожидаемое состояние этапа: переписывание на `import` и `allowJs: false` — этап 3.
-Подробности — `test/README.md`.
+**Тесты 1.8.3 (A59–A64, T50–T55).** **28 сьютов / 261 тест.** Структура зеркалит `src/`:
+
+| Каталог | Сьюты | Тесты | Что проверяет |
+|---|---|---|---|
+| `test/core/` | 12 | 135 | домен: `CONFIG`, ошибки, `error-handler`, правила, генератор, карта, `SessionModel`, `StatsSchema` |
+| `test/data/` | 4 | 40 | `StatsService` через `MemoryRepository`; `LocalStorageRepository` (квота, порча), `Repository`, `MemoryRepository` |
+| `test/services/` | 1 | 9 | `AudioService`: preload, play, ошибки |
+| `test/components/` | 7 | 45 | RTL: `App` (интеграция), `GameScreen`, `MapScreen`, `ResultsScreen`, `MapSelectionModal`, `Header`, `ErrorModal` |
+| `test/hooks/` | 4 | 32 | `renderHook`: `useGame`, `useMap`, `useResults`, `useSessionLock` |
+
+- **Только импорты (A59, T50).** Запрещены `eval`, `new Function`, `readSource`,
+  `fs.readFileSync`, `require`; `test/ts-source.js` удалён; `allowJs: false`.
+- **Без копий логики (A60).** `CONFIG`, `GameRules`, `ProblemGenerator`, `Scoring`,
+  `SessionModel` — только из `src/`; в `test/setup.ts` нет доменных констант.
+  `StatsService` создаётся как `new StatsService(new MemoryRepository())`.
+- **RTL-правила (A62, A64).** `user-event` — для кликов; `fireEvent` — только
+  `transitionend` и клик по оверлею; `renderHook` — только хуки, компоненты — только
+  компонентные сьюты; fake timers — только 100 мс debounce `resize` и 1500 мс плашки
+  `+10`; `BroadcastChannel` — управляемая заглушка через `vi.stubGlobal`.
+  `container.querySelectorAll` допустим для контрактных CSS-классов, `document.querySelector` — нет.
+- **Coverage (A63, T54).** `coverage.include` — `core`/`data`/`services`/`components`/`hooks`
+  + `App.tsx`; `thresholds`: **80%** домен и **60%** UI (пороги не понижаются).
+  Срез 1.8.3: **96.84%** statements / **88.74%** branches; `src/core/types.ts` — 0/0
+  (только типы), из отчёта не исключается.
+- **`src/**` неприкосновенен (Z28).** Тест подстраивается под прод-API; найденный дефект
+  фиксируется в отчёте и выносится за пределы версии.
+- **E2E (T50, D15).** Playwright не установлен, в `npm test` не входит; backlog
+  7 сценариев — в `test/README.md`.
+
+Подробности — `test/README.md` и `spec_v1_8_3.md`.
 
 ## Стиль кодирования и соглашения об именовании
 
@@ -288,6 +315,11 @@ npm run test:watch   # vitest в watch-режиме
   на `core/types` + `ui/types`; `SessionService`/`SessionRepository` и `useAudio` удалены
   как мёртвый код; `index.html` — `#root` + один module-скрипт. Поведение, разметка, CSS,
   `CONFIG`, `Stats` v3 и ключи хранилища не изменились.
+- **1.8.3 — тесты на импортах:** 12 сьютов переехали на `import` из `src/**`
+  (`eval`/`readSource`/`test/ts-source.js` и копия `CONFIG` удалены, `allowJs: false`);
+  затем добавлены RTL-сетап (`jest-dom`, заглушка `BroadcastChannel`), 7 компонентных
+  и 4 хуковых сьюта, 5 точечных юнит-сьютов `core`/`data`, `coverage.include` и пороги
+  80/60. `src/**`, CSS и `index.html` — без изменений; итог — 28 сьютов / 261 тест.
 
 ## Коммиты и pull requests
 
@@ -319,6 +351,6 @@ npm run test:watch   # vitest в watch-режиме
 - **Новые звуки:** добавьте MP3-файл в `audio/`, имя — в `SOUND_NAMES` в
   `src/services/audio-service.ts` (и в тип `AudioKind`), вызовите
   `services.audio.play(kind)` в хуке.
-- **Тесты:** новый тест — файл `*.test.js` в `test/logic/`, `test/model/`, `test/service/`
-  или `test/map/`; до этапа 3 исходники читаются через `readSource()` из
-  `test/ts-source.js`, после — обычным `import`.
+- **Тесты:** новый тест — `*.test.ts` в `test/core/`, `test/data/`, `test/services/`
+  (React — `*.test.tsx` в `test/components/` или `test/hooks/`); исходники только через
+  `import` из `src/**`; `eval`/`readSource` и копии логики запрещены.

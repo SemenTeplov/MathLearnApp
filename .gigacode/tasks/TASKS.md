@@ -1,7 +1,7 @@
 # TASKS.md — MathLingo
 
-**Версия:** 1.8.2  
-**Основа:** PLAN.md 1.8.2, SPEC.md 1.8.2, RULES.md 1.8.2
+**Версия:** 1.8.3  
+**Основа:** PLAN.md 1.8.3, SPEC.md 1.8.3, RULES.md 1.8.3
 
 ---
 
@@ -12,12 +12,13 @@
 - После задачи — проверить **критерий готовности** (одна строка)
 - При обрыве — продолжать с **последней** незавершённой
 
-**Статус:** этапы 0–7 ✅ (1.2.0), **этап 8** ✅ (1.3.0), **этап 9** ✅ (1.3.1), **этап 10 «Игрок на карте»** ✅ (1.4.0), **этап 11 «Модалка при приходе, откат и повторная игра»** ✅ (1.4.1), **этап 12 «Глобальная карта и `Stats` v3»** ✅ (1.5.0), **этап 13 «TypeScript без React»** ✅ (1.6.0), **этап 14 «React-пилот»** ✅ (1.7.0), **этап 15 «Миграция экранов на React»** ✅ (1.8.0), **этап 16 «Статистика раунда»** ✅ (1.8.1), **этап 17 «ES-модули»** — ✅ выполнено (1.8.2).
+**Статус:** этапы 0–7 ✅ (1.2.0), **этап 8** ✅ (1.3.0), **этап 9** ✅ (1.3.1), **этап 10 «Игрок на карте»** ✅ (1.4.0), **этап 11 «Модалка при приходе, откат и повторная игра»** ✅ (1.4.1), **этап 12 «Глобальная карта и `Stats` v3»** ✅ (1.5.0), **этап 13 «TypeScript без React»** ✅ (1.6.0), **этап 14 «React-пилот»** ✅ (1.7.0), **этап 15 «Миграция экранов на React»** ✅ (1.8.0), **этап 16 «Статистика раунда»** ✅ (1.8.1), **этап 17 «ES-модули»** — ✅ выполнено (1.8.2), **этап 18 «Тесты на импортах»** — ✅ выполнено (1.8.3): задачи 18.1–18.10 закрыты.
 
 > ℹ️ Итог 1.8.0: 10 компонентов и 6 хуков в `src/`, `js/view/**` и `js/controller/**` удалены, `js/script.js` удалён (вход — `main.tsx` + `src/bootstrap.ts`); `npx tsc --noEmit` — **0**, `npm test` — **141/141** в 11 сьютах (решение №8), CSS (21 файл) — **0 правок** (`md5sum`).
 > 🎯 Сквозной прогон 1.8.0 в headless Chromium: 31/31 проверок основного сценария + 7/7 (смена карты, узкий экран) — карта, движение 600 мс, модалки, игра, победа/провал, результаты, перезагрузка, вторая вкладка; консоль без ошибок.
 > 🧭 1.8.1 (этап 16): счётчики `correct`/`wrong` в `SessionModel`, `total = correct + wrong`, сьют `test/model/session-model.test.js` — 15 тестов; итог **156/156** в 12 сьютах, изменены 2 кодовых файла.
 > 🧩 1.8.2 (этап 17): классические скрипты → ES-модули. `js/` (19 файлов) удалён, `index.html` — `#root` + один module-скрипт, код — `src/core` (13)/`data` (4)/`services` (1)/`ui`/`app`; `npx tsc --noEmit` — **0**, `npm run dev` работает, `npx vite build` собирается (53 модуля), `npm test` — **9 сьютов / 113 тестов красные** (ENOENT на `./js/…`), **43/156 зелёных в 3 сьютах**; `test/**` не менялся (этап 3). Smoke: **15/15** проверок в headless Chromium.
+> 🧪 1.8.3 (этап 18): тесты на импортах. Этап 1 — 12 сьютов `.test.ts`, **158/158**; затем RTL-сетап, 7 компонентных + 4 хуковых сьюта, 5 точечных юнит-сьютов `core`/`data`, coverage `include` с порогами **80/60**. Итог: **28 сьютов / 261 тест**, `npx tsc --noEmit` — **0**, coverage — **96.84%** stmts / **88.74%** branches, `eval`/`readSource`/копий `CONFIG` — 0, `src/**` — 0 правок.
 
 **Покрытие US/FR — см. карту в конце.**
 
@@ -109,6 +110,33 @@ css/ (21) audio/ (3) test/ (12)       # [без изм.] (test — красны�
 ```
 
 **Порядок подключения после 1.8.2:** один `<script type="module" src="/src/main.tsx">`; CSS — импортами из `src/main.tsx` в прежнем порядке (`base`, `buttons`, `screens`, `game`, `results`, `map`); `#root` с `style="display: contents"`.
+
+### Структура после 1.8.3 (выполнено)
+
+```
+test/                                 # [ИЗМ] дельта 18.2–18.6
+├── setup.ts                          # [ИЗМ] + jest-dom, + заглушка BroadcastChannel
+├── core/                             # 12 сьютов / 135 тестов
+│   ├── error-handler.test.ts         # [NEW] 8 тестов (14 statements)
+│   └── errors.test.ts                # [NEW] 3 теста (2 пропущенных statements)
+├── data/
+│   ├── local-repository.test.ts      # [NEW] 8 тестов (17 statements)
+│   ├── repository.test.ts            # [NEW] 3 теста (3 statements)
+│   ├── memory-repository.test.ts     # [NEW] 3 теста (1 пропущенный statement)
+│   └── stats-service.test.ts         # [без изм.] 26 тестов
+├── services/audio-service.test.ts    # [ИЗМ] 9 тестов (ветка «звук не загрузился»)
+├── components/                       # [NEW] 7 файлов *.test.tsx, 45 тестов
+│   App · GameScreen · MapScreen · ResultsScreen · MapSelectionModal · Header · ErrorModal
+└── hooks/                            # [NEW] 4 файла *.test.tsx, 32 теста
+    useGame · useMap · useResults · useSessionLock
+
+vitest.config.ts                      # [ИЗМ] coverage.include + thresholds 80/60
+package.json / package-lock.json      # [ИЗМ] +3 devDependencies (@testing-library/*)
+src/** (38 файлов)                    # [без изм.] — 0 правок (Z28)
+css/ (21) · audio/ (3) · index.html   # [без изм.]
+```
+
+**Итог 1.8.3 (факт):** **28 сьютов / 261 тест** (12 этапа 1 + 5 точечных + 7 компонентных + 4 хуковых); `test/fixtures/` не появился — общие моки только в `setup.ts` (A60). `src/**` — 0 правок: тест подстраивается под прод-API, а не наоборот (Z28).
 
 ---
 
@@ -816,6 +844,70 @@ css/ (21) audio/ (3) test/ (12)       # [без изм.] (test — красны�
 
 ---
 
+## 🧪 Этап 18. Тесты на импортах (1.8.3) — ✅ выполнено
+
+> ℹ️ Цель 1.8.3: тесты должны падать, когда ломается прод-код, и проходить, когда он цел. Этап 1 (12 сьютов на `import`, удаление `eval`/`readSource`/`test/ts-source.js` и копии `CONFIG`, `allowJs: false`) — **158/158** в 12 сьютах (`core` 124 / `data` 26 / `services` 8), `npx tsc --noEmit` — **0**. Этап 18 добавил RTL-тесты (7 компонентных + 4 хуковых), 5 точечных юнит-сьютов `core`/`data`, coverage `include` с порогами **80/60**. Поведение, разметка, CSS (21 файл), тексты, `CONFIG`, `Stats` v3 и ключи `ml_stats`/`ml_session_lock` — **не менялись**; `src/**` — **0 правок** (Z28).
+
+> ✅ Итог 1.8.3 (18.10): **28 сьютов / 261 тест** зелёные, `tsc` 0, coverage-пороги зелёные: **96.84%** stmts / **88.74%** branches (порог итога ≥ 70%), `src/**` — 0 правок. Группы: `core` 99.32/90.44, `data` 100/100, `services` 100/100, `components` 93.44/87.75, `hooks` 95.21/81.92, `App.tsx` 87.17/100. Фактические числа вписаны после 18.10, без «подгонки» (Z28).
+
+**Запреты этапа (Z27 — тесты):** `eval`, `new Function`, `readSource`, `fs.readFileSync`, `require`; копии прод-логики вместо импорта; `global.CONFIG` и собственная копия `CONFIG` в `test/setup.ts`; `StatsService.init(...)`; создание сервисов в module scope; проверка приватных полей (`_lives`, `_sounds`, `_repo`) вместо публичного API; снимки всего DOM; `setTimeout`/`sleep` вместо fake timers и `waitFor`; `test.only`/`describe.skip`/`it.skip` без объяснения в отчёте; импорт компонентов в тесты хуков и наоборот.
+
+**Запреты этапа (Z28 — ради зелёного):** удалять, скипать или ослаблять существующие сценарии (12 сьютов этапа 1 — только дополнять, критерий 146); менять `src/**` под тест; понижать пороги покрытия; объявлять успех по частичному прогону или по «покрытие потом»; включать E2E в `npm test`.
+
+**Запреты этапа (Z29 — git):** `git add -A` (в дереве чужие правки `SPEC.md`/`RULES.md`/доков); коммитить `coverage/`, `node_modules`, `dist`, кэш Vite; мержить ветку с красными тестами; переписывать историю (`rebase -i`, `reset --hard`) без согласования.
+
+**Решения до реализации:** этап 1 не переписывается — 18.1 только коммитит (PLAN 1.8.3, решение №1); порядок жёсткий: `setup` → компоненты → хуки → coverage (`include` + пороги) → точечные юнит-сьюты → прогон покрытия → E2E-backlog → доки → аудит (№2); `src/**` неприкосновенен — найденный дефект фиксируется в отчёте и выносится за пределы 1.8.3 (№3, D46); фейковый `Services` — в каждом сьюте, общего `test/fixtures/` нет (T51/A60, №4, D35); движение 600 мс — `transitionend` на `.map-player`, fake timers — только 100 мс debounce `resize` и 1500 мс плашка `+10` (№5, D34); coverage сравнивается «как с чем»: 97.13/90.58 — это 15 загруженных модулей, агрегат с UI — 46.3/41.39, цель ≥ 70% (№6, D37); пороги не понижаются — недостача добирается сценариями (A63/Z28, №7); `App.test.tsx` — интеграционный, до результатов цикл «ответ → Продолжить» ≤ 10 итераций (№8, D41); `Path`/`Player`/`Trainer`/`Zone` отдельных сьютов не получают — покрываются через `MapScreen` (№9); новые зависимости — только три `@testing-library/*`, `scripts` и `jest.config.js` не меняются (№10); `coverage/` — в `.gitignore`, конфиг — в `vitest.config.ts` (№11, D42/R9); ветка — текущая `feature/001`, коммиты по шагам, пуш/мерж — по согласованию (№12). Отклонения D34–D46 — в PLAN.md 1.8.3.
+
+**Соответствие PLAN.md:** 18.0 → 18.1; 18.1 → 18.2; 18.2 → 18.3; 18.3 → 18.4; 18.4a → 18.5; 18.4b → 18.6; 18.4c → 18.7; 18.5 → 18.8; 18.6 → 18.9; 18.7 → 18.10.
+
+**Контрольные метки журнала:** `18.1 baseline` (18.1), `rtl-setup` (18.2), `components` (18.3), `hooks` (18.4), `coverage-config` (18.5), `unit-suites` (18.6), `coverage` (18.7), `e2e-backlog` (18.8), `docs 1.8.3` (18.9), `final-audit` (18.10) — в `/tmp/ml-1.8.3-log.txt`; снимок baseline — `/tmp/ml-1.8.3-baseline.txt`; копии `test/`, `vitest.config.ts`, `package*.json` для отката — `/tmp/ml-1.8.3-backup/`; прогон покрытия — `/tmp/ml-1.8.3-coverage.txt`.
+
+**18.1.** Фиксация этапа 1 (PLAN 18.0, TR-42…TR-46, Z29) — `git status --short` и фактические списки в `/tmp/ml-1.8.3-baseline.txt` (на 04.11.2026: `M` — `PLAN.md`, `RULES.md`, `SPEC.md`, `GIGACODE.md`, `README.md`, `test/README.md`, `tsconfig.json`, `vitest.config.ts`, `TASKS.md`; `D` — 12 старых `.test.js`, `setup.js`, `ts-source.js`; `??` — `test/core/`, `test/data/`, `test/services/`, `test/setup.ts`, `PLAN_v1_8_2.md`, `TASKS_v1_8_2.md`, `spec_v1_8_3.md`, `rules_v_1_8_3.md`); записать `git branch --show-current` (ожидается `feature/001`), `git rev-parse HEAD`, `npx tsc --noEmit` (0), `npm test` (**158/158**, 12 сьютов, ~5.6 с); копии `test/`, `vitest.config.ts`, `package.json`, `package-lock.json` — в `/tmp/ml-1.8.3-backup/`; **адресный** `git add test tsconfig.json vitest.config.ts README.md test/README.md GIGACODE.md .gigacode/specs/SPEC.md .gigacode/rulles/RULES.md .gigacode/specs/spec_v1_8_3.md .gigacode/rulles/rules_v_1_8_3.md .gigacode/plans/PLAN.md .gigacode/plans/PLAN_v1_8_2.md .gigacode/tasks/TASKS.md .gigacode/tasks/TASKS_v1_8_2.md` (полный `git add -A` запрещён) — коммит `test(1.8.3): сьюты на импортах — этап 1`; пуш — только по согласованию.  
+**Критерий:** этап 1 в истории одним коммитом; `git diff --name-only HEAD~1` не содержит `src/**`; `tsc` 0; `npm test` 158/158; метка `18.1 baseline`. **Зависимости:** —.
+
+**18.2.** Зависимости и `setup` (PLAN 18.1, TR-47/T50/T51, A59, A64) — `npm i -D @testing-library/react @testing-library/user-event @testing-library/jest-dom` (`@testing-library/dom` — транзитивный peer RTL 16, R5); `test/setup.ts`: `import '@testing-library/jest-dom/vitest';` (даёт `toBeInTheDocument`/`toHaveClass`/`toHaveTextContent` и типы), мок `Audio` сохранить, добавить класс-заглушку `BroadcastChannelStub` (`onmessage`, `postMessage = vi.fn()`, `close = vi.fn()`, `constructor(public name: string)`) и `vi.stubGlobal('BroadcastChannel', BroadcastChannelStub)`; **не** добавлять в `setup.ts` `CONFIG`, `ZONES`, `MAPS`, `RATINGS`, `GAMEOVER` (A59/Z27); `tsconfig.types` править только если `tsc` реально не видит матчеров `jest-dom` — после проверки, не ослабляя `strict` (R13).  
+**Критерий:** `npm ls @testing-library/react @testing-library/user-event @testing-library/jest-dom` — три пакета; `setup.ts` без доменных констант; канал замокан глобально; `npx tsc --noEmit` 0; `npm test` — по-прежнему 158/12; `npx vitest run --coverage` запускается; метка `rtl-setup`. **Зависимости:** 18.1.
+
+**18.3.** Компонентные сьюты — 7 файлов (PLAN 18.2, TR-47/T52, A62/A64) — `test/components/`:
+`GameScreen.test.tsx` (~9: вопрос, 4 `role=button`, `🏆 0`, `1/10`, 3 ❤️; `correct`/`wrong` + `disabled`; `.feedback.correct-fb.show` / `wrong-fb.show` и `.hidden` без ответа; `onNext`, `onExit`; плашка `+10` против `null`);
+`MapScreen.test.tsx` (~8: 15 `.map-trainer`, 3 зоны по 5, подписи «Сложение/Вычитание/Умножение»; `--current/--near/--far` для индексов `0` и `-1`; клик отдаёт `(zone, number, index)` из `data-*`; модалка «Сложение · Тренажёр 1» + 3 кнопки `data-diff`; `onSelectDifficulty`/`onCancel`; `transitionend` на `.map-player` при `isMoving` → `onPlayerArrived`, без `isMoving` — не вызывается);
+`App.test.tsx` (~10, интеграционный: реальные хуки + фейковый `Services`: первый рендер `#mapScreen.active` и счёт из `getTotalScore`; переход на соседний тренажёр через `transitionend` → модалка сложности; старт игры; цикл «ответ → Продолжить» ≤ 10 до `#resultScreen.active`; 🌍 и `selected` у текущей карты; `switchMap('english')` в `try/finally` над `CONFIG.MAPS`; same-map `switchMap(false)` — модалка остаётся, звук не растёт; модалка ошибки через управляемый канал; «На карту»; `audio.play('click')` — из `App`, не из компонентов);
+`ResultsScreen.test.tsx` (~4: 🎉 8/2, «Отлично!», `earnings` из props, `roundScore`/«Очков», `onPlayAgain`, `onBackToMap`);
+`MapSelectionModal.test.tsx` (~5: карты — из props, без `CONFIG`; `selected`; `onSelect`/`onClose`);
+`Header.test.tsx` (~3: `🏆 80`/`🏆 0`, только `.total-score` + кнопка, `aria-label="Выбор карты"`; жизней в `Header` нет — они в `GameScreen`, D36);
+`ErrorModal.test.tsx` (~3: заголовок/сообщение, «OK», клик по оверлею закрывает, по карточке — нет).  
+Поиск — `getByRole`/`getByText`/`getByLabelText`; `fireEvent` — только `transitionend` и оверлей (где `user-event` не выражает сценарий); `document.querySelector` — 0 или единично с комментарием (A62/D44); fake timers — только там, где таймеры есть в проде; каждый файл ≤ 200 строк (R12).  
+**Критерий:** 7 файлов, ≥ 40 тестов; `npx vitest run test/components` зелёный; `npx tsc --noEmit` 0; покрытие `src/components/**` ≥ 60% (проверяется на 18.7); метка `components`. **Зависимости:** 18.2.
+
+**18.4.** Хуковые сьюты — 4 файла (PLAN 18.3, TR-48/T53, A61/A64) — `test/hooks/`, `renderHook` + фейковый `Services` + реальные `core`-модули:
+`useGame.test.tsx` (~10: `start('easy')` → 3 жизни, 10 вопросов, прогресс 10, `questionNumber 1`, `roundScore 0`; верный ответ `+10`, `floatingScore 10`, `feedback.isCorrect`, `audio.play('click')`; неверный — жизнь минус, `floatingScore null`; повторный `answer` игнорируется (`answeredRef`); `next` сбрасывает feedback/выбор; 10/10 → `onRoundFinished({ correct: 10, total: 10, roundScore: 100, lives: 3, completed: true })`; 0/3 → `{ correct: 0, wrong: 3, total: 3, lives: 0 }`; `+10` исчезает через 1500 мс на fake timers; `exit` + `confirm(true)`/`confirm(false)`, `vi.spyOn(window, 'confirm')` — без мока выход ложно-зелёный, R7);
+`useMap.test.tsx` (~10: геометрия из `MapLayout.buildLayout(zones, 600)`, в jsdom `clientWidth = 0` → `FALLBACK_WIDTH`; клик по текущему (`getTrainerIndex → 0`) открывает модалку; по соседнему — `isMoving` + звук; `arrived()` завершает движение и открывает модалку; дальний — ignore (ни звука, ни движения, ни модалки); `cancel()` откатывает индекс; `chooseDifficulty('hard')`; `gameFinished(true)` → `saveTrainerIndex(commitWin())` и повторный вызов — no-op; `gameFinished(false)` → `revert()` без победного закрепления; `exitGame()` — откат без записи; дополнительно 100 мс debounce `resize` на fake timers);
+`useResults.test.tsx` (~5: победа 8/2 и провал — `rating`, `earnings` «Заработано: 80 ✓» / «(не зачтено)», `onRoundFinished`; `updateAfterRound(80)` + `win`; провал не пишет статистику + `lose`; повторный `show` перезаписывает данные);
+`useSessionLock.test.tsx` (~5: монтаж → `postMessage('hello')`; `onmessage` → `showError('Игра уже запущена', …)` один раз; два сообщения — один вызов (`locked`); cleanup → `close()` + `localStorage.removeItem('ml_session_lock')`; конструктор канала бросает: свободный ключ → запись, занятый → `showError`).  
+Управляемая заглушка канала — в `beforeEach` самого сьюта через `vi.stubGlobal`, в `setup.ts` остаётся безопасная по умолчанию (D39/D40); `vi.useRealTimers()` — в `afterEach`.  
+**Критерий:** 4 файла, ≥ 28 тестов; `npx vitest run test/hooks` зелёный; `npx tsc --noEmit` 0; покрытие `src/hooks/**` ≥ 60% (ожидается 70+, проверка на 18.7); `grep -rn "sleep\|setTimeout(" test/hooks` — 0; `useGame`/`useResults` не создают сервисы; метка `hooks`. **Зависимости:** 18.3.
+
+**18.5.** Coverage-конфиг (PLAN 18.4a, TR-49/T54, A63) — `vitest.config.ts`: `coverage.include` = `src/core/**/*.ts`, `src/data/**/*.ts`, `src/services/**/*.ts`, `src/components/**/*.tsx`, `src/hooks/**/*.ts`, `src/App.tsx`; `exclude` = `src/**/*.d.ts`, `src/main.tsx`; `thresholds` по группам — `core`/`data`/`services` **80** (statements/branches/functions/lines), `components`/`hooks`/`App.tsx` — **60**; `provider: 'v8'` и reporter не менять; `coverage/` — в `.gitignore`; `src/app/**` намеренно вне `include` (composition root), `src/core/types.ts` попадёт как 0/0 — это норма, в отчёт с пометкой (D42/R9).  
+**Критерий:** в конфиге есть `include` и `thresholds` 80/60; `npx tsc --noEmit` 0; `npm test` зелёный (158 + новые сьюты 18.3/18.4); `coverage/` не в индексе; метка `coverage-config`. **Зависимости:** 18.3, 18.4.  
+> ⚠️ `npm run test:coverage` на этом шаге **ожидаемо красный по группе `data`** (`local-repository` 0/17, `repository` 0/3): пороги включаются осознанно, зелёный прогон — на 18.7. Порог **не** понижать и модули не исключать (Z28).
+
+**18.6.** Точечные юнит-сьюты `core`/`data` (PLAN 18.4b, TR-44/45/49, A61) — 5 файлов: `test/core/error-handler.test.ts` (~6: четыре известные ошибки → `{ action, userMessage }`; неизвестная — `console.error` + `throw`; `initGlobalErrorHandlers` вешает `error`/`unhandledrejection` через `vi.spyOn(window, 'addEventListener')`), `test/core/errors.test.ts` (~3: `instanceof`-цепочка пяти классов, `name` каждого, `SessionError` — `Error`, но не `StorageError`), `test/data/local-repository.test.ts` (~8: round-trip, отсутствие ключа → `null`, `SyntaxError` → `CorruptedDataError`, `QuotaExceededError` по `name`/`code: 22`, прочий throw → `StorageUnavailableError`, `getItem` throw, `clear`), `test/data/repository.test.ts` (~3: `save`/`load`/`clear` бросают `Not implemented`), `test/data/memory-repository.test.ts` (~3: `save`/`load`, до записи → `null`, `clear`); дополнить `test/services/audio-service.test.ts` ветвью `play` без `preload` (строка `_isReady`, D43), существующие 8 тестов сохранить как есть; `StatsService` — только `new StatsService(new MemoryRepository())`; `handleError` — `vi.mock` один раз на файл; ошибки репозитория — `vi.spyOn(repo, 'load'/'save')` (A61/Z27).  
+**Критерий:** 5 новых файлов, ≥ 23 теста; `audio-service.test.ts` дополнен, но старые сценарии целы; `npx tsc --noEmit` 0; `npm test` зелёный; метка `unit-suites`. **Зависимости:** 18.5.
+
+**18.7.** Прогон покрытия и фиксация групп (PLAN 18.4c, TR-49, A63, D14) — `npm run test:coverage 2>&1 | tee /tmp/ml-1.8.3-coverage.txt`; зафиксировать `core`, `data`, `services`, `components`, `hooks`, `App`, итог; сверить с ожиданием: `core` ≥ 95 stmts (было 93.58/82.35), `data` ≥ 80 (было 67.69/50.0), `services` ≥ 90 (было 94.44/75.0), `components`/`hooks`/`App` ≥ 60 (было 0), итог ≥ 70 (было 46.3/41.39); ниже порога — **добавить сценарии**, не исключения и не снижение порога (Z28); `src/core/types.ts` 0/0 — пометить, не исключать (D42); при жёсткой песочнице — `--coverage.reportsDirectory=<tmp>` (R10).  
+**Критерий:** `npm run test:coverage` зелёный по всем порогам; ни одного модуля с 0% без объяснения; итог ≥ 70%; `core`/`data`/`services` не ниже baseline 1.8.3 (93.58/67.69/94.44 stmts, 82.35/50.0/75.0 branches) — критерий 147; метка `coverage`. **Зависимости:** 18.6.
+
+**18.8.** E2E — backlog, не блокер (PLAN 18.5, TR-50, D15, Z28) — Playwright **не устанавливать**; записать в этот файл и `README.md` backlog 1.8.3 → 1.9: 7 сценариев (карта и 600 мс, «Отмена» без записи, 8/2 → 80, провал, «На карту» + F5, вторая вкладка, смена карты с `−1` и сохранённым счётом); скрипт `npm run test:e2e` — только вместе с установкой.  
+**Критерий:** backlog задокументирован; в `package.json` нет `@playwright/test`; `npm test` не изменился; метка `e2e-backlog`. **Зависимости:** 18.7.
+
+**18.9.** Документация (PLAN 18.6) — `README.md`: 28 сьютов / ≈ 253 теста, RTL и coverage по группам вместо «следующие этапы 1.8.3», smoke — без изменений; `test/README.md`: `components/` и `hooks/` в структуре, раздел «Как писать RTL-тесты» (запросы, `user-event`, fake timers, `transitionend`), таблица покрытия и порогов, baseline 46.3 → цель; `GIGACODE.md`: раздел «Тесты» — зеркальная структура, запрет `eval`/копий логики, RTL-правила, пороги 80/60, ссылки на A59–A64/T50–T55; `.gigacode/specs/SPEC.md` — статус 1.8.3 «Выполнено»; `.gigacode/tasks/TASKS.md` — этот файл (этап 18, статусы, карта покрытия 1.8.3); `.gigacode/plans/` — `PLAN.md` 1.8.3, `PLAN_v1_8_2.md` — архив; `TASKS_v1_8_2.md` — архив (создан при обновлении задач под 1.8.3).  
+**Критерий:** числа в README/test/README/GIGACODE совпадают с прогоном 18.7; SPEC/TASKS/PLAN — 1.8.3; архивы `TASKS_v1_8_2.md` и `PLAN_v1_8_2.md` на месте; метка `docs 1.8.3`. **Зависимости:** 18.8.
+
+**18.10.** Финальный аудит (PLAN 18.7, критерии 136–149) — (1) `npx tsc --noEmit` 0; (2) `npm test` — все сьюты зелёные (28 файлов, ≈ 253 теста); (3) `npm run test:coverage` — пороги зелёные; (4) `grep -RIn --include='*.ts' --include='*.tsx' "eval(\|readSource\|ts-source" test` — пусто; (5) `grep -RIn "global\.CONFIG\|setupZones\|setupMaps" test` — пусто; (6) `grep -RIn "require(" test` — пусто; (7) `grep -RIn "class ProblemGenerator\|const calculateRoundScore\|const shouldEndGame\|const getRating" test` — пусто; (8) `grep -RIn "new StatsService(new MemoryRepository())" test` — есть; (9) `test -f test/core/session-model.test.ts`; (10) `ls test/components/*.test.tsx | wc -l` → 7; (11) `ls test/hooks/*.test.tsx | wc -l` → 4; (12) `grep -RIn "\.only(\|\.skip(" test` — пусто; (13) `git diff --name-only` + `git status --short` — только `test/**`, `vitest.config.ts`, `package*.json`, доки, **`src/**` пусто**, `coverage/` не в индексе; (14) `wc -l` новых файлов ≤ 200; (15) `grep -RIn "document.querySelector" test` — 0 или единично с комментарием; обновить статус этапа 18, блок «Итог 1.8.3» и «Готовность проекта» в этом файле; коммиты `test(1.8.3): …` по шагам + `docs 1.8.3`; мерж/пуш — по согласованию.  
+**Критерий:** критерии 136–149 ✅; `tsc` 0; coverage зелёный; `src/**` — 0 правок; метка `final-audit`. **Зависимости:** 18.9.
+
+---
+
 ## 📊 Карта покрытия
 
 ### 1.2.0 (выполнено)
@@ -983,7 +1075,7 @@ US/FR в 1.6.0 **не добавляются** (только TR / A / T / Z) —
 
 US/FR в 1.7.0 **не добавляются** (только TR / A / T / Z) — новых US и FR нет.
 
-### 1.8.0 (план)
+### 1.8.0 (выполнено)
 
 | Требование | Задачи |
 |-----------|--------|
@@ -1070,6 +1162,30 @@ US/FR в 1.8.1 **не добавляются** (только TR / A / T / Z) —
 | Z26. Запреты git | 17.1, 17.11 |
 
 US/FR в 1.8.2 **не добавляются** (только TR / A / T / Z) — новых US и FR нет.
+
+### 1.8.3 (выполнено)
+
+| Требование | Задачи |
+|-----------|--------|
+| TR-42. Нет `eval`/`readSource`/`CONFIG`-копии | 18.1, 18.2 |
+| TR-43. 12 сьютов на `.test.ts` | 18.1 |
+| TR-44. Настоящие реализации | 18.6 |
+| TR-45. `StatsService` + `MemoryRepository` | 18.6 |
+| TR-46. `session-model.test.ts` | 18.1 |
+| TR-47. React-тесты (RTL) | 18.2, 18.3 |
+| TR-48. Тесты хуков | 18.4 |
+| TR-49. Покрытие 80/60 | 18.5–18.7 |
+| TR-50. E2E опционально | 18.8 |
+| A59. Импорты, не копии | 18.1–18.7 |
+| A60. Зеркальная структура | 18.3–18.6 |
+| A61. Конструктор + `MemoryRepository` | 18.4, 18.6 |
+| A62. Поведение, не реализация | 18.3 |
+| A63. Покрытие-порог | 18.5, 18.7 |
+| A64. Детерминизм | 18.3–18.7 |
+| T50–T55. Структура/двойники/проверки | 18.2–18.7, 18.10 |
+| Z27–Z29. Запреты | весь этап, 18.10 |
+
+US/FR в 1.8.3 **не добавляются** (только TR / A / T / Z) — новых US и FR нет.
 
 ---
 
@@ -1177,6 +1293,16 @@ US/FR в 1.8.2 **не добавляются** (только TR / A / T / Z) —
 65. CSS (21 файл), `audio/` (3), разметка, тексты, `CONFIG`, `Stats` v3, ключи `ml_stats`/`ml_session_lock` — 0 правок; `npx vite build` собирается (53 модуля), `audio/` в `dist` не копируется
 66. Документация: README/test/README/GIGACODE — структура 1.8.2 и red-list; `SPEC.md` — 1.8.2 «Выполнено»; `TASKS.md` — этот файл; `PLAN.md` — 1.8.2 «выполнено»; архивы `PLAN_v1_8_1.md`, `TASKS_v1_8_1.md`
 67. Ветка `refactor/es-modules` от `a6f6ffa`; изменения не коммитились — рабочее дерево содержит правки кода и документации; мержа в `main`/`fix/fix_statstic` нет до зелёного `npm test` (этап 3)
+
+**Выполнено в 1.8.3 (этап 18, критерии 136–149):**
+
+68. 10 задач этапа 18 (18.1–18.10) закрыты: фиксация этапа 1, RTL-сетап, 7 компонентных сьютов, 4 хуковых, coverage `include`/пороги, 5 точечных юнит-сьютов, прогон покрытия, E2E-backlog, документация, финальный аудит
+69. TR-42…TR-50, A59–A64, T50–T55, Z27–Z29 покрыты; новых US и FR нет
+70. Факт: **28 сьютов / 261 тест** зелёные, `npx tsc --noEmit` — 0, `npm run test:coverage` — пороги зелёные (критерии 141, 142, 145)
+71. Покрытие: `core` 99.32/90.44, `data` 100/100, `services` 100/100 (`components` 93.44/87.75, `hooks` 95.21/81.92, `App.tsx` 87.17/100), итог **96.84%** stmts / **88.74%** branches ≥ 70%; baseline 1.8.3 (93.58/67.69/94.44 stmts, 82.35/50.0/75.0 branches) не потерян (критерии 143, 147)
+72. `src/**` — 0 правок (критерий 144); 12 сьютов этапа 1 сохранены, только добавления (критерий 146); `eval`/`readSource`/`require`/копий логики — 0 (критерии 136–139)
+73. E2E — backlog записан в `test/README.md` (7 сценариев), Playwright не установлен, `npm test` не изменился (критерий 148)
+74. Документация: README/test/README/GIGACODE — новые числа; `SPEC.md` — 1.8.3 «Выполнено»; `TASKS.md` — этот файл; архивы `TASKS_v1_8_2.md`, `PLAN_v1_8_2.md`; git-дисциплина без `git add -A` (критерий 149)
 
 ---
 
@@ -1422,3 +1548,20 @@ US/FR в 1.8.2 **не добавляются** (только TR / A / T / Z) —
 - **`npx vite build` работает как побочный эффект** (53 модуля); `audio/` не копируется в `dist`, потому что путь `new Audio('audio/…')` задаётся в рантайме. Правок под прод не делалось (TR-41, «Что не входит»).
 - **Git:** изменения оставлены в рабочем дереве ветки `refactor/es-modules` без коммитов — в дереве уже были несохранённые правки владельца (`SPEC.md`, `RULES.md`, `PLAN.md`, `TASKS.md`, новые `spec_v1_8_2.md`, `rules_v_1_8_2.md`), `git add -A` запрещён (Z26); коммиты — по согласованию.
 - **Документация:** README/GIGACODE переписаны под 1.8.2 (структура, слои, `tsconfig`, red-list, smoke); `test/README.md` — red-list и этап 3; `SPEC.md` и `spec_v1_8_2.md` — «Выполнено»; `PLAN.md` — статус «выполнено».
+
+---
+
+## 📝 Решения и уточнения 1.8.3 (до реализации)
+
+- **Этап 1 не переписывается:** 12 сьютов уже на `import` (158/158, `tsc` 0), 18.1 только коммитит их адресным `git add` — в дереве чужие правки `SPEC.md`/`RULES.md`/доков, полный `git add -A` запрещён (Z29).
+- **Порядок: `setup` → компоненты → хуки → coverage-конфиг → точечные юнит-сьюты → прогон покрытия → E2E-backlog → доки → аудит.** После каждого шага — `tsc` 0 и зелёный `npm test`; `npm run test:coverage` — на 18.7 и в аудите. Пороги включаются в 18.5, когда UI-сьюты уже написаны; красный `data` до 18.6 — ожидаемое состояние, а не повод понизить порог.
+- **`src/**` неприкосновенен (Z28/TR-47):** тест подстраивается под прод-API. Найденный дефект (например, отрицательный ответ в `hard`, D12 спеки) фиксируется в отчёте и выносится за пределы 1.8.3 (D46).
+- **Фейковый `Services` — в каждом сьюте (T51), общего `test/fixtures/` нет (A60):** дублирование ~10 строк на файл осознанно; если начнёт мешать — вопрос владельцу (D35).
+- **Движение 600 мс — CSS-transition + `onTransitionEnd`, а не `setTimeout` (D34):** тест эмитит `transitionend` на `.map-player`; fake timers — только 100 мс debounce `resize` и 1500 мс плашки `+10`. Тест, «ожидающий 600 мс», падает по таймауту и считается антипаттерном (R2).
+- **Coverage сравнивается по сопоставимому набору (D37):** 97.13/90.58 — это 15 загруженных модулей; с `include` всех слоёв агрегат — 46.3/41.39. Порог «не падать» — для `core`/`data`/`services`, агрегат — по целевым 80/60 и итогу ≥ 70%.
+- **Пороги не понижаются (A63/Z28):** недостача добирается сценариями; `types.ts` (0/0) помечается в отчёте, а не исключается (D42); ветка `audio-service.play` без `preload` — добавление, не замена (D43).
+- **`App.test.tsx` — интеграционный:** реальные хуки + фейковый `Services`; до `ResultsScreen` — цикл «ответ → Продолжить» ≤ 10 итераций, исход детерминирован без подмены хуков (D41); `CONFIG.MAPS` меняется в `try/finally` и восстанавливается.
+- **`Path`/`Player`/`Trainer`/`Zone` отдельных сьютов не получают:** покрываются через `MapScreen`; `Header` проверяет счёт и 🌍, жизни — в `GameScreen` (D36, фактический API 1.8.2).
+- **Зависимости — только три `@testing-library/*`** (React 19 совместим с RTL 16, `jest-dom` — импорт `/vitest`); `scripts` и `jest.config.js` не меняются; `coverage/` — в `.gitignore`, конфиг — в `vitest.config.ts` (№10/№11, R9).
+- **Ветка — текущая `feature/001`:** коммиты по шагам (`test(1.8.3): …`, `docs 1.8.3`, `final-audit`); пуш и мерж — по согласованию (Z29).
+- **`TASKS.md` — этот файл** (задачи 18.1–18.10); предыдущая версия — `.gigacode/tasks/TASKS_v1_8_2.md` (архив, создан при обновлении задач под 1.8.3), план 1.8.2 — `.gigacode/plans/PLAN_v1_8_2.md`.

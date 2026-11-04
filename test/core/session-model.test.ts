@@ -1,23 +1,22 @@
-// Счётчики ответов в SessionModel: correct/wrong, total = correct + wrong, оценка, reset
-const { readSource } = require('../ts-source');
+// Счётчики ответов в SessionModel: correct/wrong, total = correct + wrong, оценка, reset.
 
-eval(readSource('./js/model/session-model.ts') +
-    '\nglobal.SessionModel = SessionModel;');
-eval(readSource('./js/logic/game-rules.ts') +
-    '\nglobal.GameRules = GameRules;');
+import { describe, expect, test } from 'vitest';
+import { CONFIG } from '../../src/core/config';
+import { GameRules } from '../../src/core/game-rules';
+import { SessionModel } from '../../src/core/session-model';
 
 /** Отвечает `times` раз правильно. */
-function answerCorrect(model, times) {
+function answerCorrect(model: SessionModel, times: number): void {
     for (let i = 0; i < times; i++) model.recordCorrect();
 }
 
 /** Отвечает `times` раз неправильно. */
-function answerIncorrect(model, times) {
+function answerIncorrect(model: SessionModel, times: number): void {
     for (let i = 0; i < times; i++) model.recordIncorrect();
 }
 
 /** Продвигает индекс вопроса `times` раз. */
-function advance(model, times) {
+function advance(model: SessionModel, times: number): void {
     for (let i = 0; i < times; i++) model.advanceQuestion();
 }
 

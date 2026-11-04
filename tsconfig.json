@@ -12,7 +12,7 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "types": ["vite/client"],
-    "allowJs": true
+    "allowJs": false
   },
   "include": ["src", "test", "vite.config.ts", "vitest.config.ts"]
 }
