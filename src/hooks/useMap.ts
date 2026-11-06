@@ -102,28 +102,31 @@ export function useMap(services: Services): UseMap {
         setState(next);
     }, [services]);
 
-    const onTrainerClick = useCallback((zone: Zone | undefined, trainerNumber: number, trainerIndex: number) => {
-        if (isMoving || isModalOpen) return;
+    const onTrainerClick = useCallback(
+        (zone: Zone | undefined, trainerNumber: number, trainerIndex: number) => {
+            if (isMoving || isModalOpen) return;
 
-        const player = playerRef.current;
-        if (!player) return;
+            const player = playerRef.current;
+            if (!player) return;
 
-        const action = PlayerRules.getAction(player.index, trainerIndex);
-        if (action === 'ignore') return;
+            const action = PlayerRules.getAction(player.index, trainerIndex);
+            if (action === 'ignore') return;
 
-        services.audio.play('click');
+            services.audio.play('click');
 
-        if (action === 'play') {
-            setModalTarget({ zoneTitle: zone ? zone.title : '', trainerNumber });
-            setIsModalOpen(true);
-            return;
-        }
+            if (action === 'play') {
+                setModalTarget({ zoneTitle: zone ? zone.title : '', trainerNumber });
+                setIsModalOpen(true);
+                return;
+            }
 
-        player.moveTo(trainerIndex);
-        pendingRef.current = { zoneTitle: zone ? zone.title : '', trainerNumber };
-        setIsMoving(true);
-        setState((prev) => ({ ...prev, currentTrainerIndex: trainerIndex }));
-    }, [isMoving, isModalOpen, services]);
+            player.moveTo(trainerIndex);
+            pendingRef.current = { zoneTitle: zone ? zone.title : '', trainerNumber };
+            setIsMoving(true);
+            setState((prev) => ({ ...prev, currentTrainerIndex: trainerIndex }));
+        },
+        [isMoving, isModalOpen, services]
+    );
 
     const arrived = useCallback(() => {
         const target = pendingRef.current;
@@ -146,32 +149,38 @@ export function useMap(services: Services): UseMap {
         setState((prev) => ({ ...prev, currentTrainerIndex: index }));
     }, [services]);
 
-    const chooseDifficulty = useCallback((difficulty: Difficulty) => {
-        services.audio.play('click');
-        setSelectedDifficulty(difficulty);
-        setIsModalOpen(false);
-        setModalTarget(null);
-    }, [services]);
+    const chooseDifficulty = useCallback(
+        (difficulty: Difficulty) => {
+            services.audio.play('click');
+            setSelectedDifficulty(difficulty);
+            setIsModalOpen(false);
+            setModalTarget(null);
+        },
+        [services]
+    );
 
-    const gameFinished = useCallback((isSuccessful: boolean) => {
-        const player = playerRef.current;
-        if (!player) return;
+    const gameFinished = useCallback(
+        (isSuccessful: boolean) => {
+            const player = playerRef.current;
+            if (!player) return;
 
-        if (player.isReplay()) return;
+            if (player.isReplay()) return;
 
-        if (isSuccessful) {
-            services.stats.saveTrainerIndex(player.commitWin());
-        } else {
-            player.revert();
-            services.stats.saveTrainerIndex(player.index);
-        }
+            if (isSuccessful) {
+                services.stats.saveTrainerIndex(player.commitWin());
+            } else {
+                player.revert();
+                services.stats.saveTrainerIndex(player.index);
+            }
 
-        setState((prev) => ({
-            ...prev,
-            currentTrainerIndex: player.index,
-            totalScore: services.stats.getTotalScore()
-        }));
-    }, [services]);
+            setState((prev) => ({
+                ...prev,
+                currentTrainerIndex: player.index,
+                totalScore: services.stats.getTotalScore()
+            }));
+        },
+        [services]
+    );
 
     const exitGame = useCallback(() => {
         const player = playerRef.current;

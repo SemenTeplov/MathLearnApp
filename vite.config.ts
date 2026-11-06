@@ -10,6 +10,6 @@ export default defineConfig({
     build: {
         outDir: 'dist',
         sourcemap: true,
-        assetsInlineLimit: 0,
-    },
+        assetsInlineLimit: 0
+    }
 });

@@ -14,11 +14,7 @@ const play = vi.fn().mockResolvedValue(undefined);
 const pause = vi.fn();
 const cloneNode = vi.fn(() => ({ play, pause }));
 
-const AudioMock = vi.fn(function (this: {
-    play: typeof play;
-    pause: typeof pause;
-    cloneNode: typeof cloneNode;
-}) {
+const AudioMock = vi.fn(function (this: { play: typeof play; pause: typeof pause; cloneNode: typeof cloneNode }) {
     this.play = play;
     this.pause = pause;
     this.cloneNode = cloneNode;

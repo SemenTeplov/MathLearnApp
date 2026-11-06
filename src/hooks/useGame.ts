@@ -64,11 +64,14 @@ export function useGame(services: Services, { onRoundFinished, onExitToMap }: Us
     const [correctIndex, setCorrectIndex] = useState<number | null>(null);
     const [floatingScore, setFloatingScore] = useState<number | null>(null);
 
-    useEffect(() => () => {
-        if (floatingTimerRef.current) {
-            clearTimeout(floatingTimerRef.current);
-        }
-    }, []);
+    useEffect(
+        () => () => {
+            if (floatingTimerRef.current) {
+                clearTimeout(floatingTimerRef.current);
+            }
+        },
+        []
+    );
 
     const start = useCallback((difficulty?: Difficulty) => {
         const model = modelRef.current!;
@@ -101,44 +104,47 @@ export function useGame(services: Services, { onRoundFinished, onExitToMap }: Us
         });
     }, []);
 
-    const answer = useCallback((index: number) => {
-        const model = modelRef.current!;
-        if (!question || answeredRef.current) {
-            return;
-        }
-        answeredRef.current = true;
-
-        services.audio.play('click');
-
-        const chosen = question.options[index];
-        const isCorrect = GameRules.checkAnswer(chosen, question.answer);
-        const rightIndex = question.options.indexOf(question.answer);
-
-        if (isCorrect) {
-            model.recordCorrect();
-            setFloatingScore(CONFIG.POINTS_BASE);
-            if (floatingTimerRef.current) {
-                clearTimeout(floatingTimerRef.current);
+    const answer = useCallback(
+        (index: number) => {
+            const model = modelRef.current!;
+            if (!question || answeredRef.current) {
+                return;
             }
-            floatingTimerRef.current = setTimeout(() => {
-                floatingTimerRef.current = null;
-                setFloatingScore(null);
-            }, 1500);
-        } else {
-            model.recordIncorrect();
-        }
+            answeredRef.current = true;
 
-        setSelectedIndex(index);
-        setCorrectIndex(rightIndex);
-        setFeedback({
-            isCorrect,
-            title: isCorrect ? '✅ Правильно!' : '❌ Неправильно',
-            message: isCorrect
-                ? question.explanation
-                : 'Правильный ответ: ' + question.answer + '. ' + question.explanation
-        });
-        setSession((prev) => ({ ...prev, lives: model.lives, roundScore: model.roundScore }));
-    }, [question, services]);
+            services.audio.play('click');
+
+            const chosen = question.options[index];
+            const isCorrect = GameRules.checkAnswer(chosen, question.answer);
+            const rightIndex = question.options.indexOf(question.answer);
+
+            if (isCorrect) {
+                model.recordCorrect();
+                setFloatingScore(CONFIG.POINTS_BASE);
+                if (floatingTimerRef.current) {
+                    clearTimeout(floatingTimerRef.current);
+                }
+                floatingTimerRef.current = setTimeout(() => {
+                    floatingTimerRef.current = null;
+                    setFloatingScore(null);
+                }, 1500);
+            } else {
+                model.recordIncorrect();
+            }
+
+            setSelectedIndex(index);
+            setCorrectIndex(rightIndex);
+            setFeedback({
+                isCorrect,
+                title: isCorrect ? '✅ Правильно!' : '❌ Неправильно',
+                message: isCorrect
+                    ? question.explanation
+                    : 'Правильный ответ: ' + question.answer + '. ' + question.explanation
+            });
+            setSession((prev) => ({ ...prev, lives: model.lives, roundScore: model.roundScore }));
+        },
+        [question, services]
+    );
 
     const next = useCallback(() => {
         const model = modelRef.current!;

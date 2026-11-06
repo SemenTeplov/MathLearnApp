@@ -94,10 +94,10 @@ describe('MapLayout.buildLayout', () => {
     });
 
     test('зона с нулём тренажёров не создаёт полосу-призрак', () => {
-        const layout = MapLayout.buildLayout([
-            { id: 'empty', title: 'Пусто', color: '#000000', trainersCount: 0 },
-            zones[0]
-        ], 600);
+        const layout = MapLayout.buildLayout(
+            [{ id: 'empty', title: 'Пусто', color: '#000000', trainersCount: 0 }, zones[0]],
+            600
+        );
 
         expect(layout.trainers).toHaveLength(5);
         expect(layout.bands[0].height).toBe(0);

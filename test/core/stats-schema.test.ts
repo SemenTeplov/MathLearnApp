@@ -104,8 +104,7 @@ describe('StatsSchema — миграции', () => {
     });
 
     test('версия новее текущей → CorruptedDataError', () => {
-        expect(() => StatsSchema.migrate({ version: 9, totalScore: 100 }))
-            .toThrow(CorruptedDataError);
+        expect(() => StatsSchema.migrate({ version: 9, totalScore: 100 })).toThrow(CorruptedDataError);
     });
 
     test('повторная миграция идемпотентна', () => {

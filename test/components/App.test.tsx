@@ -7,13 +7,16 @@ import { App } from '../../src/App';
 import type { Services } from '../../src/app/types';
 import { CONFIG } from '../../src/core/config';
 import type { GameMap } from '../../src/core/types';
-import { MemoryRepository } from '../../src/data/memory-repository';
+import { MemoryRepository } from '../support/memory-repository';
 import { StatsService } from '../../src/data/stats-service';
-import type { AudioService } from '../../src/services/audio-service';
 
 const ENGLISH: GameMap = { id: 'english', title: 'Английский', zones: CONFIG.ZONES };
 
-type Channel = { onmessage: ((event: MessageEvent) => void) | null; postMessage: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> };
+type Channel = {
+    onmessage: ((event: MessageEvent) => void) | null;
+    postMessage: ReturnType<typeof vi.fn>;
+    close: ReturnType<typeof vi.fn>;
+};
 let channels: Channel[] = [];
 
 /** Управляемая заглушка: сьют сам «шлёт» сообщение второй вкладки. */

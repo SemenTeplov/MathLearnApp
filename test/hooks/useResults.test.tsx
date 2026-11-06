@@ -5,10 +5,9 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Services } from '../../src/app/types';
 import { CONFIG } from '../../src/core/config';
 import type { GameResult } from '../../src/core/types';
-import { MemoryRepository } from '../../src/data/memory-repository';
+import { MemoryRepository } from '../support/memory-repository';
 import { StatsService } from '../../src/data/stats-service';
 import { useResults } from '../../src/hooks/useResults';
-import type { AudioService } from '../../src/services/audio-service';
 
 const WIN: GameResult = { correct: 8, wrong: 2, total: 10, roundScore: 80, lives: 3, completed: true };
 const LOSE: GameResult = { correct: 0, wrong: 3, total: 3, roundScore: 0, lives: 0, completed: true };

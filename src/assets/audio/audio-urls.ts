@@ -13,7 +13,7 @@ import loseUrl from './lose.mp3?url';
 export const AUDIO_URLS = {
     click: clickUrl,
     win: winUrl,
-    lose: loseUrl,
+    lose: loseUrl
 } as const;
 
 /** Имя звука, который умеет проигрывать AudioService. */

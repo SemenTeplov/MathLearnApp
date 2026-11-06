@@ -1,8 +1,9 @@
 // ============================================
-// CORE/SESSION-MODEL.TS — состояние раунда (1.8.2)
+// CORE/SESSION-MODEL.TS — состояние раунда (1.9.0)
 // ============================================
 
 import { CONFIG } from './config';
+import { Scoring } from './scoring';
 import type { Difficulty, GameResult } from './types';
 
 /**
@@ -83,7 +84,9 @@ export class SessionModel {
     /** Начисляет очки за правильный ответ. */
     recordCorrect(): void {
         this._correct++;
-        this._roundScore += CONFIG.POINTS_BASE;
+        // Очки не накапливаются повтором формулы, а пересчитываются из числа
+        // правильных ответов — единственный источник правила очков (Scoring).
+        this._roundScore = Scoring.calculateRoundScore(this._correct);
     }
 
     /** Уменьшает жизни при неправильном ответе. */

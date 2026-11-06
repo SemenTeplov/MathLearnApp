@@ -1,7 +1,7 @@
 // MemoryRepository: save/load в памяти, null до записи и clear.
 
 import { beforeEach, describe, expect, test } from 'vitest';
-import { MemoryRepository } from '../../src/data/memory-repository';
+import { MemoryRepository } from '../support/memory-repository';
 
 describe('MemoryRepository', () => {
     let repo: MemoryRepository;

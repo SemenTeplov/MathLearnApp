@@ -22,31 +22,31 @@ export interface UseResults {
  * @param services — сервисы приложения (статистика, звук)
  * @param onRoundFinished — сообщает об итоге раунда (позиция на карте)
  */
-export function useResults(
-    services: Services,
-    onRoundFinished: (isSuccessful: boolean) => void
-): UseResults {
+export function useResults(services: Services, onRoundFinished: (isSuccessful: boolean) => void): UseResults {
     const [view, setView] = useState<ResultsView | null>(null);
 
-    const show = useCallback((results: GameResult): void => {
-        const rating: Rating = GameRules.getRating(results);
-        const isSuccessful = Scoring.isRoundSuccessful(results.lives, results.completed);
+    const show = useCallback(
+        (results: GameResult): void => {
+            const rating: Rating = GameRules.getRating(results);
+            const isSuccessful = Scoring.isRoundSuccessful(results.lives, results.completed);
 
-        onRoundFinished(isSuccessful);
+            onRoundFinished(isSuccessful);
 
-        if (isSuccessful) {
-            services.stats.updateAfterRound(results.roundScore);
-            services.audio.play('win');
-        } else {
-            services.audio.play('lose');
-        }
+            if (isSuccessful) {
+                services.stats.updateAfterRound(results.roundScore);
+                services.audio.play('win');
+            } else {
+                services.audio.play('lose');
+            }
 
-        const earnings = isSuccessful
-            ? 'Заработано: ' + results.roundScore + ' ✓'
-            : 'Заработано: ' + results.roundScore + ' (не зачтено)';
+            const earnings = isSuccessful
+                ? 'Заработано: ' + results.roundScore + ' ✓'
+                : 'Заработано: ' + results.roundScore + ' (не зачтено)';
 
-        setView({ results, rating, earnings });
-    }, [onRoundFinished, services]);
+            setView({ results, rating, earnings });
+        },
+        [onRoundFinished, services]
+    );
 
     return { view, show };
 }

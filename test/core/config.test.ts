@@ -24,11 +24,7 @@ describe('CONFIG — каталог карт (1.5.0)', () => {
     });
 
     test('в каталоге 3 зоны по 5 тренажёров', () => {
-        expect(CONFIG.ZONES.map((zone) => zone.id)).toEqual([
-            'addition',
-            'subtraction',
-            'multiplication'
-        ]);
+        expect(CONFIG.ZONES.map((zone) => zone.id)).toEqual(['addition', 'subtraction', 'multiplication']);
         CONFIG.ZONES.forEach((zone) => {
             expect(zone.trainersCount).toBe(5);
         });

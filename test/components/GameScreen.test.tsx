@@ -118,7 +118,9 @@ describe('GameScreen', () => {
         const feedback = container.querySelector('.feedback');
 
         expect(feedback).toHaveClass('hidden');
-        expect(Array.from(container.querySelectorAll('.answer-btn')).some((item) => item.hasAttribute('disabled'))).toBe(false);
+        expect(
+            Array.from(container.querySelectorAll('.answer-btn')).some((item) => item.hasAttribute('disabled'))
+        ).toBe(false);
     });
 
     test('«Продолжить» вызывает onNext один раз', async () => {

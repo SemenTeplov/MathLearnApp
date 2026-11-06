@@ -4,7 +4,7 @@
    ============================================ */
 
 /* 1. Шапка игры: прогресс-бар, жизни, счётчик */
-@import url('game_items/game-answers.css');
+@import url('game_items/game-header.css');
 
 /* 2. Вопрос */
 @import url('game_items/game-question.css');

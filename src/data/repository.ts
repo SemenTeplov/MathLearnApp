@@ -8,7 +8,7 @@
  */
 export class Repository {
     /** Сохраняет данные. */
-    save(data: unknown): void {
+    save(_data: unknown): void {
         throw new Error('Not implemented');
     }
 

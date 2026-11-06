@@ -2,12 +2,7 @@
 // CORE/ERROR-HANDLER.TS — централизованная обработка ошибок (1.8.2)
 // ============================================
 
-import {
-    CorruptedDataError,
-    QuotaExceededError,
-    SessionError,
-    StorageUnavailableError
-} from './errors';
+import { CorruptedDataError, QuotaExceededError, SessionError, StorageUnavailableError } from './errors';
 import type { ErrorInfo } from './types';
 
 /**
