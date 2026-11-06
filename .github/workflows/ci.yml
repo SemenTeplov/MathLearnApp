@@ -1,0 +1,47 @@
+name: CI
+
+on:
+    push:
+        branches: [main, dev, 'feature/**']
+    pull_request:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    verify:
+        name: ci (node 22)
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Node 22
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Установка по lock-файлу
+              run: npm ci
+
+            - name: Типы
+              run: npm run typecheck
+
+            - name: Тесты
+              run: npm test
+
+            - name: Сборка
+              run: npm run build
+
+            - name: Линтер
+              run: npm run lint
+
+            - name: Smoke собранного dist
+              run: npm run smoke

@@ -63,28 +63,23 @@ describe('GameRules.shouldEndGame', () => {
 
 describe('GameRules.getRating', () => {
     test('возвращает GAMEOVER при lives <= 0', () => {
-        expect(GameRules.getRating(results({ lives: 0, correct: 5, wrong: 5, total: 10 })))
-            .toBe(CONFIG.GAMEOVER);
+        expect(GameRules.getRating(results({ lives: 0, correct: 5, wrong: 5, total: 10 }))).toBe(CONFIG.GAMEOVER);
     });
 
     test('возвращает «Идеально» при точности 100%', () => {
-        expect(GameRules.getRating(results({ correct: 10, total: 10 })))
-            .toBe(CONFIG.RATINGS[0]);
+        expect(GameRules.getRating(results({ correct: 10, total: 10 }))).toBe(CONFIG.RATINGS[0]);
     });
 
     test('возвращает «Отлично» при точности >= 70%', () => {
-        expect(GameRules.getRating(results({ correct: 7, wrong: 3, total: 10 })))
-            .toBe(CONFIG.RATINGS[1]);
+        expect(GameRules.getRating(results({ correct: 7, wrong: 3, total: 10 }))).toBe(CONFIG.RATINGS[1]);
     });
 
     test('возвращает «Неплохо» при точности >= 40%', () => {
-        expect(GameRules.getRating(results({ correct: 4, wrong: 6, total: 10 })))
-            .toBe(CONFIG.RATINGS[2]);
+        expect(GameRules.getRating(results({ correct: 4, wrong: 6, total: 10 }))).toBe(CONFIG.RATINGS[2]);
     });
 
     test('возвращает «Нужно потренироваться» при точности < 40%', () => {
-        expect(GameRules.getRating(results({ correct: 3, wrong: 7, total: 10 })))
-            .toBe(CONFIG.RATINGS[3]);
+        expect(GameRules.getRating(results({ correct: 3, wrong: 7, total: 10 }))).toBe(CONFIG.RATINGS[3]);
     });
 
     test('возвращает «Нужно потренироваться» при total = 0', () => {
@@ -93,7 +88,6 @@ describe('GameRules.getRating', () => {
 
     test('округляет точность до целых процентов', () => {
         // 2/3 = 66.67% → 67%, всё ещё ниже порога 70%.
-        expect(GameRules.getRating(results({ correct: 2, wrong: 1, total: 3 })))
-            .toBe(CONFIG.RATINGS[2]);
+        expect(GameRules.getRating(results({ correct: 2, wrong: 1, total: 3 }))).toBe(CONFIG.RATINGS[2]);
     });
 });

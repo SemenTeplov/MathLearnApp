@@ -207,7 +207,7 @@ describe('ProblemGenerator.hard', () => {
                 expect(p).toBeLessThanOrEqual(50);
                 expect(a).toBeGreaterThanOrEqual(10);
                 expect(a).toBeLessThanOrEqual(50);
-                expect(problem.answer).toBe(Math.round(a * p / 100));
+                expect(problem.answer).toBe(Math.round((a * p) / 100));
             } else if (problem.question.includes('³')) {
                 operators.add('³');
                 const [a] = parts;

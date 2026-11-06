@@ -99,19 +99,18 @@ export const StatsSchema = {
 
     /** Переносит плоские поля версии 2 в карту по умолчанию. */
     _toMaps(stats: LegacyStats): void {
-        const maps: Record<string, MapData> = stats.maps && typeof stats.maps === 'object'
-            ? stats.maps
-            : {};
+        const maps: Record<string, MapData> = stats.maps && typeof stats.maps === 'object' ? stats.maps : {};
         const mapId = MapCatalog.has(stats.currentMap) ? stats.currentMap : this._defaultId();
-        const existing: MapData = maps[mapId] && typeof maps[mapId] === 'object'
-            ? maps[mapId]
-            : {} as MapData;
+        const existing: MapData = maps[mapId] && typeof maps[mapId] === 'object' ? maps[mapId] : ({} as MapData);
 
         maps[mapId] = {
-            totalScore: stats.totalScore == null ? (existing.totalScore || 0) : stats.totalScore,
-            currentTrainerIndex: stats.currentTrainerIndex == null
-                ? (existing.currentTrainerIndex == null ? -1 : existing.currentTrainerIndex)
-                : stats.currentTrainerIndex
+            totalScore: stats.totalScore == null ? existing.totalScore || 0 : stats.totalScore,
+            currentTrainerIndex:
+                stats.currentTrainerIndex == null
+                    ? existing.currentTrainerIndex == null
+                        ? -1
+                        : existing.currentTrainerIndex
+                    : stats.currentTrainerIndex
         };
 
         stats.maps = maps;

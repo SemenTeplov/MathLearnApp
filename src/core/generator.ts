@@ -33,17 +33,20 @@ export class ProblemGenerator {
         let a: number, b: number, answer: number, question: string, explanation: string;
 
         if (type === 1) {
-            a = this.rnd(1, 20); b = this.rnd(1, 20);
+            a = this.rnd(1, 20);
+            b = this.rnd(1, 20);
             answer = a + b;
             question = `${a} + ${b} = ?`;
             explanation = `${a} + ${b} = ${answer}`;
         } else if (type === 2) {
-            a = this.rnd(5, 20); b = this.rnd(1, a);
+            a = this.rnd(5, 20);
+            b = this.rnd(1, a);
             answer = a - b;
             question = `${a} − ${b} = ?`;
             explanation = `${a} − ${b} = ${answer}`;
         } else {
-            a = this.rnd(1, 10); b = this.rnd(1, 10);
+            a = this.rnd(1, 10);
+            b = this.rnd(1, 10);
             answer = a * b;
             question = `${a} × ${b} = ?`;
             explanation = `${a} × ${b} = ${answer}`;
@@ -56,17 +59,20 @@ export class ProblemGenerator {
         let a: number, b: number, answer: number, question: string, explanation: string;
 
         if (type === 1) {
-            a = this.rnd(10, 100); b = this.rnd(10, 100);
+            a = this.rnd(10, 100);
+            b = this.rnd(10, 100);
             answer = a + b;
             question = `${a} + ${b} = ?`;
             explanation = `${a} + ${b} = ${answer}`;
         } else if (type === 2) {
-            a = this.rnd(50, 200); b = this.rnd(10, 50);
+            a = this.rnd(50, 200);
+            b = this.rnd(10, 50);
             answer = a - b;
             question = `${a} − ${b} = ?`;
             explanation = `${a} − ${b} = ${answer}`;
         } else if (type === 3) {
-            a = this.rnd(2, 15); b = this.rnd(2, 12);
+            a = this.rnd(2, 15);
+            b = this.rnd(2, 12);
             answer = a * b;
             question = `${a} × ${b} = ?`;
             explanation = `${a} × ${b} = ${answer}`;
@@ -90,7 +96,8 @@ export class ProblemGenerator {
         let a: number, b: number, answer: number, question: string, explanation: string;
 
         if (type === 1) {
-            a = this.rnd(5, 20); b = this.rnd(2, 10);
+            a = this.rnd(5, 20);
+            b = this.rnd(2, 10);
             const c = this.rnd(1, 20);
             answer = a * b + c;
             question = `${a} × ${b} + ${c} = ?`;
@@ -109,11 +116,12 @@ export class ProblemGenerator {
         } else if (type === 4) {
             a = this.rnd(10, 50);
             const p = this.rnd(10, 50);
-            answer = Math.round(a * p / 100);
+            answer = Math.round((a * p) / 100);
             question = `${p}% от ${a} = ?`;
             explanation = `${p}% от ${a} = ${a} × ${p / 100} = ${answer}`;
         } else {
-            a = this.rnd(2, 9); b = this.rnd(2, 9);
+            a = this.rnd(2, 9);
+            b = this.rnd(2, 9);
             const c = this.rnd(2, 9);
             answer = a * b - c;
             question = `${a} × ${b} − ${c} = ?`;

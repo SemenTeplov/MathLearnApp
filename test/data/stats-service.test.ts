@@ -3,13 +3,9 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { CONFIG } from '../../src/core/config';
 import { handleError } from '../../src/core/error-handler';
-import {
-    CorruptedDataError,
-    QuotaExceededError,
-    StorageUnavailableError
-} from '../../src/core/errors';
+import { CorruptedDataError, QuotaExceededError, StorageUnavailableError } from '../../src/core/errors';
 import type { GameMap, Stats } from '../../src/core/types';
-import { MemoryRepository } from '../../src/data/memory-repository';
+import { MemoryRepository } from '../support/memory-repository';
 import { StatsService } from '../../src/data/stats-service';
 
 vi.mock('../../src/core/error-handler', () => ({

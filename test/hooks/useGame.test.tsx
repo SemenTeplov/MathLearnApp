@@ -7,7 +7,6 @@ import type { Services } from '../../src/app/types';
 import { CONFIG } from '../../src/core/config';
 import type { Problem } from '../../src/core/types';
 import { useGame } from '../../src/hooks/useGame';
-import type { AudioService } from '../../src/services/audio-service';
 
 function makeServices(): { services: Services; audio: { play: ReturnType<typeof vi.fn> } } {
     const audio = { play: vi.fn() };
@@ -23,8 +22,7 @@ function setup() {
 }
 
 const correctIndexOf = (question: Problem): number => question.options.indexOf(question.answer);
-const wrongIndexOf = (question: Problem): number =>
-    question.options.findIndex((option) => option !== question.answer);
+const wrongIndexOf = (question: Problem): number => question.options.findIndex((option) => option !== question.answer);
 
 describe('useGame', () => {
     afterEach(() => {

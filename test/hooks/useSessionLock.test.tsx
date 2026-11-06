@@ -56,10 +56,7 @@ describe('useSessionLock', () => {
             channels[0].onmessage?.(new MessageEvent('message', { data: 'hello' }));
         });
 
-        expect(showError).toHaveBeenCalledWith(
-            'Игра уже запущена',
-            'Закройте другую вкладку с MathLingo.'
-        );
+        expect(showError).toHaveBeenCalledWith('Игра уже запущена', 'Закройте другую вкладку с MathLingo.');
     });
 
     test('два сообщения дают один показ (locked)', () => {
@@ -84,11 +81,14 @@ describe('useSessionLock', () => {
     });
 
     test('fallback без канала: свободный ключ записывается', () => {
-        vi.stubGlobal('BroadcastChannel', class {
-            constructor() {
-                throw new Error('BroadcastChannel is not supported');
+        vi.stubGlobal(
+            'BroadcastChannel',
+            class {
+                constructor() {
+                    throw new Error('BroadcastChannel is not supported');
+                }
             }
-        });
+        );
         const { showError } = setup();
 
         expect(showError).not.toHaveBeenCalled();
@@ -97,17 +97,17 @@ describe('useSessionLock', () => {
 
     test('fallback без канала: занятый ключ показывает модалку', () => {
         localStorage.setItem('ml_session_lock', '1');
-        vi.stubGlobal('BroadcastChannel', class {
-            constructor() {
-                throw new Error('BroadcastChannel is not supported');
+        vi.stubGlobal(
+            'BroadcastChannel',
+            class {
+                constructor() {
+                    throw new Error('BroadcastChannel is not supported');
+                }
             }
-        });
+        );
         const { showError } = setup();
 
         expect(showError).toHaveBeenCalledTimes(1);
-        expect(showError).toHaveBeenCalledWith(
-            'Игра уже запущена',
-            'Закройте другую вкладку с MathLingo.'
-        );
+        expect(showError).toHaveBeenCalledWith('Игра уже запущена', 'Закройте другую вкладку с MathLingo.');
     });
 });

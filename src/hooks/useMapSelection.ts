@@ -22,10 +22,7 @@ export interface UseMapSelection {
  * @param services — сервисы приложения (статистика, звук)
  * @param onMapChanged — вызывается после успешной смены карты
  */
-export function useMapSelection(
-    services: Services,
-    onMapChanged: () => void
-): UseMapSelection {
+export function useMapSelection(services: Services, onMapChanged: () => void): UseMapSelection {
     const [isOpen, setIsOpen] = useState(false);
     const [maps, setMaps] = useState<GameMap[]>([]);
     const [currentMap, setCurrentMap] = useState('');
@@ -42,15 +39,18 @@ export function useMapSelection(
         setIsOpen(false);
     }, [services]);
 
-    const select = useCallback((mapId: string) => {
-        if (!services.stats.switchMap(mapId)) {
-            return;
-        }
+    const select = useCallback(
+        (mapId: string) => {
+            if (!services.stats.switchMap(mapId)) {
+                return;
+            }
 
-        services.audio.play('click');
-        setIsOpen(false);
-        onMapChanged();
-    }, [onMapChanged, services]);
+            services.audio.play('click');
+            setIsOpen(false);
+            onMapChanged();
+        },
+        [onMapChanged, services]
+    );
 
     return { isOpen, maps, currentMap, open, close, select };
 }

@@ -12,9 +12,7 @@ const ZONES: Zone[] = [
 ];
 
 /** Каталог карт (предметов). Пока только математика. */
-const MAPS: GameMap[] = [
-    { id: 'math', title: 'Математика', zones: ZONES }
-];
+const MAPS: GameMap[] = [{ id: 'math', title: 'Математика', zones: ZONES }];
 
 export const CONFIG: Config = {
     TOTAL_QUESTIONS: 10,

@@ -3,21 +3,12 @@
 
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { handleError, initGlobalErrorHandlers } from '../../src/core/error-handler';
-import {
-    CorruptedDataError,
-    QuotaExceededError,
-    SessionError,
-    StorageUnavailableError
-} from '../../src/core/errors';
+import { CorruptedDataError, QuotaExceededError, SessionError, StorageUnavailableError } from '../../src/core/errors';
 
 const CASES: [Error, string, string][] = [
     [new CorruptedDataError('broken'), 'reset', 'Данные повреждены. Счёт сброшен.'],
     [new QuotaExceededError('full'), 'skip', 'Хранилище заполнено. Данные не сохранятся.'],
-    [
-        new StorageUnavailableError('offline'),
-        'memory',
-        'Хранилище недоступно. Игра работает без сохранения.'
-    ],
+    [new StorageUnavailableError('offline'), 'memory', 'Хранилище недоступно. Игра работает без сохранения.'],
     [new SessionError('dup'), 'reset', 'Ошибка сессии. Начните заново.']
 ];
 
@@ -62,9 +53,7 @@ describe('initGlobalErrorHandlers', () => {
         initGlobalErrorHandlers();
 
         listeners.error(new ErrorEvent('error', { message: 'oops', error: new Error('oops') }));
-        listeners.unhandledrejection(
-            Object.assign(new Event('unhandledrejection'), { reason: new Error('rejected') })
-        );
+        listeners.unhandledrejection(Object.assign(new Event('unhandledrejection'), { reason: new Error('rejected') }));
 
         expect(consoleError).toHaveBeenCalledWith('[ErrorHandler] uncaught', 'oops');
         expect(consoleError).toHaveBeenCalledWith('[ErrorHandler] unhandled rejection', 'rejected');

@@ -22,9 +22,7 @@ describe('MapSelectionModal', () => {
     });
 
     test('выделяет текущую карту классом selected', () => {
-        const { container } = render(
-            <MapSelectionModal {...props} onSelect={vi.fn()} onClose={vi.fn()} />
-        );
+        const { container } = render(<MapSelectionModal {...props} onSelect={vi.fn()} onClose={vi.fn()} />);
 
         const items = container.querySelectorAll('.map-select-item');
         expect(items[0]).toHaveClass('selected');

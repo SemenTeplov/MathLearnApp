@@ -25,9 +25,7 @@ export const GameRules = {
         if (results.lives <= 0) {
             return CONFIG.GAMEOVER;
         }
-        const accuracy = results.total > 0
-            ? Math.round((results.correct / results.total) * 100)
-            : 0;
+        const accuracy = results.total > 0 ? Math.round((results.correct / results.total) * 100) : 0;
         if (accuracy >= 100) return CONFIG.RATINGS[0];
         if (accuracy >= 70) return CONFIG.RATINGS[1];
         if (accuracy >= 40) return CONFIG.RATINGS[2];

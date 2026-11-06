@@ -53,46 +53,59 @@ export function App({ services }: AppProps) {
     const map = useMap(services);
     const results = useResults(services, map.gameFinished);
 
-    const handleGameFinished = useCallback((roundResults: GameResult) => {
-        results.show(roundResults);
-        navigate('results');
-    }, [results.show, navigate]);
+    // Методы хуков деструктурируются: объекты хуков новые на каждый рендер,
+    // а сами методы стабильны, поэтому в зависимостях useCallback — методы.
+    const { exitGame, reload: reloadMap, chooseDifficulty } = map;
+    const { show: showResults } = results;
+
+    const handleGameFinished = useCallback(
+        (roundResults: GameResult) => {
+            showResults(roundResults);
+            navigate('results');
+        },
+        [showResults, navigate]
+    );
 
     const handleExitToMap = useCallback(() => {
-        map.exitGame();
+        exitGame();
         navigate('map');
-    }, [map.exitGame, navigate]);
+    }, [exitGame, navigate]);
 
     const game = useGame(services, { onRoundFinished: handleGameFinished, onExitToMap: handleExitToMap });
+    const { start: startGame } = game;
 
     const handleMapChanged = useCallback(() => {
-        map.reload();
+        reloadMap();
         navigate('map');
-    }, [map.reload, navigate]);
+    }, [reloadMap, navigate]);
 
     const mapSelection = useMapSelection(services, handleMapChanged);
+    const { open: openMapSelection } = mapSelection;
 
-    const handleSelectDifficulty = useCallback((difficulty: Difficulty) => {
-        map.chooseDifficulty(difficulty);
-        game.start(difficulty);
-        navigate('game');
-    }, [map.chooseDifficulty, game.start, navigate]);
+    const handleSelectDifficulty = useCallback(
+        (difficulty: Difficulty) => {
+            chooseDifficulty(difficulty);
+            startGame(difficulty);
+            navigate('game');
+        },
+        [chooseDifficulty, startGame, navigate]
+    );
 
     const handlePlayAgain = useCallback(() => {
         services.audio.play('click');
-        game.start();
+        startGame();
         navigate('game');
-    }, [services, game.start, navigate]);
+    }, [services, startGame, navigate]);
 
     const handleBackToMap = useCallback(() => {
         services.audio.play('click');
-        map.reload();
+        reloadMap();
         navigate('map');
-    }, [services, map.reload, navigate]);
+    }, [services, reloadMap, navigate]);
 
     const handleOpenMapSelection = useCallback(() => {
-        mapSelection.open();
-    }, [mapSelection.open]);
+        openMapSelection();
+    }, [openMapSelection]);
 
     const handleCloseError = useCallback(() => {
         services.audio.play('click');

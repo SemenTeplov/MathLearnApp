@@ -87,9 +87,19 @@ export const MapLayout = {
             const point = points[i];
             const half = (point.y - prev.y) / 2;
 
-            d += ' C ' + this._round(prev.x) + ' ' + this._round(prev.y + half) +
-                ', ' + this._round(point.x) + ' ' + this._round(point.y - half) +
-                ', ' + this._round(point.x) + ' ' + this._round(point.y);
+            d +=
+                ' C ' +
+                this._round(prev.x) +
+                ' ' +
+                this._round(prev.y + half) +
+                ', ' +
+                this._round(point.x) +
+                ' ' +
+                this._round(point.y - half) +
+                ', ' +
+                this._round(point.x) +
+                ' ' +
+                this._round(point.y);
         }
 
         return d;

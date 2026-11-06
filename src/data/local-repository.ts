@@ -2,11 +2,7 @@
 // DATA/LOCAL-REPOSITORY.TS — localStorage реализация (1.8.2)
 // ============================================
 
-import {
-    CorruptedDataError,
-    QuotaExceededError,
-    StorageUnavailableError
-} from '../core/errors';
+import { CorruptedDataError, QuotaExceededError, StorageUnavailableError } from '../core/errors';
 import { Repository } from './repository';
 
 /** Реализация Repository через localStorage. */

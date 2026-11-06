@@ -6,10 +6,9 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import type { Services } from '../../src/app/types';
 import { CONFIG } from '../../src/core/config';
 import { MapLayout } from '../../src/core/map-layout';
-import { MemoryRepository } from '../../src/data/memory-repository';
+import { MemoryRepository } from '../support/memory-repository';
 import { StatsService } from '../../src/data/stats-service';
 import { useMap } from '../../src/hooks/useMap';
-import type { AudioService } from '../../src/services/audio-service';
 
 const ADDITION = CONFIG.ZONES[0];
 
@@ -32,9 +31,7 @@ describe('useMap', () => {
 
         expect(result.current.stats).toEqual({ totalScore: 0, currentTrainerIndex: -1 });
         expect(result.current.mapData.zones).toEqual(CONFIG.ZONES);
-        expect(result.current.mapData.geometry).toEqual(
-            MapLayout.buildLayout(CONFIG.ZONES, MapLayout.FALLBACK_WIDTH)
-        );
+        expect(result.current.mapData.geometry).toEqual(MapLayout.buildLayout(CONFIG.ZONES, MapLayout.FALLBACK_WIDTH));
         expect(result.current.mapData.geometry.trainers).toHaveLength(15);
         expect(result.current.mapData.playerPoint).not.toBeNull();
     });

@@ -1,11 +1,7 @@
 // LocalStorageRepository: round-trip, повреждённые данные, квота и недоступность.
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import {
-    CorruptedDataError,
-    QuotaExceededError,
-    StorageUnavailableError
-} from '../../src/core/errors';
+import { CorruptedDataError, QuotaExceededError, StorageUnavailableError } from '../../src/core/errors';
 import { LocalStorageRepository } from '../../src/data/local-repository';
 
 const KEY = 'ml_repo_test';

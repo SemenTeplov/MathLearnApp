@@ -71,8 +71,7 @@ export function GameScreen({
                 {question.options.map((option, index) => {
                     const isCorrect = correctIndex === index;
                     const isWrong = selectedIndex === index && selectedIndex !== correctIndex;
-                    const className =
-                        'answer-btn' + (isCorrect ? ' correct' : '') + (isWrong ? ' wrong' : '');
+                    const className = 'answer-btn' + (isCorrect ? ' correct' : '') + (isWrong ? ' wrong' : '');
 
                     return (
                         <button
