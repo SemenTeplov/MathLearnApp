@@ -3,12 +3,16 @@
 ## Запуск
 
 ```bash
+npm ci               # установка по package-lock.json
 npm test             # vitest run: 28 сьютов, 261 тест
 npm run test:watch   # watch-режим
 npm run test:coverage# покрытие (v8) по группам + html-отчёт в coverage/
 npm run typecheck    # tsc --noEmit (src/ + test/, включая .tsx)
+npm run lint         # ESLint 10: src/, test/, scripts/ и конфиги
+npm run format:check # Prettier: стиль без записи
 npm run build        # tsc --noEmit && vite build → dist/ (ассеты проверяются отдельно)
-node scripts/verify-dist.mjs --url http://127.0.0.1:4173/   # 10 проверок dist
+npm run smoke        # vite preview + 10 HTTP-проверок dist
+npm run smoke:browser# smoke + 10 браузерных проверок dist (headless Chromium)
 ```
 
 Раннер — **vitest** (не Jest), среда — `jsdom`. Конфигурация — `vitest.config.ts`:
@@ -35,7 +39,7 @@ node scripts/verify-dist.mjs --url http://127.0.0.1:4173/   # 10 проверо�
 | `test/ts-source.js` | удалён |
 | копия `CONFIG` в `test/setup.js` | `test/setup.ts` без `CONFIG`; `import { CONFIG }` |
 | копии `GameRules` / `ProblemGenerator` / `Scoring` | настоящие модули |
-| `StatsService.init(repo)` | `new StatsService(new MemoryRepository())` |
+| `StatsService.init(repo)` | `new StatsService(new MemoryRepository())` — двойник из `test/support/` |
 | `allowJs: true` | `allowJs: false` |
 
 Итог: **261 тест в 28 сьютах**, `npx tsc --noEmit` — **0**, `eval`/`readSource` — **0**,
@@ -64,6 +68,8 @@ expect(calls).toEqual([AUDIO_URLS.click, AUDIO_URLS.win, AUDIO_URLS.lose]);
 ```
 test/
 ├── setup.ts                       # jest-dom + мок Audio + заглушка BroadcastChannel
+├── support/
+│   └── memory-repository.ts       # тестовый двойник Repository (вне src/ и coverage)
 ├── core/                          # 12 файлов / 135 тестов
 │   ├── config.test.ts             # CONFIG: версия 3, каталог, зоны, константы (6)
 │   ├── errors.test.ts             # цепочка наследования и name (3)
@@ -122,19 +128,19 @@ test/
   копии `CONFIG`/логики в тестах, `.only`/`.skip` без объяснения, снимки всего DOM,
   проверка приватных полей вместо публичного API. Файл сьюта — не больше 200 строк.
 
-## Покрытие (1.8.3)
+## Покрытие (1.9.0)
 
-`npm run test:coverage`, срез 04.11.2026 — 28 сьютов, 261 тест:
+`npm run test:coverage`, срез 1.9.0 — 28 сьютов, 261 тест:
 
 | Группа | Stmts | Branch | Funcs | Lines | Порог |
 |---|---|---|---|---|---|
-| `src/core/**` | 99.32 | 90.44 | 98.61 | 99.62 | 80 |
+| `src/core/**` | 99.32 | 90.44 | 98.61 | 99.63 | 80 |
 | `src/data/**` | 100 | 100 | 100 | 100 | 80 |
 | `src/services/**` | 100 | 100 | 100 | 100 | 80 |
 | `src/components/**` | 93.44 | 87.75 | 100 | 98.14 | 60 |
 | `src/hooks/**` | 95.21 | 81.92 | 97.61 | 98.23 | 60 |
-| `src/App.tsx` | 87.17 | 100 | 83.33 | 87.17 | 60 |
-| **Итого** | **96.84** | **88.74** | **97.74** | **98.35** | — |
+| `src/App.tsx` | 88.37 | 100 | 83.33 | 88.37 | 60 |
+| **Итого** | **96.83** | **88.74** | **97.68** | **98.37** | — |
 
 Baseline 1.8.3 (до этапа 18) — 46.3% statements / 41.39% branches, потому что в отчёт
 попадали только загруженные модули. После `coverage.include` итог считается по всем
@@ -144,10 +150,12 @@ Baseline 1.8.3 (до этапа 18) — 46.3% statements / 41.39% branches, по
 Пороги (`vitest.config.ts`, `coverage.thresholds`) не понижаются: недостача добирается
 сценариями. `src/app/**` (composition root) и `src/main.tsx` намеренно вне `include`.
 
-## E2E — backlog 1.8.3 → 1.9
+## E2E — backlog
 
-Playwright **не установлен**, в `npm test` E2E не входит. Когда появится — сценарии
-(7), парные smoke-листу из корневого `README.md`:
+Playwright **не установлен**, в `npm test` E2E не входит. В 1.9.0 добавлен HTTP-smoke
+(`npm run smoke`): `vite preview` + 10 проверок контракта `dist`, без браузера. Браузерные
+проверки — `npm run smoke:browser` (`scripts/verify-dist.mjs`). Когда появится Playwright —
+сценарии (7), парные smoke-листу из корневого `README.md`:
 
 1. Карта: 3 зоны, 15 тренажёров, игрок перед первым; клик по соседнему → 600 мс → модалка.
 2. «Отмена»: индекс откатывается, статистика не пишется.
@@ -161,6 +169,15 @@ Playwright **не установлен**, в `npm test` E2E не входит. �
 отдельным конфигом; в `npm test` он не входит.
 
 ## История
+
+### 1.9.0 — тестовый двойник в `test/support`
+
+`MemoryRepository` переехал из `src/data/memory-repository.ts` в
+`test/support/memory-repository.ts`: в проде он не использовался, а в `coverage.include`
+размывал `src/data/**`. Импорты обновлены в 5 сьютах. `SessionModel.recordCorrect` теперь
+считает очки через `Scoring.calculateRoundScore` — число тестов не изменилось:
+**28 сьютов / 261 тест**, coverage — **96.83 / 88.74** (пороги 80/60 зелёные).
+`npm run lint` и `npm run format:check` добавлены в критерий.
 
 ### 1.8.4 — ассеты через `?url`
 
