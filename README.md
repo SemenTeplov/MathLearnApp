@@ -37,10 +37,11 @@ npm run dev        # http://localhost:5173
 
 ```bash
 npm run typecheck  # tsc --noEmit — 0 ошибок
-npm run build      # = typecheck
+npm run build      # tsc --noEmit && vite build → dist/ (1.8.4)
+npm run preview    # собранный dist на http://localhost:4173
 npm test           # vitest: 261 тест в 28 сьютах (1.8.3 — зелёные)
 npm run test:coverage  # покрытие v8 по группам + пороги 80/60
-npx vite build     # прод-сборка: побочный эффект 1.8.2, собирается (53 модуля)
+node scripts/verify-dist.mjs --url http://127.0.0.1:4173/   # 10 проверок dist в headless Chromium
 ```
 
 > ✅ **Тесты на 1.8.3 зелёные.** Все сьюты импортируют прод-код из `src/**`;
@@ -49,11 +50,14 @@ npx vite build     # прод-сборка: побочный эффект 1.8.2,
 > 4 хуковых и 5 точечных `core`/`data`; coverage — **96.84%** statements /
 > **88.74%** branches при порогах 80/60 (см. `test/README.md`, `spec_v1_8_3.md`).
 
-> ℹ️ **Прод-сборка.** `npx vite build` в 1.8.2 впервые собирается: классических `<script>`
-> больше нет, Vite бандлит один граф модулей. Ограничение: `audio/` подключается в рантайме
-> (`new Audio('audio/…')`), поэтому в `dist/` звуки не копируются и в собранной версии
-> не играют. Рабочий режим — `npm run dev`; копирование `audio/` и правки под прод
-> в область 1.8.2 не входили.
+> ✅ **Прод-сборка (1.8.4).** `npm run build` = `tsc --noEmit && vite build`: создаётся
+> `dist/` с одним JS (+`.map`), одним CSS и тремя mp3 в `dist/assets/`; `base: './'`,
+> поэтому сборка работает и из подпапки. Звуки лежат в `src/assets/audio/` и подключаются
+> через `?url` (`AUDIO_URLS`), поэтому в собранной версии они играют — путей `audio/…`
+> в коде нет. Результат проверяется в `vite preview` + headless Chromium:
+> `scripts/verify-dist.mjs` — 10 проверок (документ, CSS, один module-скрипт, три mp3,
+> карта и 15 тренажёров, модалка сложности, игра, 10/10 → результаты, сеть без 4xx/5xx,
+> чистая консоль).
 
 ## Архитектура (1.8.2)
 
@@ -174,18 +178,19 @@ npm run test:coverage
 понижаются. E2E (Playwright) в `npm test` не входит — backlog 1.8.3 → 1.9
 записан в `test/README.md`. Подробности — `test/README.md` и `spec_v1_8_3.md`.
 
-## Статус и smoke-тест (dev, 1.8.3)
+## Статус, smoke-тест и сборка (1.8.4)
 
-Срез на **04.11.2026** (1.8.3 — тесты на импортах; экраны на React с 1.8.0):
+Срез на **06.11.2026** (1.8.4 — production-сборка и ассеты; тесты — 1.8.3):
 
 | Проверка | Команда | Результат |
 |---|---|---|
-| Версия | — | **1.8.3**: тесты `.test.ts(x)` на `src/**`, без `eval`/`readSource`, `allowJs: false` |
+| Версия | — | **1.8.4**: production-сборка Vite и ассеты через `?url` (тесты — 1.8.3) |
 | Типы | `npm run typecheck` | ✅ **0 ошибок** |
 | Тесты | `npm test` | ✅ **261/261** в 28 сьютах |
 | Покрытие | `npm run test:coverage` | ✅ **96.84%** stmts / **88.74%** branches, пороги 80/60 |
 | Dev-сервер | `npm run dev` | ✅ `http://localhost:5173`, консоль без ошибок приложения |
-| Прод-сборка | `npx vite build` | ✅ собирается (53 модуля); ⚠️ `audio/` не копируется в `dist` |
+| Прод-сборка | `npm run build` | ✅ `dist/`: JS + `.map`, один CSS, три mp3 в `assets/` |
+| Проверка `dist` | `node scripts/verify-dist.mjs …` | ✅ **10/10** в `vite preview` (Chromium 152) |
 
 Автоматический smoke — headless Chromium (CDP), **15 проверок / 9 сценариев**, все зелёные:
 
@@ -210,6 +215,10 @@ npm run test:coverage
 
 ```
 index.html          # #root + один <script type="module" src="/src/main.tsx">
+vite.config.ts      # react(), base: './', dist, sourcemap, assetsInlineLimit: 0
+scripts/
+  verify-dist.mjs   # 10 проверок собранного dist в headless Chromium (CDP)
+  cdp.mjs           # минимальный CDP-клиент и утилиты ожидания, без зависимостей
 src/
   main.tsx          # CSS-импорты → createServices → preload → handlers → render
   App.tsx           # Каркас: экраны, модалки, состояние навигации
@@ -223,7 +232,10 @@ src/
   data/
     repository.ts local-repository.ts memory-repository.ts stats-service.ts
   services/
-    audio-service.ts  # AudioService, AudioKind
+    audio-service.ts  # AudioService: preload по AUDIO_URLS (ассеты через ?url)
+  assets/audio/
+    click.mp3 win.mp3 lose.mp3   # Звуки; URL вычисляет Vite (?url)
+    audio-urls.ts                # AUDIO_URLS и AudioKind
   ui/
     types.ts          # View-модели (MapViewData, ResultsView, …)
   components/       # ResultsScreen, MapSelectionModal, GameScreen, MapScreen,
@@ -240,7 +252,6 @@ css/
   map_items/        # Стили карты: экран, зоны, дорога, игрок, тренажёры, модалки, глобальная карта
   game_items/       # Стили игровых элементов
   result_items/     # Стили результатов
-audio/              # Звуки (click, win, lose)
 test/               # 28 сьютов / 261 тест: core, data, services, components, hooks
 ```
 
@@ -256,7 +267,7 @@ TypeScript используется везде, включая все шесть
 - **TypeScript 5.9** — весь код: домен, данные, сервисы, UI и тесты
 - **React 19.3.1 + @types/react** — все экраны и модалки (карта, игра, результаты, шапка)
 - **ES-модули** — один граф импортов, один `<script type="module">`
-- **Vite 8** — dev-сервер и прод-сборка (побочный эффект 1.8.2)
+- **Vite 8** — dev-сервер и production-сборка (`npm run build` → `dist/`)
 - **vitest + jsdom** — тесты (домен, данные, сервисы, RTL для компонентов и хуков)
 - **@testing-library/react + user-event + jest-dom** — компонентные и хуковые тесты
 

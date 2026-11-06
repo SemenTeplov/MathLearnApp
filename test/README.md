@@ -7,6 +7,8 @@ npm test             # vitest run: 28 сьютов, 261 тест
 npm run test:watch   # watch-режим
 npm run test:coverage# покрытие (v8) по группам + html-отчёт в coverage/
 npm run typecheck    # tsc --noEmit (src/ + test/, включая .tsx)
+npm run build        # tsc --noEmit && vite build → dist/ (ассеты проверяются отдельно)
+node scripts/verify-dist.mjs --url http://127.0.0.1:4173/   # 10 проверок dist
 ```
 
 Раннер — **vitest** (не Jest), среда — `jsdom`. Конфигурация — `vitest.config.ts`:
@@ -43,6 +45,19 @@ npm run typecheck    # tsc --noEmit (src/ + test/, включая .tsx)
 (15 тестов, `SessionModel`), `test/data/stats-service.test.ts` (26, `StatsService` через
 `MemoryRepository`), `test/components/App.test.tsx` (10, интеграция на реальных хуках
 и фейковом `Services`), `test/hooks/*` (32, `renderHook`).
+
+## Контракт аудио-теста (1.8.4)
+
+`test/services/audio-service.test.ts` проверяет `AudioService.preload()` сравнением с
+`AUDIO_URLS` из `src/assets/audio/audio-urls.ts`:
+
+```ts
+expect(calls).toEqual([AUDIO_URLS.click, AUDIO_URLS.win, AUDIO_URLS.lose]);
+```
+
+Литералы `audio/…` и хеши файлов в тесте запрещены: в dev `?url` даёт путь к исходнику,
+в prod — `assets/<name>-<hash>.mp3`. Тест проверяет контракт (три звука в порядке
+`click`, `win`, `lose`), а не конкретные имена файлов; остальные 27 сьютов не менялись.
 
 ## Структура
 
@@ -146,6 +161,13 @@ Playwright **не установлен**, в `npm test` E2E не входит. �
 отдельным конфигом; в `npm test` он не входит.
 
 ## История
+
+### 1.8.4 — ассеты через `?url`
+
+Изменился только `test/services/audio-service.test.ts`: ожидания — `AUDIO_URLS`
+(9 тестов, без уменьшения числа проверок). `src/**` — только аудио
+(`src/assets/audio/*`, `src/services/audio-service.ts`); остальные 27 сьютов / 252 теста —
+0 правок. Итог — **28 сьютов / 261 тест**, `npx tsc --noEmit` — 0, coverage — **96.84/88.74**.
 
 ### 1.8.3 — этап 1: тесты на импортах
 

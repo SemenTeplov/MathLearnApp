@@ -1,7 +1,7 @@
 # TASKS.md — MathLingo
 
-**Версия:** 1.8.3  
-**Основа:** PLAN.md 1.8.3, SPEC.md 1.8.3, RULES.md 1.8.3
+**Версия:** 1.8.4  
+**Основа:** PLAN.md 1.8.4, SPEC.md 1.8.4, RULES.md 1.8.4
 
 ---
 
@@ -12,13 +12,14 @@
 - После задачи — проверить **критерий готовности** (одна строка)
 - При обрыве — продолжать с **последней** незавершённой
 
-**Статус:** этапы 0–7 ✅ (1.2.0), **этап 8** ✅ (1.3.0), **этап 9** ✅ (1.3.1), **этап 10 «Игрок на карте»** ✅ (1.4.0), **этап 11 «Модалка при приходе, откат и повторная игра»** ✅ (1.4.1), **этап 12 «Глобальная карта и `Stats` v3»** ✅ (1.5.0), **этап 13 «TypeScript без React»** ✅ (1.6.0), **этап 14 «React-пилот»** ✅ (1.7.0), **этап 15 «Миграция экранов на React»** ✅ (1.8.0), **этап 16 «Статистика раунда»** ✅ (1.8.1), **этап 17 «ES-модули»** — ✅ выполнено (1.8.2), **этап 18 «Тесты на импортах»** — ✅ выполнено (1.8.3): задачи 18.1–18.10 закрыты.
+**Статус:** этапы 0–7 ✅ (1.2.0), **этап 8** ✅ (1.3.0), **этап 9** ✅ (1.3.1), **этап 10 «Игрок на карте»** ✅ (1.4.0), **этап 11 «Модалка при приходе, откат и повторная игра»** ✅ (1.4.1), **этап 12 «Глобальная карта и `Stats` v3»** ✅ (1.5.0), **этап 13 «TypeScript без React»** ✅ (1.6.0), **этап 14 «React-пилот»** ✅ (1.7.0), **этап 15 «Миграция экранов на React»** ✅ (1.8.0), **этап 16 «Статистика раунда»** ✅ (1.8.1), **этап 17 «ES-модули»** — ✅ выполнено (1.8.2), **этап 18 «Тесты на импортах»** — ✅ выполнено (1.8.3): задачи 18.1–18.10 закрыты, **этап 19 «Production-сборка и ассеты»** — ✅ выполнено (1.8.4): задачи 19.1–19.9 закрыты.
 
 > ℹ️ Итог 1.8.0: 10 компонентов и 6 хуков в `src/`, `js/view/**` и `js/controller/**` удалены, `js/script.js` удалён (вход — `main.tsx` + `src/bootstrap.ts`); `npx tsc --noEmit` — **0**, `npm test` — **141/141** в 11 сьютах (решение №8), CSS (21 файл) — **0 правок** (`md5sum`).
 > 🎯 Сквозной прогон 1.8.0 в headless Chromium: 31/31 проверок основного сценария + 7/7 (смена карты, узкий экран) — карта, движение 600 мс, модалки, игра, победа/провал, результаты, перезагрузка, вторая вкладка; консоль без ошибок.
 > 🧭 1.8.1 (этап 16): счётчики `correct`/`wrong` в `SessionModel`, `total = correct + wrong`, сьют `test/model/session-model.test.js` — 15 тестов; итог **156/156** в 12 сьютах, изменены 2 кодовых файла.
 > 🧩 1.8.2 (этап 17): классические скрипты → ES-модули. `js/` (19 файлов) удалён, `index.html` — `#root` + один module-скрипт, код — `src/core` (13)/`data` (4)/`services` (1)/`ui`/`app`; `npx tsc --noEmit` — **0**, `npm run dev` работает, `npx vite build` собирается (53 модуля), `npm test` — **9 сьютов / 113 тестов красные** (ENOENT на `./js/…`), **43/156 зелёных в 3 сьютах**; `test/**` не менялся (этап 3). Smoke: **15/15** проверок в headless Chromium.
 > 🧪 1.8.3 (этап 18): тесты на импортах. Этап 1 — 12 сьютов `.test.ts`, **158/158**; затем RTL-сетап, 7 компонентных + 4 хуковых сьюта, 5 точечных юнит-сьютов `core`/`data`, coverage `include` с порогами **80/60**. Итог: **28 сьютов / 261 тест**, `npx tsc --noEmit` — **0**, coverage — **96.84%** stmts / **88.74%** branches, `eval`/`readSource`/копий `CONFIG` — 0, `src/**` — 0 правок.
+> 🏗️ 1.8.4 (этап 19): `npm run build` = `tsc --noEmit && vite build` → `dist/` (JS 245.60 kB + `.map`, CSS 6.84 kB, три mp3 4222/29350/52337 B в `assets/`); `@vitejs/plugin-react@6.2.1`, `vite.config.ts` (`base: './'`, `sourcemap`, `assetsInlineLimit: 0`), `"type": "module"`, `jest.config.js` удалён; mp3 перенесены в `src/assets/audio/` и подключаются через `?url` (`AUDIO_URLS`, `AudioKind = keyof`); `scripts/verify-dist.mjs` + `scripts/cdp.mjs` — **10/10** в `vite preview` + headless Chromium дважды на чистом `dist`, dev-smoke — **9/9**; `npx tsc --noEmit` — **0**, `npm test` — **261/261** в 28 сьютах, coverage — **96.84/88.74** (пороги 80/60 зелёные).
 
 **Покрытие US/FR — см. карту в конце.**
 
@@ -137,6 +138,27 @@ css/ (21) · audio/ (3) · index.html   # [без изм.]
 ```
 
 **Итог 1.8.3 (факт):** **28 сьютов / 261 тест** (12 этапа 1 + 5 точечных + 7 компонентных + 4 хуковых); `test/fixtures/` не появился — общие моки только в `setup.ts` (A60). `src/**` — 0 правок: тест подстраивается под прод-API, а не наоборот (Z28).
+
+### Структура после 1.8.4 (выполнено)
+
+```
+vite.config.ts                        # [NEW] react(), base './', dist, sourcemap, assetsInlineLimit 0
+scripts/verify-dist.mjs               # [NEW] preview + headless Chromium (CDP), 10 проверок, Node 26
+src/
+  assets/audio/
+    click.mp3 win.mp3 lose.mp3        # [MOV] из /audio через git mv
+    audio-urls.ts                     # [NEW] AUDIO_URLS через ?url + AudioKind
+  services/audio-service.ts           # [ИЗМ] preload() по AUDIO_URLS, API и поведение сохранены
+  … (37 файлов)                       # [без изм.] components/hooks/core/data/ui/app/App.tsx/main.tsx
+audio/                                # [DEL] корневой каталог удаляется
+test/services/audio-service.test.ts   # [ИЗМ] ожидания = AUDIO_URLS, литералов 'audio/…' нет
+package.json / package-lock.json      # [ИЗМ] type: module, build = tsc --noEmit && vite build, +@vitejs/plugin-react
+jest.config.js                        # [DEL] мёртвый CJS-конфиг
+dist/                                 # [артефакт] создаётся npm run build, в git не попадает
+css/ (21) · index.html · src/main.tsx # [без изм.] — инварианты только проверяются
+```
+
+**Итог 1.8.4 (этап 19):** `npm run build` создаёт `dist` (один JS + `.map`, один CSS, три mp3 в `assets/`); сборка проверяется в `vite preview` + headless Chromium (10/10); поведение, разметка, CSS, `CONFIG`, `Stats` v3 и ключи хранилища не менялись.
 
 ---
 
@@ -908,6 +930,57 @@ css/ (21) · audio/ (3) · index.html   # [без изм.]
 
 ---
 
+## 🏗️ Этап 19. Production-сборка и ассеты (1.8.4) — ✅ выполнено
+
+> ℹ️ Цель 1.8.4: `npm run build` перестаёт быть проверкой типов и становится настоящей production-сборкой Vite (`tsc --noEmit && vite build`); аудио переезжает в `src/assets/audio/` и подключается через `?url`; результат проверяется в `vite preview` + headless Chromium скриптом `scripts/verify-dist.mjs`. Поведение, разметка, CSS (21 файл), тексты, `CONFIG`, `Stats` v3 и ключи `ml_stats`/`ml_session_lock` — **не меняются**; `src/**` правится только в аудио (`audio-urls.ts` + `audio-service.ts`).
+
+> 🎯 Baseline 1.8.4 (проверено 06.11.2026): `npx tsc --noEmit` — **0**, `npm test` — **261/261 в 28 сьютах** (~13.4 с); `vite.config.ts` нет, `"type": "commonjs"`, `npm run build` = `npm run typecheck`, `dist/` не создаётся; `@vitejs/plugin-react` не установлен; `jest.config.js` мёртвый (`test/setup.js` не существует); `audio/` = 4222 / 29350 / 52337 B. Окружение: Node 26.3.0, npm 11.16.0, Vite 8.3.5, Vitest 5.0.5, Chromium 152.0.7977.82.
+> ✅ Итог 1.8.4 (19.9): `npm run build` создаёт `dist/` (один JS + `.map`, один CSS, три mp3 в `assets/`), воспроизводимо с нуля (`rm -rf dist`); `scripts/verify-dist.mjs` — **10/10** в `vite preview` + headless Chromium (дважды на чистом `dist`); dev-smoke — **9/9** (карта, 15 тренажёров, модалка сложности, чистая консоль); `npx tsc --noEmit` — **0**; `npm test` — **261/261** в 28 сьютах; coverage — **96.84%** stmts / **88.74%** branches (пороги 80/60 зелёные). `src/**` — только аудио (`src/assets/audio/*.mp3`, `audio-urls.ts`, `services/audio-service.ts`); `test/services/audio-service.test.ts` — ожидания по `AUDIO_URLS` (9 тестов); CSS (21), `index.html`, `src/main.tsx` — 0 правок. `grep -RIn "public/audio" .` даёт совпадения только в документах `.gigacode/**` (формулировка запрета): в коде и в остальных доках — 0.
+Коммиты не делались (решение владельца — только рабочее дерево); ветка на момент работ — `feature/002`.
+
+**Запреты этапа (Z30 — сборка и ассеты):** строковые пути к ассетам (`new Audio('audio/…')`, `'./audio/…'`, `'/assets/…'`, склейка имени в рантайме); `public/audio` и ручное копирование mp3 в `dist`; ручные `<link>`/`<script>` в `index.html` и правка собранного HTML; `base: '/'` при заявленной поддержке подпапки; `build`, не вызывающий `vite build`; коммит `dist/`, `coverage/`, `node_modules/`, кэша Vite; правка `tsconfig`/`vitest.config.ts` ради обхода ошибки сборки.
+
+**Запреты этапа (Z31 — «зелёная» сборка):** успех по коду выхода без инвентаря `dist`; игнорирование 404 по CSS/JS/mp3 и ошибок консоли; проверка только dev-сервера или `file://`; раунд из 3–4 вопросов вместо полного; отключение `sourcemap`/`assetsInlineLimit: 0`/«временная» смена `base`; удаление или скип теста аудио вместо правки ожиданий на `AUDIO_URLS`; понижение порогов покрытия.
+
+**Запреты этапа (Z32 — git):** коммит артефактов сборки и отчётов покрытия; `git add -A` (в дереве правки `SPEC.md`/`RULES.md` и новые документы 1.8.4); переписывание истории без согласования; обновление версий React/Vite/Vitest «заодно» с плагином; мерж ветки с красными тестами или непроверенным `dist`.
+
+**Запреты этапа (Z33 — проверка):** новые npm-зависимости для smoke (Playwright, Puppeteer, `ws`, `chrome-remote-interface`); фиксированные `sleep`; Chromium без `--disable-extensions` и временного профиля; клик по `.answer-btn` по индексу; проверки, завязанные на точные хеши имён ассетов.
+
+**Решения до реализации:** плагин ставится `--force` — обычный `npm i` падает `ERESOLVE` (`babel-jest`→`@babel/core@7` против optional-peer `@rolldown/plugin-babel`→`@babel/core@8`), а `--legacy-peer-deps` удаляет `@testing-library/dom` и ломает 11 UI-сьютов (№4, D48); `index.html`, `src/main.tsx` и CSS не меняются — только проверяются (№8, TR-53/TR-54); ассеты через `?url`/`AUDIO_URLS`, публичный API `AudioService`/`AudioKind` сохраняется (№7, D23); `assetsInlineLimit: 0` обязателен — `click.mp3` 4222 B > порога 4096 B (№6, D20); `base: './'` — единственная точка, в dev Vite сам приводит её к `/` (№5, D17); mp3 проверяются явным `fetch()`, а не по сетевому логу (D50); `localStorage` чистится до навигации, старт `−1`, поэтому модалка открывается кликом по `--near` и прибытием (D58); `/favicon.ico` не считается 404 (D52); `verify-dist.mjs` ≤ 200 строк, при превышении — `scripts/cdp.mjs` (D55); `jest.config.js` удаляется, `jest-environment-jsdom` остаётся (D49); ветка `dev`, коммиты по шагам, пуш/мерж — по согласованию (№12).
+
+**Соответствие PLAN.md:** 19.0 → 19.1; 19.1 → 19.2; 19.2 → 19.3; 19.3 → 19.4; 19.4 → 19.5; 19.5 → 19.6; 19.6a/19.6b → 19.7; 19.7 → 19.8; 19.6c → 19.9.
+
+**Контрольные метки журнала:** `19.1 baseline` (19.1), `vite-framework` (19.2), `build-scripts` (19.3), `audio-url` (19.4), `dist-contract` (19.5), `verify-dist` (19.6), `dev-smoke` (19.7), `docs 1.8.4` (19.8), `final-audit` (19.9) — в `/tmp/ml-1.8.4-log.txt`; снимок baseline — `/tmp/ml-1.8.4-baseline.txt`; копии для отката (`package.json`, `package-lock.json`, `src/services/audio-service.ts`, `test/services/audio-service.test.ts`, `audio/`, `index.html`, `css/`) — `/tmp/ml-1.8.4-backup/`; лог сборки — `/tmp/ml-1.8.4-vite-build.log`; прогон покрытия — `/tmp/ml-1.8.4-coverage.txt`.
+
+**19.1.** Фиксация документов 1.8.4 (PLAN 19.0, Z32) — `git status --short` и `git branch --show-current` в `/tmp/ml-1.8.4-baseline.txt` (на 06.11.2026: `M` — `SPEC.md`, `RULES.md`; `??` — `spec_v1_8_4.md`, `rules_v_1_8_4.md`, `PLAN_v1_8_3.md`, `PLAN_v1_8_4.md`, `TASKS_v1_8_3.md`; ветка `dev`, HEAD `be0c189`); записать `git rev-parse HEAD`, `npx tsc --noEmit` (0), `npm test` (**261/261**, 28 сьютов, ~13.4 с), `ls dist` (нет); копии для отката — в `/tmp/ml-1.8.4-backup/`; **адресный** `git add .gigacode/specs/SPEC.md .gigacode/specs/spec_v1_8_4.md .gigacode/rulles/RULES.md .gigacode/rulles/rules_v_1_8_4.md .gigacode/plans/PLAN.md .gigacode/plans/PLAN_v1_8_3.md .gigacode/plans/PLAN_v1_8_4.md .gigacode/tasks/TASKS.md .gigacode/tasks/TASKS_v1_8_3.md` (полный `git add -A` запрещён) — коммит `docs(1.8.4): spec, rules, план и задачи production-сборки`; пуш — только по согласованию.  
+**Критерий:** документы 1.8.4 в истории одним коммитом; `git diff --name-only HEAD~1` не содержит `src/**`, `test/**`; `tsc` 0; `npm test` 261/28; метка `19.1 baseline`. **Зависимости:** —.
+
+**19.2.** Фундамент сборки (PLAN 19.1, TR-51/TR-58, A65/A68/A71, T57, D48) — `npm i -D @vitejs/plugin-react@^6 --force --cache /tmp/npm-cache-1.8.4` (`--force` вынужденный: `ERESOLVE` из-за остаточных `babel-jest`/`@babel/core@7` в `dependencies`; dry-run даёт «added 1 package» и ничего не удаляет; `--legacy-peer-deps` **запрещён** — удаляет `@testing-library/dom`); проверить `npm ls @vitejs/plugin-react vite` (без `invalid`) и `ls node_modules/@vitejs/plugin-react/package.json`; создать `vite.config.ts` (`react()`, `base: './'`, `outDir: 'dist'`, `sourcemap: true`, `assetsInlineLimit: 0`); `package.json` — `"type": "module"` рядом с `name`/`version`; `git rm jest.config.js`; `npx vite build 2>&1 | tee /tmp/ml-1.8.4-vite-build.log`, `grep -c "loaded as CommonJS"` = 0; `test -f dist/index.html`.  
+**Критерий:** `vite build` зелёный и без предупреждения о формате конфига; `dist/index.html` существует; `jest.config.js` нет; `tsc` 0; `npm test` 261/28; метка `vite-framework`. **Зависимости:** 19.1.
+
+**19.3.** Скрипты и инварианты HTML/CSS (PLAN 19.2, TR-52/TR-53/TR-54, A67, T58) — `package.json.scripts.build` = `tsc --noEmit && vite build` (именно `&&`; алиас `typecheck` и `;` запрещены), `dev`/`preview`/`typecheck`/`test`/`test:watch`/`test:coverage` не меняются, новых скриптов нет; `index.html` — **0 правок**: `grep -c '<script'` = 1, `grep -c 'type="module"'` = 1, `grep -cE 'stylesheet|js/|audio/'` = 0; `src/main.tsx` — **0 правок**: 6 импортов в порядке `base → buttons → screens → game → results → map`; `rm -rf dist && npm run build` — до 19.4 mp3 в `dist/assets` ещё нет, это ожидаемо.  
+**Критерий:** `build` вызывает Vite; `dist/index.html` создан; инварианты 1/1/0 и 6 импортов; `tsc` 0; `npm test` 261/28; метка `build-scripts`. **Зависимости:** 19.2.
+
+**19.4.** Ассеты и `?url` (PLAN 19.3, TR-55/TR-60, A66, T59, D23) — `mkdir -p src/assets/audio`; `git mv audio/{click,win,lose}.mp3 src/assets/audio/`; `rmdir audio`; создать `src/assets/audio/audio-urls.ts` (`AUDIO_URLS` из трёх `?url`, `AudioKind = keyof typeof AUDIO_URLS`); `src/services/audio-service.ts`: `preload()` обходит `Object.keys(AUDIO_URLS)`, `new Audio(AUDIO_URLS[kind])`, `_sounds: Map<AudioKind, HTMLAudioElement>`, `export type { AudioKind }`, `play()` без изменений (`_isReady`, `cloneNode`, `catch` + `console.warn`); `test/services/audio-service.test.ts`: импорт `AUDIO_URLS`, `expect(calls).toEqual([AUDIO_URLS.click, AUDIO_URLS.win, AUDIO_URLS.lose])`, литералы `'audio/…'` удалены полностью, число проверок не уменьшено (тест «3 звука» остаётся); `public/audio` не создаётся.  
+**Критерий:** `test ! -d audio`; `grep -RIn "'audio/" src` пусто; три `?url`; `tsc` 0; `npm test` 261/28; `rm -rf dist && npm run build` → `ls dist/assets/*.mp3 | wc -l` = 3 (размеры ≈ 4222/29350/52337 B); метка `audio-url`. **Зависимости:** 19.3.
+
+**19.5.** Контракт `dist` (PLAN 19.4, TR-54/TR-56/TR-58, A68/A69, T60, D17/D53/D56) — инвентарь: `dist/index.html`; один `dist/assets/index-*.js` + `.js.map`; один `index-*.css`; три `*.mp3`; **нет** `dist/js`, `dist/audio`, `dist/css`, `dist/src`, `*.ts`/`*.tsx`; разметка: `<script` = 1, `type="module"` = 1, `stylesheet` = 1, `"/assets/` = 0 (только `./assets/…`); CSS содержит `linear-gradient(135deg`, `.map-trainer`, `.answer-btn`; в JS есть `sourceMappingURL`; `base: './'` — единственное место (`grep -n "base:" vite.config.ts`), в `src`/`index.html` нет `"/assets`/`"/audio` (`src="/src/main.tsx"` — точка входа Vite, не ассет, D56).  
+**Критерий:** весь инвентарь совпал; пути только относительные; один CSS с правилами всех 6 точек входа; `dist` воспроизводим с нуля (`rm -rf dist && npm run build`); метка `dist-contract`. **Зависимости:** 19.4.
+
+**19.6.** Проверка `dist` в браузере (PLAN 19.5, TR-57, A70, T61, D50/D51/D52/D58) — создать `scripts/verify-dist.mjs` (≈190 строк, только Node 26: `WebSocket`, `fetch`, `child_process`, `fs`, `os`, `net`; **никаких** новых зависимостей); CLI `--url`/`--chromium`/`--timeout`; запуск `chromium --headless=new --no-sandbox --disable-gpu --disable-extensions --disable-dev-shm-usage --user-data-dir=<mkdtemp> --remote-debugging-port=<free>`; подключение к таргету `type === 'page'`; `Page.addScriptToEvaluateOnNewDocument` с `localStorage.clear()` **до** навигации; 10 проверок: (1) 200, `<title>Math</title>`, `#root` не пуст; (2) CSS-ссылка 200 и `getComputedStyle(document.body).backgroundImage` содержит `gradient`; (3) ровно один module-скрипт 200, исключений нет; (4) три mp3 явным `fetch('./assets/<name>')` → 200, `content-type: audio/*`, размер > 0; (5) `#mapScreen.active`, 15 `.map-trainer`, на старте `−1` — 0 `--current` и 1 `--near`, `svg path`; (6) клик по `--near` → `.map-trainer--current` = 1 и `.modal-overlay.open` (переход ~600 мс, таймаут 5 с), 3 `.diff-btn`, `[data-diff="easy"]`; (7) клик `easy` → `#gameScreen.active`, 4 `.answer-btn`, вопрос `/^\d+ [+−×] \d+ = \?$/`; (8) 10 верных ответов по тексту кнопки → `.feedback.correct-fb.show` → «Продолжить» → `#resultScreen.active`, `#resultScreen h1` непуст, первый `.stat-value` = 10, `#roundEarnings` начинается с «Заработано»; (9) нет ответов ≥ 400 на `Document`/`Script`/`Stylesheet`/`Media` и нет `loadingFailed` (favicon не считается, D52); (10) нет `console.error`/`console.warn` и `exceptionThrown`; вывод `✓ <проверка>`, `OK: dist verified` и код 0, при первом провале — код 1 и сообщение (проверка, URL, статус); в `finally` — закрыть `WebSocket`, `chromium.kill()`, удалить временный профиль; ожидания — опрос DOM, без `sleep`.  
+**Критерий:** `node scripts/verify-dist.mjs --url http://127.0.0.1:4173/ --chromium /usr/bin/chromium` → 0 (15 тренажёров, 10/10, 3 mp3, 0 ответов ≥ 400, 0 ошибок); повторный прогон на чистом `dist` — тот же 0; `package.json` без новых зависимостей; `wc -l scripts/verify-dist.mjs` ≤ 200; метка `verify-dist`. **Зависимости:** 19.5.
+
+**19.7.** Dev-smoke и покрытие (PLAN 19.6a/19.6b, TR-59/TR-60, A70) — `npm run dev` → 200 на `/`, карта и 15 тренажёров, клик по соседнему открывает модалку сложности, консоль без ошибок, в логе Vite нет предупреждений о формате конфига и о `base`; `npm run test:coverage 2>&1 | tee /tmp/ml-1.8.4-coverage.txt` — пороги **80/60** зелёные, агрегат близок к 96.84/88.74 (1.8.3), отклонение допустимо только за счёт нового кода аудио; грепы T62: в `src` нет `'audio/`, в `src`/`index.html` нет `"/assets`, `base: './'` один, `audio/` и `jest.config.js` отсутствуют, в `dist/index.html` 0 упоминаний mp3.  
+**Критерий:** dev-смок зелёный; coverage-пороги зелёные; грепы T62 как указано; метка `dev-smoke`. **Зависимости:** 19.6.
+
+**19.8.** Документация и архивы (PLAN 19.7) — `README.md`: `npm run build` создаёт `dist`, звук в собранной версии играет (mp3 в `dist/assets`), таблица «Прод-сборка» → «✅ собирается, проверено headless», в структуру `vite.config.ts`, `scripts/verify-dist.mjs`, `src/assets/audio/`; `GIGACODE.md`: структура, «Запуск, проверка типов, тесты и сборка» (build = tsc + vite build, контракт `dist`), «Звуковое сопровождение» (`?url`, работает в проде), «index.html и подключение» (правит Vite), «История миграции» + пункт 1.8.4; `test/README.md`: контракт аудио-теста — сравнение с `AUDIO_URLS`, не с литералами и не с хешами; `SPEC.md` — 1.8.4 «Выполнено»; `TASKS.md` — этот файл (этап 19, статусы, карта покрытия 1.8.4); `TASKS_v1_8_3.md` и `PLAN_v1_8_3.md` — архивы, `PLAN_v1_8_4.md` — указатель на `PLAN.md` (D47).  
+**Критерий:** README/GIGACODE/test/README не противоречат фактическому поведению (`build` → `dist`, звук в проде работает); SPEC/TASKS/PLAN — 1.8.4; архивы 1.8.3 на месте; метка `docs 1.8.4`. **Зависимости:** 19.7.
+
+**19.9.** Финальный аудит (PLAN 19.6c, критерии 150–163) — (1) `npx tsc --noEmit` — 0; (2) `npm test` — 28 сьютов / 261 тест; (3) `npm run test:coverage` — пороги зелёные; (4) `rm -rf dist && npm run build` → инвентарь 19.5; (5) `node scripts/verify-dist.mjs …` → 0; (6) `grep -RIn "'audio/" src test` — пусто; (7) `grep -RIn "public/audio" .` — пусто; (8) `grep -n "base:" vite.config.ts` — один `base: './'`; (9) `git status --short` — `dist/`, `coverage/`, `node_modules` не в индексе; (10) `git diff --name-only -- src test` — только `src/assets/audio/*`, `src/services/audio-service.ts`, `test/services/audio-service.test.ts`, удалённые `audio/*.mp3`; (11) `wc -l` новых файлов ≤ 200; (12) `grep -RIn "new Audio(" src` — одна строка `new Audio(AUDIO_URLS[kind])`; обновить статус этапа 19, блок «Итог 1.8.4» и «Готовность проекта» в этом файле; коммиты `build(1.8.4): …`, `test(1.8.4): verify-dist`, `docs 1.8.4`, `final-audit`; мерж/пуш — по согласованию.  
+**Критерий:** критерии 150–163 ✅; `tsc` 0; coverage зелёный; `dist` воспроизводим с нуля; `src/**` — только аудио; метка `final-audit`. **Зависимости:** 19.8.
+
+---
+
 ## 📊 Карта покрытия
 
 ### 1.2.0 (выполнено)
@@ -1187,6 +1260,37 @@ US/FR в 1.8.2 **не добавляются** (только TR / A / T / Z) —
 
 US/FR в 1.8.3 **не добавляются** (только TR / A / T / Z) — новых US и FR нет.
 
+### 1.8.4 (выполнено)
+
+| Требование | Задачи |
+|-----------|--------|
+| TR-51. Плагин, `vite.config.ts`, ESM, `jest.config.js` | 19.2 |
+| TR-52. `build` = tsc + vite build | 19.3 |
+| TR-53. Минимальный `index.html` | 19.3 |
+| TR-54. 6 CSS-импортов, один бандл | 19.3, 19.5 |
+| TR-55. mp3 + `?url` | 19.4 |
+| TR-56. Контракт `dist` | 19.5 |
+| TR-57. `verify-dist.mjs` | 19.6 |
+| TR-58. `base: './'` | 19.2, 19.5 |
+| TR-59. Dev не сломан | 19.7 |
+| TR-60. Тест аудио, `tsc`, coverage | 19.4, 19.7 |
+| A65. Сборка — артефакт | 19.2, 19.5 |
+| A66. Ассеты импортируются | 19.4 |
+| A67. `index.html` принадлежит Vite | 19.3 |
+| A68. `base` в одном месте | 19.2, 19.5 |
+| A69. Контракт `dist` важнее кода выхода | 19.5 |
+| A70. Проверка в браузере на `dist` | 19.6, 19.7 |
+| A71. Один ESM-формат | 19.2 |
+| T56–T57. Структура сборки и `vite.config.ts` | 19.2 |
+| T58. `package.json` | 19.3 |
+| T59. Контракт аудио | 19.4 |
+| T60. Инвентарь `dist` | 19.5 |
+| T61. Проверка `dist` в браузере | 19.6 |
+| T62. Проверки перед сдачей | 19.7, 19.9 |
+| Z30–Z33. Запреты | весь этап, 19.9 |
+
+US/FR в 1.8.4 **не добавляются** (только TR / A / T / Z) — новых US и FR нет.
+
 ---
 
 ## ✅ Готовность проекта
@@ -1303,6 +1407,13 @@ US/FR в 1.8.3 **не добавляются** (только TR / A / T / Z) —
 72. `src/**` — 0 правок (критерий 144); 12 сьютов этапа 1 сохранены, только добавления (критерий 146); `eval`/`readSource`/`require`/копий логики — 0 (критерии 136–139)
 73. E2E — backlog записан в `test/README.md` (7 сценариев), Playwright не установлен, `npm test` не изменился (критерий 148)
 74. Документация: README/test/README/GIGACODE — новые числа; `SPEC.md` — 1.8.3 «Выполнено»; `TASKS.md` — этот файл; архивы `TASKS_v1_8_2.md`, `PLAN_v1_8_2.md`; git-дисциплина без `git add -A` (критерий 149)
+
+**Выполнено в 1.8.4 (этап 19, критерии 150–163):**
+
+75. 9 задач этапа 19 (19.1–19.9) закрыты: baseline и бэкапы, `@vitejs/plugin-react` + `vite.config.ts` + `"type": "module"` + удаление `jest.config.js`, `build` = `tsc --noEmit && vite build` и инварианты HTML/CSS, перенос mp3 и `?url`, контракт `dist`, `scripts/verify-dist.mjs`, dev-smoke и покрытие, документация, финальный аудит
+76. Факт: `npm run build` создаёт `dist/` (JS + `.map`, один CSS, три mp3 в `assets/`) и воспроизводим с нуля (`rm -rf dist`); `verify-dist.mjs` — **10/10** в `vite preview` + headless Chromium (дважды на чистом `dist`), dev-smoke — **9/9**; `npx tsc --noEmit` — 0, `npm test` — **261/261** в 28 сьютах, coverage — **96.84/88.74** при порогах 80/60 (критерии 150–154, 157…160)
+77. `src/**` — только аудио (`src/assets/audio/*.mp3`, `audio-urls.ts`, `services/audio-service.ts`); `test/services/audio-service.test.ts` — ожидания по `AUDIO_URLS` (9 тестов, литералов `'audio/…'` нет); компоненты, хуки, `core`, `data`, `ui`, `App.tsx`, `main.tsx`, CSS (21) и `index.html` — 0 правок (критерии 155–156, 161–162)
+78. Критерии 150–163 из PLAN.md 1.8.4; отклонения D47–D58 и риски R14–R29 — в `PLAN.md`; коммиты по шагам не делались (решение владельца) — изменения оставлены в рабочем дереве (163)
 
 ---
 
@@ -1565,3 +1676,21 @@ US/FR в 1.8.3 **не добавляются** (только TR / A / T / Z) —
 - **Зависимости — только три `@testing-library/*`** (React 19 совместим с RTL 16, `jest-dom` — импорт `/vitest`); `scripts` и `jest.config.js` не меняются; `coverage/` — в `.gitignore`, конфиг — в `vitest.config.ts` (№10/№11, R9).
 - **Ветка — текущая `feature/001`:** коммиты по шагам (`test(1.8.3): …`, `docs 1.8.3`, `final-audit`); пуш и мерж — по согласованию (Z29).
 - **`TASKS.md` — этот файл** (задачи 18.1–18.10); предыдущая версия — `.gigacode/tasks/TASKS_v1_8_2.md` (архив, создан при обновлении задач под 1.8.3), план 1.8.2 — `.gigacode/plans/PLAN_v1_8_2.md`.
+
+---
+
+## 📝 Решения и уточнения 1.8.4 (до реализации)
+
+- **Плагин ставится с `--force` (D48):** обычный `npm i -D @vitejs/plugin-react@^6` падает `ERESOLVE` — остаточные `jest-*`/`babel-*` в `dependencies` дают `@babel/core@7`, а optional-peer `@rolldown/plugin-babel` требует `@babel/core@8`. Dry-run: `--force` добавляет ровно 1 пакет и ничего не удаляет. `--legacy-peer-deps` **запрещён**: удаляет `@testing-library/dom` и ломает 7 компонентных + 4 хуковых сьюта. Причина засора (мёртвые `jest-*`/`babel-*`/`istanbul-*` в `dependencies`) — отдельная задача, вне 1.8.4.
+- **`index.html`, `src/main.tsx` и CSS не меняются** — они приведены к целевому в 1.8.2 (один module-скрипт, 6 импортов, `dist/` в `.gitignore`). Этап 19 только **проверяет** инварианты: 1/1/0 в HTML и порядок `base → buttons → screens → game → results → map` (TR-53/TR-54/A67).
+- **`src/**` правится только в аудио:** новый `src/assets/audio/audio-urls.ts` + `preload()` в `src/services/audio-service.ts`; `AudioKind` остаётся реэкспортом из `services/audio-service`, поэтому компоненты и хуки не трогаются (D23). Компоненты (10), хуки (5), `core` (13), `data` (4), `ui`, `app`, `App.tsx`, `main.tsx` — 0 правок.
+- **Аудио переносится `git mv`** (история файлов сохраняется), корневой `audio/` удаляется через `rmdir`; `public/audio` не создаётся — один источник правды (A66/D18). Отсутствующий файл должен ломать сборку, а не давать 404 в проде.
+- **`assetsInlineLimit: 0` обязателен (D20):** `click.mp3` = 4222 B при дефолтном пороге инлайна 4096 B; без явного нуля звук может стать `data:`-URI внутри JS и «исчезнуть» из `dist/assets`.
+- **`base: './'` — единственная точка настройки (D17):** работает и в корне, и в подпапке (GitHub Pages project page). Dev не ломается: Vite 8.3.5 при `!isBuild` приводит `'./'` к `'/'`; в `dist/index.html` пути `./assets/…`, абсолютных `/assets` нет.
+- **Стартовая позиция — `−1` (D58):** `localStorage` чистится `Page.addScriptToEvaluateOnNewDocument` до навигации, поэтому `.map-trainer--current` на старте **0**, первый тренажёр — `--near`; модалка открывается кликом по `--near` и прибытием (CSS-transition 600 мс → `onTransitionEnd` → `arrived()`), а не кликом по `--current`. Заодно проверяется реальный путь «движение → модалка».
+- **mp3 проверяются явным `fetch()` из страницы (D50):** `new Audio(url)` без `play()` не обязан скачивать файл, поэтому проверка «по сетевому логу» была бы флаки; `/favicon.ico` не считается 404 — фильтр по типам ресурсов `Document`/`Script`/`Stylesheet`/`Media` (D52).
+- **Доказательство — только `dist` в `vite preview` (A70/Z31):** `file://`, dev-сервер и «зелёный код выхода» доказательством не считаются. `scripts/verify-dist.mjs` — без новых зависимостей (Node 26: `WebSocket`/`fetch`/`child_process`), ожидания — опрос DOM без `sleep`, ≤ 200 строк (при превышении — `scripts/cdp.mjs`, D55).
+- **Тест аудио правится точечно (TR-60/A59):** `expect(calls).toEqual([AUDIO_URLS.click, AUDIO_URLS.win, AUDIO_URLS.lose])`; литералы `'audio/…'` удаляются, число проверок не уменьшается; остальные 27 сьютов (252 теста) — 0 правок; в vitest `?url` резолвится в dev-путь, поэтому сравнение идёт с `AUDIO_URLS`, а не с хешем.
+- **`jest.config.js` удаляется, `jest-environment-jsdom` остаётся (D49):** чистка devDependencies — отдельная задача; `vitest.config.ts` (пороги 80/60) не меняется, `coverage/` под `.gitignore`.
+- **Ветка — текущая `dev`**, коммиты по шагам (`build(1.8.4): …`, `test(1.8.4): verify-dist`, `docs 1.8.4`, `final-audit`); `git add` только адресный, `dist/` и `coverage/` не коммитятся (Z32), пуш и мерж — по согласованию.
+- **`TASKS.md` — этот файл** (задачи 19.1–19.9); предыдущая версия — `.gigacode/tasks/TASKS_v1_8_3.md` (архив), план 1.8.3 — `.gigacode/plans/PLAN_v1_8_3.md`, план 1.8.4 — `.gigacode/plans/PLAN.md` (+ указатель `PLAN_v1_8_4.md`, D47).
