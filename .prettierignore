@@ -1,0 +1,12 @@
+# Артефакты и зависимости
+node_modules/
+dist/
+coverage/
+package-lock.json
+
+# Документация пишется руками: таблицы и переносы Prettier ломает
+*.md
+.gigacode/
+
+# IDE
+.idea/
