@@ -43,7 +43,11 @@ src/
     memory-repository.ts    # MemoryRepository — тестовый двойник
     stats-service.ts        # class StatsService(repo): счёт/позиция, switchMap, миграции
   services/
-    audio-service.ts        # class AudioService, type AudioKind ('click'|'win'|'lose')
+    audio-service.ts        # class AudioService (preload по AUDIO_URLS), type AudioKind
+  assets/
+    audio/
+      click.mp3 win.mp3 lose.mp3   # Звуки — ассеты Vite
+      audio-urls.ts                # AUDIO_URLS: три import '?url'; AudioKind = keyof
   ui/
     types.ts                # MapViewData, MapModalTarget, ResultsView, GameSessionView,
                             # GameFeedbackView
@@ -73,7 +77,10 @@ css/                        # 21 файл, без изменений с 1.5.0 (A
   map_items/                # Экран карты, зоны, дорога, игрок, тренажёры, модалки, глобальная карта
   game_items/               # Стили игровых элементов
   result_items/             # Стили результатов
-audio/                      # click.mp3, win.mp3, lose.mp3
+vite.config.ts              # react(), base: './', outDir dist, sourcemap, assetsInlineLimit: 0
+scripts/
+  verify-dist.mjs           # 10 проверок собранного dist (vite preview + headless Chromium)
+  cdp.mjs                   # минимальный CDP-клиент, опрос DOM, запуск Chromium
 test/                       # 28 сьютов / 261 тест (1.8.3 — зелёные, без eval)
 .gigacode/
   rulles/RULES.md           # Конституция проекта (актуальная версия)
@@ -97,12 +104,22 @@ test/                       # 28 сьютов / 261 тест (1.8.3 — зелё
 npm install
 npm run dev          # http://localhost:5173 — режим разработки
 npm run typecheck    # tsc --noEmit: 0 ошибок
-npm run build        # = typecheck (Vite-сборка вызывается отдельно)
-npx vite build       # прод-сборка: собирается с 1.8.2; audio/ в dist не копируется
+npm run build        # tsc --noEmit && vite build: dist/ (один JS + .map, один CSS, 3 mp3)
+npm run preview      # собранный dist на http://localhost:4173
+node scripts/verify-dist.mjs --url http://127.0.0.1:4173/ --chromium /usr/bin/chromium
+                     # 10 проверок dist в headless Chromium (CDP, без зависимостей)
 npm test             # vitest run: 261 тест в 28 сьютах (1.8.3 — зелёные)
 npm run test:watch   # vitest в watch-режиме
 npm run test:coverage# coverage v8 по группам + пороги 80/60 + html в coverage/
 ```
+
+**Сборка 1.8.4 (TR-51…TR-58, A65/A68/A71).** `"type": "module"`, `vite.config.ts`
+(`react()`, `base: './'`, `outDir: 'dist'`, `sourcemap: true`, `assetsInlineLimit: 0`),
+`jest.config.js` удалён, `@vitejs/plugin-react@6.2.1`. `npm run build` = `tsc --noEmit &&
+vite build`. Контракт `dist`: `index.html` (один module-скрипт, один stylesheet, пути
+`./assets/…`), `assets/index-*.js` + `.map`, `assets/index-*.css`, три `*.mp3`; каталогов
+`js/`, `css/`, `audio/`, `src/` в `dist` нет. `base: './'` — единственная точка настройки
+(в dev Vite приводит её к `/`), поэтому сборка работает и из подпапки (GitHub Pages).
 
 **`tsconfig.json` (T47):** `target: ESNext`, `module: ESNext`,
 `moduleResolution: Bundler`, `jsx: react-jsx`, `strict`, `noEmit`, `esModuleInterop`,
@@ -138,6 +155,9 @@ npm run test:coverage# coverage v8 по группам + пороги 80/60 + ht
   + `App.tsx`; `thresholds`: **80%** домен и **60%** UI (пороги не понижаются).
   Срез 1.8.3: **96.84%** statements / **88.74%** branches; `src/core/types.ts` — 0/0
   (только типы), из отчёта не исключается.
+- **Аудио-тест (TR-60, A59).** `test/services/audio-service.test.ts` сравнивает вызовы с
+  `AUDIO_URLS` (`toEqual([AUDIO_URLS.click, AUDIO_URLS.win, AUDIO_URLS.lose])`), а не с
+  литералами `'audio/…'` и не с хешами: в dev и prod URL разные, число проверок не уменьшено.
 - **`src/**` неприкосновенен (Z28).** Тест подстраивается под прод-API; найденный дефект
   фиксируется в отчёте и выносится за пределы версии.
 - **E2E (T50, D15).** Playwright не установлен, в `npm test` не входит; backlog
@@ -260,7 +280,7 @@ npm run test:coverage# coverage v8 по группам + пороги 80/60 + ht
 - **Вне текущей области:** прогресс и блокировка тренажёров, звёзды, темы для генератора,
   дополнительные зоны, уникальный дизайн зон, анимации игрока и звук шагов, второй предмет
   в каталоге карт, глобальное состояние (Этап 4), переписывание тестов на `import` и
-  `allowJs: false` (Этап 3), React-тесты (Этап 5), копирование `audio/` в прод-сборку.
+  `allowJs: false` (Этап 3), React-тесты (Этап 5).
 
 ## index.html и подключение
 
@@ -284,17 +304,22 @@ npm run test:coverage# coverage v8 по группам + пороги 80/60 + ht
   `game`, `results`, `map`; Vite инлайнит `@import` из `css/map.css`, каскад не меняется.
 - `style="display: contents"` у `#root` сохраняется: `.app` остаётся прямым flex-элементом
   `body`.
+- `index.html` принадлежит Vite (A67): в `dist/index.html` появляются один `<script
+  type="module" crossorigin src="./assets/…">` и `<link rel="stylesheet" href="./assets/…">`;
+  руками собранный HTML не правится, `<link>`/`<script>` в исходный — не добавляются.
 
 ## Звуковое сопровождение
 
-- Звуки хранятся в `audio/` как MP3-файлы.
+- Звуки лежат в `src/assets/audio/` (`click.mp3`, `win.mp3`, `lose.mp3`) и подключаются
+  через `?url`: `AUDIO_URLS` в `src/assets/audio/audio-urls.ts`, `AudioKind = keyof typeof AUDIO_URLS`.
 - `AudioService` (`src/services/audio-service.ts`) предзагружает звуки в `src/main.tsx`.
 - Хуки и `App` вызывают `services.audio.play(kind)` на действия пользователя (кнопки карты,
   модалки, ответов, навигации, выход).
 - Ошибки звука не ломают игру — логируются в `console.warn`, промис `play()` глушится.
 - Поддерживаемые звуки: `click` (кнопки), `win` (победа), `lose` (поражение).
-- В прод-сборке `audio/` не копируется в `dist` (пути задаются в рантайме) — в `dist`
-  звук не играет, ошибки проглатываются; рабочий режим — `npm run dev`.
+- `preload()` обходит `Object.keys(AUDIO_URLS)` и создаёт `new Audio(AUDIO_URLS[kind])`;
+  в `dist` mp3 лежат в `assets/` с хешем в имени, поэтому звук играет и в собранной версии,
+  а ссылок на mp3 в `dist/index.html` нет — URL вычисляет бандл.
 
 ## История миграции
 
@@ -320,6 +345,12 @@ npm run test:coverage# coverage v8 по группам + пороги 80/60 + ht
   затем добавлены RTL-сетап (`jest-dom`, заглушка `BroadcastChannel`), 7 компонентных
   и 4 хуковых сьюта, 5 точечных юнит-сьютов `core`/`data`, `coverage.include` и пороги
   80/60. `src/**`, CSS и `index.html` — без изменений; итог — 28 сьютов / 261 тест.
+- **1.8.4 — production-сборка:** `@vitejs/plugin-react`, `vite.config.ts` (`base: './'`,
+  `sourcemap`, `assetsInlineLimit: 0`), `"type": "module"`, удалён `jest.config.js`;
+  `build` = `tsc --noEmit && vite build` → `dist/`; mp3 переехали в `src/assets/audio/`
+  и подключаются через `?url`; `scripts/verify-dist.mjs` (+`cdp.mjs`) проверяет `dist`
+  в `vite preview` + headless Chromium (10 проверок). Поведение, разметка, CSS, `CONFIG`,
+  `Stats` v3 и ключи хранилища не менялись; `src/**` — только аудио.
 
 ## Коммиты и pull requests
 
@@ -348,8 +379,8 @@ npm run test:coverage# coverage v8 по группам + пороги 80/60 + ht
   `src/app/createServices.ts`; тип `Services` дополните в `src/app/types.ts`.
 - **Настройка сложности:** измените диапазоны в методах `generator.ts` или добавьте новые
   пороги в `CONFIG`.
-- **Новые звуки:** добавьте MP3-файл в `audio/`, имя — в `SOUND_NAMES` в
-  `src/services/audio-service.ts` (и в тип `AudioKind`), вызовите
+- **Новые звуки:** добавьте MP3-файл в `src/assets/audio/`, импорт `?url` и ключ — в
+  `AUDIO_URLS` (`src/assets/audio/audio-urls.ts`; `AudioKind` обновится сам), вызовите
   `services.audio.play(kind)` в хуке.
 - **Тесты:** новый тест — `*.test.ts` в `test/core/`, `test/data/`, `test/services/`
   (React — `*.test.tsx` в `test/components/` или `test/hooks/`); исходники только через

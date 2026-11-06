@@ -1,12 +1,10 @@
 // ============================================
-// SERVICES/AUDIO-SERVICE.TS — управление звуком (1.8.2)
+// SERVICES/AUDIO-SERVICE.TS — управление звуком (1.8.4: ассеты через ?url)
 // ============================================
 
-/** Имя звука, который умеет проигрывать AudioService. */
-export type AudioKind = 'click' | 'win' | 'lose';
+import { AUDIO_URLS, type AudioKind } from '../assets/audio/audio-urls';
 
-/** Звуки приложения; порядок предзагрузки сохранён с 1.2.0. */
-const SOUND_NAMES: AudioKind[] = ['click', 'win', 'lose'];
+export type { AudioKind };
 
 /**
  * Сервис управления звуковым сопровождением.
@@ -14,17 +12,16 @@ const SOUND_NAMES: AudioKind[] = ['click', 'win', 'lose'];
  * Ошибки игнорируются — игра работает без звука.
  */
 export class AudioService {
-    _sounds: Map<string, HTMLAudioElement> = new Map();
+    _sounds: Map<AudioKind, HTMLAudioElement> = new Map();
     _isReady = false;
 
     /** Предзагружает все звуки приложения; вызывается один раз при старте. */
     preload(): void {
-        SOUND_NAMES.forEach((name) => {
+        (Object.keys(AUDIO_URLS) as AudioKind[]).forEach((kind) => {
             try {
-                const audio = new Audio('audio/' + name + '.mp3');
-                this._sounds.set(name, audio);
+                this._sounds.set(kind, new Audio(AUDIO_URLS[kind]));
             } catch (e) {
-                console.warn('[AudioService] Ошибка загрузки звука: ' + name, e);
+                console.warn('[AudioService] Ошибка загрузки звука: ' + kind, e);
             }
         });
 

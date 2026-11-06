@@ -1,6 +1,7 @@
 // AudioService: предзагрузка трёх звуков и безопасное воспроизведение.
 
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { AUDIO_URLS } from '../../src/assets/audio/audio-urls';
 import { AudioService } from '../../src/services/audio-service';
 
 const play = vi.fn().mockResolvedValue(undefined);
@@ -36,9 +37,7 @@ describe('AudioService', () => {
             service.preload();
             const calls = AudioMock.mock.calls.map((call) => call[0]);
 
-            expect(calls).toContain('audio/click.mp3');
-            expect(calls).toContain('audio/win.mp3');
-            expect(calls).toContain('audio/lose.mp3');
+            expect(calls).toEqual([AUDIO_URLS.click, AUDIO_URLS.win, AUDIO_URLS.lose]);
         });
 
         test('не блокирует приложение при ошибке загрузки', () => {
