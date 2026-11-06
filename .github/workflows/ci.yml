@@ -37,11 +37,38 @@ jobs:
             - name: Тесты
               run: npm test
 
+            - name: Покрытие (пороги 80/60 не понижены)
+              run: npm run test:coverage
+
+            - name: Формат (Prettier)
+              run: npm run format:check
+
             - name: Сборка
               run: npm run build
 
             - name: Линтер
               run: npm run lint
+
+            - name: Бюджет строк и запреты (A84, Z42, TR-80)
+              run: |
+                  fail=0
+                  for file in $(find src -type f \( -name '*.ts' -o -name '*.tsx' \)) \
+                              $(find test -type f \( -name '*.test.ts' -o -name '*.test.tsx' \)); do
+                      lines=$(wc -l < "$file")
+                      if [ "$lines" -gt 200 ]; then echo "✗ $file: $lines > 200"; fail=1; fi
+                  done
+                  for file in $(find scripts -type f -name '*.mjs'); do
+                      lines=$(wc -l < "$file")
+                      if [ "$lines" -gt 250 ]; then echo "✗ $file: $lines > 250"; fail=1; fi
+                  done
+                  for file in $(find css -type f -name '*.css'); do
+                      lines=$(wc -l < "$file")
+                      if [ "$lines" -gt 200 ]; then echo "✗ $file: $lines > 200"; fail=1; fi
+                  done
+                  grep -RIn ">= 100\|>= 70\|>= 40" src/core/game-rules.ts && fail=1 || true
+                  grep -RIn "retry" src/core src/data src/hooks src/App.tsx && fail=1 || true
+                  grep -RIn "console\.log" src && fail=1 || true
+                  exit "$fail"
 
             - name: Smoke собранного dist
               run: npm run smoke

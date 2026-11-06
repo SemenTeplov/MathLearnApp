@@ -24,7 +24,6 @@ describe('SessionModel — recordCorrect', () => {
     test('один правильный ответ: correct = 1, roundScore = POINTS_BASE', () => {
         const model = new SessionModel();
         model.recordCorrect();
-
         const results = model.getResults();
         expect(results.correct).toBe(1);
         expect(results.wrong).toBe(0);
@@ -34,7 +33,6 @@ describe('SessionModel — recordCorrect', () => {
     test('восемь правильных ответов: correct = 8, roundScore = 80', () => {
         const model = new SessionModel();
         answerCorrect(model, 8);
-
         const results = model.getResults();
         expect(results.correct).toBe(8);
         expect(results.wrong).toBe(0);
@@ -45,7 +43,6 @@ describe('SessionModel — recordCorrect', () => {
         const model = new SessionModel();
         advance(model, 3);
         model.recordCorrect();
-
         const results = model.getResults();
         expect(results.correct).toBe(1);
         expect(results.wrong).toBe(0);
@@ -56,7 +53,6 @@ describe('SessionModel — recordIncorrect', () => {
     test('одна ошибка: wrong = 1, lives = MAX_LIVES − 1', () => {
         const model = new SessionModel();
         model.recordIncorrect();
-
         const results = model.getResults();
         expect(results.wrong).toBe(1);
         expect(results.correct).toBe(0);
@@ -66,7 +62,6 @@ describe('SessionModel — recordIncorrect', () => {
     test('три ошибки: wrong = 3, lives = 0', () => {
         const model = new SessionModel();
         answerIncorrect(model, 3);
-
         const results = model.getResults();
         expect(results.wrong).toBe(3);
         expect(results.lives).toBe(0);
@@ -76,7 +71,6 @@ describe('SessionModel — recordIncorrect', () => {
         const model = new SessionModel();
         model.recordCorrect();
         model.recordIncorrect();
-
         const results = model.getResults();
         expect(results.correct).toBe(1);
         expect(results.wrong).toBe(1);
@@ -92,7 +86,6 @@ describe('SessionModel — getResults', () => {
         answerIncorrect(model, 2);
         advance(model, 10);
         model.setCompleted(true);
-
         const results = model.getResults();
         expect(results).toEqual({
             correct: 8,
@@ -110,7 +103,6 @@ describe('SessionModel — getResults', () => {
         answerCorrect(model, 10);
         advance(model, 10);
         model.setCompleted(true);
-
         const results = model.getResults();
         expect(results.correct).toBe(10);
         expect(results.wrong).toBe(0);
@@ -124,7 +116,6 @@ describe('SessionModel — getResults', () => {
         answerIncorrect(model, 3);
         advance(model, 3);
         model.setCompleted(true);
-
         const results = model.getResults();
         expect(results.correct).toBe(0);
         expect(results.wrong).toBe(3);
@@ -138,7 +129,6 @@ describe('SessionModel — getResults', () => {
         answerCorrect(model, 3);
         model.recordIncorrect();
         advance(model, 4);
-
         const results = model.getResults();
         expect(results.correct).toBe(3);
         expect(results.wrong).toBe(1);
@@ -147,7 +137,6 @@ describe('SessionModel — getResults', () => {
 
     test('без ответов → 0/0/0, точность 0 без деления на ноль', () => {
         const model = new SessionModel();
-
         const results = model.getResults();
         expect(results.correct).toBe(0);
         expect(results.wrong).toBe(0);
@@ -159,7 +148,6 @@ describe('SessionModel — getResults', () => {
     test('completed пробрасывается без ответов', () => {
         const model = new SessionModel();
         model.setCompleted(true);
-
         const results = model.getResults();
         expect(results.completed).toBe(true);
         expect(results.total).toBe(0);
@@ -171,9 +159,7 @@ describe('SessionModel — reset', () => {
         const model = new SessionModel();
         model.recordCorrect();
         model.recordIncorrect();
-
         model.reset();
-
         const results = model.getResults();
         expect(results.correct).toBe(0);
         expect(results.wrong).toBe(0);
@@ -188,9 +174,7 @@ describe('SessionModel — reset', () => {
         model.recordCorrect();
         model.recordIncorrect();
         advance(model, 2);
-
         model.reset();
-
         expect(model.lives).toBe(CONFIG.MAX_LIVES);
         expect(model.difficulty).toBe(CONFIG.START_DIFFICULTY);
         expect(model.currentQuestionIndex).toBe(0);
@@ -202,9 +186,7 @@ describe('SessionModel — reset', () => {
         answerCorrect(model, 4);
         answerIncorrect(model, 2);
         model.reset();
-
         model.recordCorrect();
-
         const results = model.getResults();
         expect(results.correct).toBe(1);
         expect(results.wrong).toBe(0);

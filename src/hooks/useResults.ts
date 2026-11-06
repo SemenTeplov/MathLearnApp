@@ -1,8 +1,8 @@
 // ============================================
-// SRC/HOOKS/useResults.ts — экран результатов (1.8.2)
+// SRC/HOOKS/useResults.ts — экран результатов (1.10.0)
 // ============================================
-// Оценка → успешность → onRoundFinished (позиция игрока) →
-// StatsService.updateAfterRound (только победа) → звук → строка «Заработано».
+// Оценка → успешность → запись очков (updateAfterRound) → onRoundFinished →
+// звук → строка «Заработано». Провал записи не зачитывает очки (A80, T74).
 
 import { useCallback, useState } from 'react';
 import type { Services } from '../app/types';
@@ -29,19 +29,15 @@ export function useResults(services: Services, onRoundFinished: (isSuccessful: b
         (results: GameResult): void => {
             const rating: Rating = GameRules.getRating(results);
             const isSuccessful = Scoring.isRoundSuccessful(results.lives, results.completed);
+            const written = isSuccessful && services.stats.updateAfterRound(results.roundScore);
 
+            // Карта читает счёт в gameFinished уже после записи (корень P4).
             onRoundFinished(isSuccessful);
 
-            if (isSuccessful) {
-                services.stats.updateAfterRound(results.roundScore);
-                services.audio.play('win');
-            } else {
-                services.audio.play('lose');
-            }
+            // Звук раунда не зависит от результата записи (решение 7 плана).
+            services.audio.play(isSuccessful ? 'win' : 'lose');
 
-            const earnings = isSuccessful
-                ? 'Заработано: ' + results.roundScore + ' ✓'
-                : 'Заработано: ' + results.roundScore + ' (не зачтено)';
+            const earnings = 'Заработано: ' + results.roundScore + (isSuccessful && written ? ' ✓' : ' (не зачтено)');
 
             setView({ results, rating, earnings });
         },

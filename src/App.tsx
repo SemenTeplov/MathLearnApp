@@ -1,11 +1,12 @@
 // ============================================
-// SRC/APP.TSX — весь каркас приложения на React (1.8.2)
+// SRC/APP.TSX — каркас приложения на React (1.10.0)
 // ============================================
-// 15.17: React рендерит #mapScreen и .app с теми же id/классами, что были
-// в index.html; .active вычисляется из состояния, а не из DOM-роутера.
-// Модалки — в дереве App. Состояние экранов — локальное (хуки), без сторов.
+// React рендерит #mapScreen и .app с теми же id/классами, что были в index.html;
+// .active вычисляется из состояния, а не из DOM-роутера. Модалки — в дереве App.
+// Состояние экранов — локальное (хуки), без сторов. Ошибки data-слоя приходят
+// в единственный showError через ErrorBus; возврат на карту всегда перечитывает счёт.
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Services } from './app/types';
 import { ErrorModal } from './components/ErrorModal';
 import { GameScreen } from './components/GameScreen';
@@ -17,7 +18,7 @@ import { useGame } from './hooks/useGame';
 import { useMap } from './hooks/useMap';
 import { useMapSelection } from './hooks/useMapSelection';
 import { useResults } from './hooks/useResults';
-import { useSessionLock } from './hooks/useSessionLock';
+import { SESSION_BUSY_MESSAGE, SESSION_BUSY_TITLE, useSessionLock } from './hooks/useSessionLock';
 import type { Difficulty, GameResult } from './core/types';
 
 type ScreenName = 'map' | 'game' | 'results';
@@ -48,7 +49,10 @@ export function App({ services }: AppProps) {
         setError({ title, message });
     }, []);
 
-    useSessionLock(showError);
+    // Единственный канал показа ошибок data-слоя (A79, решение 1).
+    useEffect(() => services.errors.subscribe(showError), [services, showError]);
+
+    const { blocked } = useSessionLock(showError);
 
     const map = useMap(services);
     const results = useResults(services, map.gameFinished);
@@ -66,10 +70,12 @@ export function App({ services }: AppProps) {
         [showResults, navigate]
     );
 
+    // ✕ во время игры — тот же путь, что «На карту»: сначала чтение, затем экран (A82).
     const handleExitToMap = useCallback(() => {
         exitGame();
+        reloadMap();
         navigate('map');
-    }, [exitGame, navigate]);
+    }, [exitGame, reloadMap, navigate]);
 
     const game = useGame(services, { onRoundFinished: handleGameFinished, onExitToMap: handleExitToMap });
     const { start: startGame } = game;
@@ -84,18 +90,26 @@ export function App({ services }: AppProps) {
 
     const handleSelectDifficulty = useCallback(
         (difficulty: Difficulty) => {
+            if (blocked) {
+                showError(SESSION_BUSY_TITLE, SESSION_BUSY_MESSAGE);
+                return;
+            }
             chooseDifficulty(difficulty);
             startGame(difficulty);
             navigate('game');
         },
-        [chooseDifficulty, startGame, navigate]
+        [blocked, chooseDifficulty, showError, startGame, navigate]
     );
 
     const handlePlayAgain = useCallback(() => {
+        if (blocked) {
+            showError(SESSION_BUSY_TITLE, SESSION_BUSY_MESSAGE);
+            return;
+        }
         services.audio.play('click');
         startGame();
         navigate('game');
-    }, [services, startGame, navigate]);
+    }, [blocked, services, showError, startGame, navigate]);
 
     const handleBackToMap = useCallback(() => {
         services.audio.play('click');

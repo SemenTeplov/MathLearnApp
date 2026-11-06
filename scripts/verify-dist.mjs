@@ -10,6 +10,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { connectPage, createPageRecorder, freePort, launchChromium, poll } from './cdp.mjs';
+import { connectTarget, openTarget } from './cdp.mjs';
 
 const args = {};
 for (let i = 2; i < process.argv.length; i += 2) {
@@ -65,7 +66,6 @@ try {
     await cdp.send('Network.enable');
     await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: 'try { localStorage.clear(); } catch (e) {}' });
     await cdp.send('Page.navigate', { url: TARGET });
-
     // 1. Документ: 200, <title>Math</title>, смонтированный #root.
     await waitFor(
         'document.readyState === "complete" && document.querySelector("#root").children.length > 0',
@@ -78,7 +78,6 @@ try {
     if (documentResponse.status !== 200) throw new Error('документ вернул ' + documentResponse.status);
     if ((await evaluate('document.title')) !== 'Math') throw new Error('title ≠ Math');
     console.log('✓ документ 200, <title>Math</title>, #root смонтирован');
-
     // 2. CSS: ссылка 200 и градиент фона (значит таблица стилей применилась).
     const cssHref = await evaluate('document.querySelector(\'link[rel="stylesheet"]\').href');
     const cssResponse = await poll(
@@ -89,7 +88,6 @@ try {
     const background = await evaluate('getComputedStyle(document.body).backgroundImage');
     if (!background.includes('gradient')) throw new Error('backgroundImage = ' + background);
     console.log('✓ CSS 200 и градиент фона применён');
-
     // 3. Ровно один module-скрипт, он загрузился 200, исключений ещё нет.
     const modules = await evaluate(
         '[...document.querySelectorAll("script")].filter((s) => s.type === "module").map((s) => s.src)'
@@ -185,7 +183,31 @@ try {
     if (!earnings.startsWith('Заработано')) throw new Error('earnings = ' + earnings);
     console.log('✓ 10/10 ответов → результаты «' + resultTitle + '», ' + earnings);
 
-    // 9. Сеть: нет 4xx/5xx по Document/Script/Stylesheet/Media и нет loadingFailed (D52).
+    // 9. Вторая вкладка (TR-73): претендент получает модалку, владелец молчит.
+    const second = await openTarget(port, TARGET, TIMEOUT);
+    const tab = await connectTarget(second.webSocketDebuggerUrl);
+    const ask = async (expression) => {
+        const result = await tab.cdp.send('Runtime.evaluate', { expression, returnByValue: true });
+        return result.result.value;
+    };
+    try {
+        const lockTitle = await poll(
+            () => ask('document.querySelector(".modal-overlay.open h2")?.textContent ?? null'),
+            'модалка второй вкладки',
+            TIMEOUT
+        );
+        if (lockTitle !== 'Игра уже запущена') throw new Error('вторая вкладка: ' + lockTitle);
+        if (await ask('document.querySelector("#gameScreen.active") !== null'))
+            throw new Error('вторая вкладка играет');
+        if ((await ask('document.querySelectorAll(".map-trainer").length')) !== 15) throw new Error('нет карты');
+        if (await evaluate('document.querySelector(".modal-overlay.open") !== null'))
+            throw new Error('модалка у владельца');
+        console.log('✓ вторая вкладка: модалка «Игра уже запущена», владелец без модалки');
+    } finally {
+        tab.socket.close();
+    }
+
+    // 10. Сеть: нет 4xx/5xx по Document/Script/Stylesheet/Media и нет loadingFailed (D52).
     const bad = responses.filter(
         (item) => ASSET_TYPES.has(item.type) && item.status >= 400 && !item.url.endsWith('/favicon.ico')
     );
@@ -195,7 +217,7 @@ try {
         throw new Error('loadingFailed: ' + failed.map((item) => item.error + ' ' + item.url).join(', '));
     console.log('✓ сеть: нет ответов ≥ 400 и loadingFailed');
 
-    // 10. Консоль: ни error/warning, ни необработанных исключений.
+    // 11. Консоль: ни error/warning, ни необработанных исключений.
     if (consoleIssues.length) throw new Error('консоль: ' + consoleIssues.join(' | '));
     if (exceptions.length) throw new Error('исключения: ' + exceptions.join(' | '));
     console.log('✓ консоль без error/warning и исключений');

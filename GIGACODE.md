@@ -20,8 +20,9 @@ src/
   main.tsx                  # CSS → createServices → preload → handlers → createRoot.render
   App.tsx                   # Каркас: #mapScreen, .app, модалки, навигация, App({ services })
   app/
-    createServices.ts       # Composition root: new StatsService(repo) + new AudioService()
-    types.ts                # interface Services { audio, stats }
+    createServices.ts       # Composition root: StatsService + AudioService + ErrorBus
+    error-bus.ts            # ErrorBus: subscribe(listener) / report(title, message)
+    types.ts                # interface Services { audio, stats, errors }
   core/                     # Домен: без React, DOM и localStorage (13 модулей)
     config.ts               # export const CONFIG; ZONES/MAPS — внутренние const
     types.ts                # Difficulty, Problem, GameResult, MapData, Stats, Config, Zone,
@@ -42,7 +43,9 @@ src/
   data/                     # Сохранение: репозитории и StatsService
     repository.ts           # class Repository (контракт, не abstract)
     local-repository.ts     # LocalStorageRepository — единственное место с localStorage
-    stats-service.ts        # class StatsService(repo): счёт/позиция, switchMap, миграции
+    memory-fallback.ts      # MemoryFallback — декоратор Repository «память вместо диска»
+    stats-service.ts        # class StatsService(repo, errors, fallback): счёт/позиция,
+                            # switchMap, миграции, действия reset/skip/memory, boolean-запись
   services/
     audio-service.ts        # class AudioService (preload по AUDIO_URLS), type AudioKind
   assets/
@@ -66,9 +69,9 @@ src/
   hooks/                    # 5 хуков; сервисы — первым аргументом
     useMap.ts               # useMap(services): PlayerState, клики, движение, модалка, resize
     useGame.ts              # useGame(services, deps): SessionModel + ProblemGenerator в ref
-    useResults.ts           # useResults(services, onFinished): оценка, очки, звук
+    useResults.ts           # useResults(services, onFinished): оценка, запись очков, звук
     useMapSelection.ts      # useMapSelection(services, onChanged): список карт, switchMap
-    useSessionLock.ts       # useSessionLock(showError): BroadcastChannel + hello
+    useSessionLock.ts       # useSessionLock(showError) → { blocked }: hello/busy + heartbeat
 css/                        # 20 файлов; значения без изменений с 1.5.0, состав — 1.9.0 (A76)
   base.css                  # Сброс, типографика, контейнер приложения
   buttons.css               # Варианты кнопок
@@ -82,13 +85,18 @@ vite.config.ts              # react(), base: './', outDir dist, sourcemap, asset
 eslint.config.js            # flat config: @eslint/js + typescript-eslint + react-hooks
 .prettierrc.json            # 4 пробела, singleQuote, printWidth 120, trailingComma none
 .prettierignore             # dist, coverage, package-lock.json, *.md, .gigacode
-.github/workflows/ci.yml    # npm ci → typecheck → test → build → lint → smoke
+.github/workflows/ci.yml    # npm ci → typecheck → test → coverage → format → build → lint →
+                            # бюджет строк → smoke
 scripts/
   smoke.mjs                 # 10 HTTP-проверок dist через vite preview (без зависимостей)
-  verify-dist.mjs           # 10 браузерных проверок dist (vite preview + headless Chromium)
-  cdp.mjs                   # минимальный CDP-клиент, опрос DOM, запуск Chromium
-test/                       # 28 сьютов / 261 тест (1.9.0 — зелёные, без eval)
+  verify-dist.mjs           # 11 браузерных проверок dist (включая вторую вкладку)
+  cdp.mjs                   # минимальный CDP-клиент, опрос DOM, запуск Chromium, вторая цель
+test/                       # 29 сьютов / 276 тестов (1.10.0 — зелёные, без eval)
   support/memory-repository.ts  # тестовый двойник Repository (вне src/ и coverage)
+  support/stats-fixtures.ts     # defaults/withEnglish/mapStats/read/failsOn, makeService
+  support/generator-fixtures.ts # таблица диапазонов генератора по сложностям
+  support/app-drivers.ts        # шаги пользователя для App-сьютов (карта → раунд)
+  support/session-channel.ts    # управляемая заглушка BroadcastChannel для второй вкладки
 .gigacode/
   rulles/RULES.md           # Конституция проекта (актуальная версия)
   specs/SPEC.md             # Спецификация поведения (актуальная версия)
@@ -119,18 +127,19 @@ npm run lint:fix     # ESLint с автоисправлением
 npm run format       # Prettier: переформатировать код
 npm run format:check # Prettier: проверить стиль без записи
 npm run smoke        # vite preview + 10 HTTP-проверок dist (Node, без зависимостей)
-npm run smoke:browser# smoke + 10 браузерных проверок dist (Chromium, CDP)
-npm test             # vitest run: 261 тест в 28 сьютах (1.9.0 — зелёные)
+npm run smoke:browser# smoke + 11 браузерных проверок dist (Chromium, CDP)
+npm test             # vitest run: 276 тестов в 29 сьютах (1.10.0 — зелёные)
 npm run test:watch   # vitest в watch-режиме
 npm run test:coverage# coverage v8 по группам + пороги 80/60 + html в coverage/
 ```
 
-**Проверки 1.9.0 (T70).** Полный локальный критерий; CI повторяет его без `format:check`:
+**Проверки 1.10.0 (T78).** Полный локальный критерий (порядок обязателен); CI повторяет его,
+кроме `smoke:browser` (Chromium в CI не ставится):
 
 ```bash
-npm ci && npm run typecheck && npm test && npm run build && npm run lint
-npm run format:check
-npm run smoke
+npm ci && npm run typecheck && npm test && npm run test:coverage
+npm run build && npm run lint && npm run format:check && npm run smoke
+npm run smoke:browser
 ```
 
 `npm run smoke` запускает `vite preview` на 4173 (`--strictPort`, `SMOKE_PORT` для переопределения)
@@ -138,7 +147,8 @@ npm run smoke
 `/src/`, `js/`, `audio/`, живые ассеты, три mp3 в `dist/assets`. Браузерные проверки
 (карта, 15 тренажёров, полный раунд, сеть без 4xx/5xx, чистая консоль) остаются в
 `scripts/verify-dist.mjs`; `npm run smoke:browser` сам поднимает `vite preview` и
-добавляет их к HTTP-проверкам (итого 11/11).
+добавляет их к HTTP-проверкам (`11/11`, включая сценарий второй вкладки: модалка у
+претендента, тишина у владельца).
 
 **Сборка 1.8.4 (TR-51…TR-58, A65/A68/A71).** `"type": "module"`, `vite.config.ts`
 (`react()`, `base: './'`, `outDir: 'dist'`, `sourcemap: true`, `assetsInlineLimit: 0`),
@@ -148,7 +158,7 @@ vite build`. Контракт `dist`: `index.html` (один module-скрипт
 `js/`, `css/`, `audio/`, `src/` в `dist` нет. `base: './'` — единственная точка настройки
 (в dev Vite приводит её к `/`), поэтому сборка работает и из подпапки (GitHub Pages).
 
-**Зависимости 1.9.0 (A72/A73).** `"type": "module"`, `"private": true`, `version: 1.9.0`,
+**Зависимости (A72/A73).** `"type": "module"`, `"private": true`, `version: 1.10.0`,
 `engines.node >= 20.19`. В `dependencies` — только `react` и `react-dom`; все инструменты
 (типы, Vite, vitest, jsdom, testing-library, ESLint, Prettier) — в `devDependencies`.
 `jest-environment-jsdom` и ~200 транзитивов Jest удалены, `package-lock.json` пересобран
@@ -164,22 +174,24 @@ vite build`. Контракт `dist`: `index.html` (один module-скрипт
 - `allowJs: false` — все тесты `.ts`/`.tsx`; `test/setup.ts` и `vitest.config.ts` тоже
   проверяются TypeScript.
 
-**Тесты (A59–A64, T50–T55; раскладка 1.9.0 — T68).** **28 сьютов / 261 тест.** Структура зеркалит `src/`:
+**Тесты (A59–A64, T50–T55; раскладка 1.10.0).** **29 сьютов / 276 тестов.** Структура зеркалит `src/`:
 
 | Каталог | Сьюты | Тесты | Что проверяет |
 |---|---|---|---|
-| `test/core/` | 12 | 135 | домен: `CONFIG`, ошибки, `error-handler`, правила, генератор, карта, `SessionModel`, `StatsSchema` |
-| `test/data/` | 4 | 40 | `StatsService` через `MemoryRepository` (`test/support/`); `LocalStorageRepository` (квота, порча), `Repository`, `MemoryRepository` |
+| `test/core/` | 12 | 139 | домен: `CONFIG`, ошибки, `error-handler`, правила, генератор, карта, `SessionModel`, `StatsSchema` (+ `console.info` миграций) |
+| `test/data/` | 4 | 40 | `StatsService` через `MemoryRepository` (`test/support/`): действия `reset`/`skip`/`memory`, провал записи; `LocalStorageRepository` (квота, порча), `Repository` |
 | `test/services/` | 1 | 9 | `AudioService`: preload, play, ошибки |
-| `test/components/` | 7 | 45 | RTL: `App` (интеграция), `GameScreen`, `MapScreen`, `ResultsScreen`, `MapSelectionModal`, `Header`, `ErrorModal` |
-| `test/hooks/` | 4 | 32 | `renderHook`: `useGame`, `useMap`, `useResults`, `useSessionLock` |
+| `test/components/` | 8 | 49 | RTL: `App` (интеграция, шина ошибок, блокировка), `App.map-freshness` (счёт после ✕), `GameScreen`, `MapScreen`, `ResultsScreen`, `MapSelectionModal`, `Header`, `ErrorModal` |
+| `test/hooks/` | 4 | 39 | `renderHook`: `useGame`, `useMap`, `useResults` (включая «не зачтено»), `useSessionLock` (владелец/претендент/fallback/StrictMode) |
 
 - **Только импорты (A59, T50).** Запрещены `eval`, `new Function`, `readSource`,
   `fs.readFileSync`, `require`; `test/ts-source.js` удалён; `allowJs: false`.
 - **Без копий логики (A60).** `CONFIG`, `GameRules`, `ProblemGenerator`, `Scoring`,
   `SessionModel` — только из `src/`; в `test/setup.ts` нет доменных констант.
-  `StatsService` создаётся как `new StatsService(new MemoryRepository())`, где
-  `MemoryRepository` — `test/support/memory-repository.ts` (в `src/` его нет, A75/T68).
+  `StatsService` создаётся как `new StatsService(repo, errors)`, где `MemoryRepository`
+  и `ErrorBus` — из `test/support/`/`src/app/` (двойник в `src/` не возвращается, A75/T68).
+- **Бюджет сьюта 200 строк (A84/T76).** Фикстуры и драйверы — в `test/support/*.ts`,
+  сценарии не удаляются и не дробятся; `test/README.md` описывает правило.
 - **RTL-правила (A62, A64).** `user-event` — для кликов; `fireEvent` — только
   `transitionend` и клик по оверлею; `renderHook` — только хуки, компоненты — только
   компонентные сьюты; fake timers — только 100 мс debounce `resize` и 1500 мс плашки
@@ -187,7 +199,7 @@ vite build`. Контракт `dist`: `index.html` (один module-скрипт
   `container.querySelectorAll` допустим для контрактных CSS-классов, `document.querySelector` — нет.
 - **Coverage (A63, T54).** `coverage.include` — `core`/`data`/`services`/`components`/`hooks`
   + `App.tsx`; `thresholds`: **80%** домен и **60%** UI (пороги не понижаются).
-  Срез 1.9.0: **96.83%** statements / **88.74%** branches; `src/core/types.ts` — 0/0
+  Срез 1.10.0: **97.36%** statements / **88.79%** branches; `src/core/types.ts` — 0/0
   (только типы), из отчёта не исключается.
 - **Аудио-тест (TR-60, A59).** `test/services/audio-service.test.ts` сравнивает вызовы с
   `AUDIO_URLS` (`toEqual([AUDIO_URLS.click, AUDIO_URLS.win, AUDIO_URLS.lose])`), а не с
@@ -197,7 +209,29 @@ vite build`. Контракт `dist`: `index.html` (один module-скрипт
 - **E2E (T50, D15).** Playwright не установлен, в `npm test` не входит; backlog
   7 сценариев — в `test/README.md`.
 
-Подробности — `test/README.md` и `spec_v1_8_3.md`.
+Подробности — `test/README.md`, `spec_v1_10_0.md` и `rules_v1_10_0.md`.
+
+## Диагностика и бюджет строк
+
+- **Миграции.** `StatsSchema.migrate` пишет ровно одну строку на выполненную ступень:
+  `console.info('[StatsSchema] миграция', N, '→', N + 1)`. Запись версии 1 даёт две строки
+  (1 → 2, 2 → 3), версия 2 — одну, актуальная версия 3 и повторный `load()` — ни одной.
+- **Каналы диагностики.** `console.log` в `src/**` запрещён (A85); разрешены `console.info`,
+  `console.warn`, `console.error`. `handleError()` логирует системные ошибки, игроку
+  показывается модалка «Ошибка хранилища» с `ErrorInfo.userMessage` (A79, TR-71).
+- **Бюджет строк (A84, T76).** Проверяется `wc -l` локально и шагом CI «Бюджет строк и
+  запреты»:
+
+| Область | Лимит | Факт 1.10.0 |
+|---|---|---|
+| `src/**/*.ts`, `src/**/*.tsx` | 200 | `hooks/useMap.ts` — 200 |
+| `test/**/*.test.ts(x)` | 200 | `data/stats-service.test.ts` — 199 |
+| `scripts/**/*.mjs` | 250 | `verify-dist.mjs` — 247 |
+| `css/**/*.css` | 200 | `map_items/map-global.css` — 64 |
+
+- Тот же шаг CI проверяет три `grep` из TR-80: литералы порогов `>= 100/70/40`
+  в `src/core/game-rules.ts`, слово `retry` в `src/**` и `console.log` в `src/**` — все пусты.
+- Фикстуры и драйверы сьютов живут в `test/support/` и под лимит сьютов не подпадают.
 
 ## Стиль кодирования и соглашения об именовании
 
@@ -232,8 +266,9 @@ vite build`. Контракт `dist`: `index.html` (один module-скрипт
   `trailingComma: none`, `endOfLine: lf`). `npm run format` пишет, `npm run format:check`
   проверяет; `.md` исключены через `.prettierignore` — таблицы документации не ломаются.
 - **CI:** `.github/workflows/ci.yml` (Node 22, `cache: npm`) запускает
-  `npm ci → typecheck → test → build → lint → smoke`. Отдельных «CI-скриптов» нет:
-  workflow вызывает ровно команды из T70.
+  `npm ci → typecheck → test → test:coverage → format:check → build → lint → бюджет строк →
+  smoke`. Отдельных «CI-скриптов» нет: workflow вызывает ровно команды из T78, а бюджет
+  строк проверяет тем же `wc -l`, что и TR-80.
 
 ## Архитектура
 
@@ -400,6 +435,18 @@ vite build`. Контракт `dist`: `index.html` (один module-скрипт
   и подключаются через `?url`; `scripts/verify-dist.mjs` (+`cdp.mjs`) проверяет `dist`
   в `vite preview` + headless Chromium (10 проверок). Поведение, разметка, CSS, `CONFIG`,
   `Stats` v3 и ключи хранилища не менялись; `src/**` — только аудио.
+- **1.10.0 — закрытие замечаний аудита 1.9.0:** ошибки хранилища доходят до игрока
+  (`ErrorBus` + существующая модалка), действия `reset`/`skip`/`memory` применяются в
+  `StatsService`, включая `MemoryFallback`; провал записи даёт «(не зачтено)» и неизменный
+  счёт (записывающие методы возвращают `boolean`); вторая вкладка сама блокируется
+  (handshake `hello`/`busy` + heartbeat `ml_session_lock`, TTL 2500 мс), владелец молчит;
+  ✕ и «На карту» используют один путь `reload()` + `navigate('map')`, очки пишутся до
+  `onRoundFinished`; пороги оценки берутся из `CONFIG.RATINGS[].min`; миграции логируются
+  `console.info`; бюджет строк приведён в норму (`useMap.ts` 209 → 200, сьюты ≤ 200,
+  фикстуры в `test/support/`); `.idea/` убран из индекса, `.npm-cache/` — в `.gitignore`;
+  `version` 1.10.0. Добавлен сьют `test/components/App.map-freshness.test.tsx` и
+  браузерный сценарий второй вкладки; итог — **29 сьютов / 276 тестов**, coverage
+  **97.36 / 88.79**, `smoke:browser` — **11/11** (11 браузерных проверок).
 - **1.9.0 — зависимости и качество:** `dependencies` сокращены до `react`/`react-dom`
   (удалены `jest-environment-jsdom` и ~200 транзитивов Jest), lock пересобран с нуля;
   добавлены ESLint 10 (flat) + Prettier 3, CI и `scripts/smoke.mjs`; `MemoryRepository`
@@ -414,8 +461,9 @@ vite build`. Контракт `dist`: `index.html` (один module-скрипт
 - Для PR: опишите изменение, перечислите затронутые файлы, укажите изменения конфигурации.
 - Миграция 1.8.2 велась в ветке `refactor/es-modules`; мерж — только после зелёного
   `npm test` на этапе 3.
-- С 1.9.0 мерж и пуш — только после зелёного CI: `npm ci → typecheck → test → build →
-  lint → smoke`; локально — те же команды (T70).
+- С 1.9.0 мерж и пуш — только после зелёного CI: `npm ci → typecheck → test →
+  test:coverage → format:check → build → lint → бюджет строк → smoke`; локально — те же
+  команды плюс `smoke:browser` (T78).
 
 ## Добавление нового контента
 
@@ -444,5 +492,6 @@ vite build`. Контракт `dist`: `index.html` (один module-скрипт
   `import` из `src/**`; `eval`/`readSource` и копии логики запрещены. Тестовые двойники —
   только в `test/support/`.
 - **После любого изменения:** `npm run lint && npm run format:check && npm test`; перед
-  сдачей — полный критерий `npm ci && npm run typecheck && npm test && npm run build &&
-  npm run lint && npm run smoke`.
+  сдачей — полный критерий T78: `npm ci && npm run typecheck && npm test &&
+  npm run test:coverage && npm run build && npm run lint && npm run format:check &&
+  npm run smoke && npm run smoke:browser`.

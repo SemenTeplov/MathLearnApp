@@ -1,6 +1,6 @@
 // Боевая схема Stats v3: значения по умолчанию, миграции, доступ по текущей карте.
 
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { CONFIG } from '../../src/core/config';
 import { CorruptedDataError } from '../../src/core/errors';
 import { StatsSchema } from '../../src/core/stats-schema';
@@ -150,5 +150,31 @@ describe('StatsSchema — ensureMaps', () => {
         } as unknown as Stats);
 
         expect(stats.maps.math).toEqual({ totalScore: 0, currentTrainerIndex: -1 });
+    });
+});
+
+describe('StatsSchema — диагностика миграций', () => {
+    test('ступени 1 → 2 → 3 логируются по одной через console.info (A85)', () => {
+        const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+        StatsSchema.migrate({ version: 1, totalScore: 30 });
+
+        expect(info).toHaveBeenCalledTimes(2);
+        expect(info).toHaveBeenNthCalledWith(1, '[StatsSchema] миграция', 1, '→', 2);
+        expect(info).toHaveBeenNthCalledWith(2, '[StatsSchema] миграция', 2, '→', 3);
+        info.mockRestore();
+    });
+
+    test('запись v2 — одна ступень, актуальная запись — ни одной', () => {
+        const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+        StatsSchema.migrate({ version: 2, totalScore: 5, currentTrainerIndex: 2 });
+        expect(info).toHaveBeenCalledTimes(1);
+
+        info.mockClear();
+        StatsSchema.migrate(StatsSchema.defaults());
+        StatsSchema.migrate(StatsSchema.defaults());
+        expect(info).not.toHaveBeenCalled();
+        info.mockRestore();
     });
 });

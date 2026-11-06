@@ -1,11 +1,11 @@
 # План — MathLingo
 
-**Версия:** 1.9.0
-**Статус:** Выполнено. Этап 20 «Зависимости, линтер, CI и качество кода» (SPEC 1.9.0)
-**Базовая линия 1.9.0 (проверено перед началом работ):** `npm run typecheck` — **0**; `npm test` — **261/261 в 28 сьютах**; `npm run build` → `dist/` (JS 245.58 КБ, CSS 6.84 КБ, три mp3); ESLint/Prettier — **не настроены**; CI — **нет**; `dependencies` — **~200** пакетов, включая `jest-cli` и `babel-preset-jest`; `package-lock.json` — 238 КБ
-**Создан на основе:** RULES 1.9.0 (`rules_v_1_9_0.md`: A72–A78, T63–T70, Z34–Z38) и SPEC 1.9.0 (`spec_v1_9_0.md`: TR-61…TR-70)
-**Предыдущая версия плана:** 1.8.4 (`plans/PLAN_v1_8_4.md` — архив)
-**Тип изменения:** **инструменты и гигиена репозитория**, а не поведение игры. `package.json` переписывается, добавляются ESLint/Prettier/CI/smoke, удаляется мёртвый код и CSS-долг. Поведение, разметка, тексты, значения стилей, `CONFIG`, `Stats` v3 и ключи хранилища **не меняются**.
+**Версия:** 1.10.0
+**Статус:** Этап 21 «Закрытие замечаний аудита 1.9.0» (SPEC 1.10.0) — **выполнен**. Факт: `typecheck` 0, `lint` 0, `format:check` 0, **276 тестов в 29 сьютах**, coverage **97.36 / 88.79**, `build` 247.51 КБ JS + 7.04 КБ CSS + три mp3, `smoke` **10/10**, `smoke:browser` **11/11** (11 браузерных сценариев); бюджет `src` 200 / `test` 199 / `scripts` 247 / `css` 64; `version` 1.10.0
+**Базовая линия 1.10.0 (06.11.2026, ветка `feature/1.10`, HEAD `4169b7a`):** перемерено — `typecheck` **0**, `lint` **0**, `npm test` **261/261 в 28 сьютах**; по отчёту 1.9.0 — coverage **96.83 / 88.74**, `format:check` 0, `smoke` **10/10**, `smoke:browser` **11/11**; `version` в `package.json` — **1.9.0**; бюджеты (`wc -l`): `useMap.ts` **209**, `generator.test.ts` **281**, `stats-service.test.ts` **317**, `session-model.test.ts` **213**, `App.test.tsx` **203**; `.idea/` — **8 файлов в индексе**, `.npm-cache/` и `.idea/` отсутствуют в `.gitignore`
+**Создан на основе:** RULES 1.10.0 (`rules_v1_10_0.md`: A79–A85, T71–T78, Z39–Z43) и SPEC 1.10.0 (`spec_v1_10_0.md`: TR-71…TR-80)
+**Предыдущая версия плана:** 1.9.0 (`plans/PLAN_v1_9_0.md` — архив)
+**Тип изменения:** **исправления по аудиту**, а не новая функциональность. Поведение меняется только там, где оно расходилось с требованиями 1.0.0–1.9.0: ошибки хранилища (A11/FR-10/FR-11), блокировка вкладок (A13/US-18), свежесть счёта на карте (US-26/FR-18), пороги оценки (A50). `CONFIG` (значения), `Stats` v3, ключи `ml_stats`/`ml_session_lock`, карта, звук и тексты подсказок **не меняются**.
 
 ---
 
@@ -13,132 +13,245 @@
 
 | # | Решение | Следствие |
 |---|---------|-----------|
-| 1 | **`dependencies` = только `react` + `react-dom`.** ~200 транзитивов Jest вычищаются вместе со старым lock | `npm ls --depth=0` показывает 19 записей; lock уменьшается с 238 КБ до ~136 КБ |
-| 2 | **Установка строго с нуля:** `rm -rf node_modules package-lock.json` → `npm install` | Первая попытка «поверх» оставила битое дерево (`@babel/helper-validator-identifier` отсутствовал) — это и стало причиной чистой установки |
-| 3 | **ESLint 10 + `typescript-eslint` 8 + `eslint-plugin-react-hooks` 7**, flat config | Peer-зависимости разрешаются без `--force`/`--legacy-peer-deps` |
-| 4 | **Из `react-hooks` — только `rules-of-hooks` и `exhaustive-deps`** (оба `error`), без compiler-правил | Прогон зелёный без `eslint-disable`; compiler-правила — отдельная версия |
-| 5 | **`exhaustive-deps` чинится деструктуризацией методов хуков** в `App.tsx` | Объекты хуков новые на каждый рендер; методы стабильны, `useGame` хранит обработчики в `depsRef` — поведение не меняется |
-| 6 | **Prettier применяется один раз на весь код** (48 файлов), `.md` исключены | Дифф механический; после форматирования `typecheck`/`test`/`build`/`smoke` зелёные |
-| 7 | **`MemoryRepository` переезжает в `test/support/`**, а не удаляется | Тестам нужен двойник; `src/**` и coverage не содержат тестового кода |
-| 8 | **`Scoring.calculateRoundScore` используется** в `SessionModel.recordCorrect` | Убирает дубль `correct × POINTS_BASE`; `scoring.test.ts` остаётся осмысленным |
-| 9 | **`game-header.css` подключается, `results-streak.css` удаляется** | CSS-бандл 7.04 КБ: шапка игры снова стилизована, мёртвый `.streak-badge` убран |
-| 10 | **Smoke — `scripts/smoke.mjs` на `vite preview` + `fetch`**, без Playwright | Новых зависимостей нет; браузерные 10 проверок остаются в `verify-dist.mjs` |
-| 11 | **CI повторяет локальный критерий**: `npm ci → typecheck → test → build → lint → smoke` | Нет «CI-специальных» скриптов; Node 22 LTS |
-| 12 | **Ветка — текущая `feature/002`**; коммиты по шагам; пуш и мерж — по согласованию | `git add -A` запрещён (Z37) |
+| 1 | **Единственный канал показа ошибок — `showError` в `App.tsx`.** Data-слой не рисует UI, а публикует сообщение в мини-шину `ErrorBus` (`src/app/error-bus.ts`), на которую подписан `App` | Новых UI-компонентов и второго канала нет; `alert()`/`confirm()` запрещены (Z39); тест подписывается на шину вместо DOM-модалки |
+| 2 | **Действие применяет вызывающий (A11):** `reset` → `Repository.clear()` + данные по умолчанию, `memory` → подмена репозитория на `MemoryFallback` (декоратор `Repository` с копией в памяти), `skip` → запись не выполняется | `handleError()` остаётся чистым классификатором; `MemoryRepository` из `test/support/` не возвращается в `src/`, прод-режим памяти — отдельный декоратор (T72) |
+| 3 | **Заголовок модалки для ошибок хранилища — `«Ошибка хранилища»`, текст — `ErrorInfo.userMessage`** | Текст из `ErrorInfo` не переписывается; существующие подсказки не меняются; заголовок — единственная новая строка UI |
+| 4 | **Одно сообщение на ошибку:** `StatsService` запоминает последнюю пару `action + userMessage` и не публикует её повторно, пока не было успешной записи или смены режима | Повторные `load()` не спамят модалкой (A79); после восстановления хранилища ошибка снова может быть показана |
+| 5 | **Записывающие методы возвращают `boolean`:** `save`, `updateAfterRound`, `saveTrainerIndex`, `switchMap`, `reset` | Ломается «тихая» сигнатура `void`; фейковые `Services` в тестах обновляются осознанно (T51/T71) |
+| 6 | **Порядок в `useResults.show` меняется:** сначала `updateAfterRound`, затем `onRoundFinished` (позиция на карте) | Это и есть корень P4: сейчас `map.gameFinished` читает `getTotalScore()` до записи; после правки карта видит уже записанный счёт (A82/T74) |
+| 7 | **Звук раунда не зависит от результата записи:** победа играет `win`, даже если сохранить не удалось | Меняется только строка результатов («(не зачтено)») и счёт; инвариант «поведение раунда не меняется» соблюдён |
+| 8 | **Блокировка вкладок — handshake + heartbeat:** владелец отвечает `busy` на `hello` и обновляет метку `ml_session_lock` (`{id, ts}`, TTL 2500 мс, интервал 1000 мс); претендент, увидев свежую чужую метку или `busy`, блокируется | Требует переписать тест-инверсию; ключ `ml_session_lock` сохраняется, меняется только формат значения (T73) |
+| 9 | **Старое значение метки `'1'` (1.9.0) считается свободной меткой** | Обновление со старой вкладки не «залипает» навсегда; первый запуск после 1.9.0 пишет JSON |
+| 10 | **Заблокированная вкладка не стартует игру:** `useSessionLock` возвращает `{ blocked }`, `App` проверяет его в `handleSelectDifficulty` и `handlePlayAgain` и повторяет модалку | Вторая вкладка не может начать раунд (A81/Z40), модалка показывается снова |
+| 11 | **Сценарий второй вкладки — второй CDP-target в `scripts/verify-dist.mjs`** | Новых зависимостей нет; проверок станет 11 браузерных / 12 суммарных; строки бюджета скрипта (225 из 250) хватает |
+| 12 | **Возврат на карту — один путь:** `reload()` + `navigate('map')`; ✕ вызывает его же | «На карту» и ✕ больше не расходятся по свежести счёта (A82) |
+| 13 | **`getRating` перебирает `CONFIG.RATINGS` по убыванию `min`**, точность округляется один раз | Литералы `100/70/40` уходят из `src/**`; тест подменяет порог и восстанавливает его в `afterEach` |
+| 14 | **Бюджет 200 строк для сьютов держится переносом фикстур и хелперов в `test/support/*.ts`**, а не удалением сценариев и не дроблением сьюта | Файлы `test/support/` не подпадают под лимит `test/**/*.test.ts`; число тестов не уменьшается (A60/Z42) |
+| 15 | **`useMap.ts` сокращается только за счёт шапки, комментариев и дублей** (прецедент D25 1.8.2) | Логика, публичный `UseMap` и тесты карты не меняются |
+| 16 | **Диагностика миграций — `console.info` один раз на ступень**, `console.log` остаётся запрещённым | Снимается конфликт T11 ↔ Z3; повторная загрузка без миграции молчит (A85) |
+| 17 | **Документы:** `PLAN.md` — текущий 1.10.0, `PLAN_v1_9_0.md` — архив 1.9.0, `PLAN_v1_10_0.md` не создаётся; `TASKS.md` = 1.10.0, `TASKS_v1_9_0.md` — архив | Дубль текущего плана устраняется без удаления истории (T77/TR-79) |
+| 18 | **`.idea/` убирается из индекса** (`git rm -r --cached`), история git не переписывается; `.npm-cache/` и `.idea/` — в `.gitignore` | Локальные файлы IDE остаются на диске; `git ls-files .idea` → 0 |
+| 19 | **CI доводится до локального критерия** (+ `format:check`, `test:coverage`, шаг «Бюджет строк»); `smoke:browser` остаётся локальным | Бюджет строк проверяется в CI (T76), но Chromium в CI не ставится |
+| 20 | **Ветка — текущая `feature/1.10`**, коммиты по шагам; пуш и мерж — по согласованию | `git add -A` запрещён (Z37): в дереве незакоммиченные `SPEC.md`/`RULES.md`/`spec_v1_10_0.md`/`rules_v1_10_0.md` |
 
 ---
 
 ## 🎯 Цель
 
-Привести зависимости, линтер, форматирование и CI в соответствие с реальным стеком
-(Vite + React + vitest) и сделать локальную и CI-проверку одной и той же.
+Закрыть расхождения аудита 1.9.0, не добавляя возможностей игры:
 
-- `dependencies`: только `react`, `react-dom`; Jest-транзитивы отсутствуют в `package.json` и lock.
-- `"type": "module"`, `private: true`, `engines.node >= 20.19`.
-- ESLint 10 (flat) + `typescript-eslint` + `eslint-plugin-react-hooks`; `npm run lint` — 0.
-- Prettier 3 + `.prettierrc.json` + `.prettierignore`; `format`, `format:check`.
-- Мёртвый код: `useAudio`/`SessionService`/`SessionRepository` отсутствуют, `MemoryRepository` в тестах,
-  `calculateRoundScore` используется.
-- CSS: `game-header.css` подключён, дубль `game-answers.css` убран, `results-streak.css` удалён.
-- CI: `npm ci → typecheck → test → build → lint → smoke`; smoke — `vite preview` + HTTP.
-- README/GIGACODE/.gigacode соответствуют коду; архитектурное решение «без глобального стора» записано.
+- ошибки хранилища снова доходят до игрока: модалка, применённые `reset`/`memory`/`skip` (TR-71).
+- провал записи не выглядит как зачтённые очки: счёт неизменен, строка `(не зачтено)`, модалка (TR-72).
+- вторая вкладка блокируется сама, владелец работает без модалки; fallback `ml_session_lock` — та же семантика (TR-73).
+- карта показывает актуальный счёт на всех путях возврата, включая «Играть снова» → ✕ (TR-74).
+- пороги оценки берутся из `CONFIG.RATINGS[].min` (TR-75).
+- бюджет строк соблюдается: `src`/`test` ≤ 200, `scripts` ≤ 250, `css` ≤ 200 (TR-76).
+- миграции `1 → 2 → 3` логируются через `console.info` один раз на ступень (TR-77).
+- `ErrorInfo.action` = `reset | skip | memory`, каждое действие покрыто тестом «применено» (TR-78).
+- репозиторий и документы вычищены: `.idea/`, `.npm-cache/`, дубль плана, незакрытые ссылки (TR-79).
+- полный критерий TR-80 зелёный, фактические числа записаны в отчёт.
 
 ---
 
-## 📉 Исходное состояние (baseline 1.9.0)
+## 📉 Исходное состояние (аудит 1.9.0)
 
-| Проверка | Команда | Было |
-|---|---|---|
-| Типы | `npm run typecheck` | 0 ошибок |
-| Тесты | `npm test` | 261/261 в 28 сьютах |
-| Покрытие | `npm run test:coverage` | 96.84 / 88.74, пороги 80/60 |
-| Сборка | `npm run build` | `dist/`: JS 245.58 КБ, CSS 6.84 КБ, три mp3 |
-| Линтер | `npm run lint` | **скрипта нет** |
-| Форматирование | `npm run format` | **скрипта нет** |
-| CI | `.github/workflows/ci.yml` | **файла нет** |
-| Зависимости | `dependencies` | ~200 пакетов (Jest-транзитивы) |
+| # | Что расходится | Факт (где видно) | Шаг |
+|---|---|---|---|
+| P1 | `ErrorInfo.userMessage` не доходит до UI; `reset`/`memory` не применяются | `src/data/stats-service.ts:31-51` (результат `handleError` отброшен), `src/App.tsx` — `showError` используется только блокировкой вкладок | 21.1 |
+| P2 | Провал `save` проглатывается, экран пишет «Заработано: N ✓» | `src/hooks/useResults.ts:38-44`, `StatsService.save` → `void` | 21.2 |
+| P3 | Модалку получает первая вкладка, вторая играет | `src/hooks/useSessionLock.ts:26-28`: `channel.onmessage = lock`, владелец не отвечает претенденту | 21.3 |
+| P4 | «Играть снова» → ✕ показывает счёт без последнего раунда | `src/App.tsx:69-72` (`exitGame` + `navigate` без `reload`), `useResults` пишет очки **после** `onRoundFinished` | 21.4 |
+| P5 | Пороги `100/70/40` захардкожены, `Rating.min` не читается | `src/core/game-rules.ts:29-31` | 21.5 |
+| P6 | `useMap.ts` — 209 строк; 4 сьюта > 200 строк | `useMap.ts` 209, `generator.test.ts` 281, `stats-service.test.ts` 317, `session-model.test.ts` 213, `App.test.tsx` 203 | 21.6 |
+| P7 | Миграции `1 → 2 → 3` не логируются | `src/core/stats-schema.ts:46-71` — цикл без вывода | 21.7 |
+| P8 | `retry` из правил отсутствует в типе и реализации | В коде **уже** `action: 'reset' \| 'skip' \| 'memory'` (`src/core/types.ts`), `retry` в `src/**` нет; расхождение — только текст `rules_v_1_1_0.md:70` | 21.1 |
+| P9 | `.idea/` в git (8 файлов), `.npm-cache/` не в `.gitignore`, `PLAN_v1_9_0.md` — дубль `PLAN.md`, `version` = 1.9.0 | индекс git, `.gitignore`, `package.json` | 21.8 |
+
+### Что уже готово и не переделывается
+
+- Формат `Stats` v3, ключи `ml_stats` / `ml_session_lock`, миграции `1 → 2 → 3`.
+- `CONFIG` (10 вопросов, 3 жизни, `easy`, 10 очков, 3 зоны × 5 тренажёров, карта `math`), значения `RATINGS`/`GAMEOVER`.
+- Карта: шаг 100px, `MOVE_MS = 600` = `transition 600ms`, старт `−1`, правила `play/move/ignore`.
+- Сборка и ассеты: `build = tsc --noEmit && vite build`, `base: './'`, `sourcemap`, `assetsInlineLimit: 0`, `AUDIO_URLS` на `?url`.
+- Архитектура A72–A78 и инструменты T63–T70: composition root, пять хуков, без глобального стора, ESLint/Prettier/CI/smoke.
+
+---
+
+## 🧱 Целевая структура изменений
+
+```
+src/app/error-bus.ts            # NEW: подписка/публикация игровых сообщений (без глобалов)
+src/app/types.ts                # + errors: ErrorBus
+src/app/createServices.ts       # шина + MemoryFallback-фабрика в StatsService
+src/data/memory-fallback.ts     # NEW: декоратор Repository «память вместо диска»
+src/data/stats-service.ts       # действия применены, запись возвращает boolean, дедуп сообщений
+src/hooks/useResults.ts         # запись до onRoundFinished; earnings по результату записи
+src/hooks/useSessionLock.ts     # handshake hello/busy + heartbeat; возвращает { blocked }
+src/App.tsx                     # подписка на ErrorBus; ✕ = reload + map; guard на blocked
+src/core/game-rules.ts          # пороги из CONFIG.RATINGS
+src/core/stats-schema.ts        # console.info на ступень миграции
+src/hooks/useMap.ts             # 209 → ≤ 200 строк (только шапка/комментарии/дубли)
+test/support/*.ts               # NEW: фикстуры/хелперы для сокращения сьютов
+scripts/verify-dist.mjs         # + сценарий второй вкладки (второй CDP-target)
+.github/workflows/ci.yml        # + format:check, coverage, бюджет строк
+```
 
 ---
 
 ## 🗺️ Шаги
 
-### 20.1. `package.json` и установка с нуля
+### 21.1. Контракт ошибок: сообщение доходит до игрока (TR-71, TR-78)
 
-- Переписать `package.json` по T63: `dependencies` — `react`, `react-dom`; `devDependencies` — 17
-  инструментов (включая `eslint`, `@eslint/js`, `typescript-eslint`, `eslint-plugin-react-hooks`,
-  `globals`, `prettier`); добавить скрипты `lint`, `lint:fix`, `format`, `format:check`, `smoke`,
-  `smoke:browser`.
-- Удалить `package-lock.json` и `node_modules/`, выполнить `npm install`.
-- Проверить: `npm ls --depth=0`, отсутствие `jest-*`/`babel-preset-jest` в lock, `npm ci` на чистом дереве.
+**Зависимость:** нет
+**Файлы:** `src/app/error-bus.ts` (NEW), `src/app/types.ts`, `src/app/createServices.ts`, `src/data/memory-fallback.ts` (NEW), `src/data/stats-service.ts`, `src/App.tsx`, тесты
 
-**Критерий:** `npm ls --depth=0` без `jest-*`; `npm ci` — 0 ошибок.
+- 21.1.1. `ErrorBus`: `subscribe(listener): () => void`, `report(title, message)`; состояние — только внутри экземпляра (A78).
+- 21.1.2. `Services.errors: ErrorBus`; `createServices()` создаёт шину и передаёт её вместе с фабрикой резервного репозитория в `StatsService`.
+- 21.1.3. `StatsService`: каждый `catch` передаёт `ErrorInfo` в приватный `_apply(info)`:
+  `reset` → `this._repo.clear()` + возврат `StatsSchema.defaults()`; `memory` → подмена репозитория на `MemoryFallback` (переносит текущие значения в память, основной репозиторий больше не вызывается); `skip` → запись не выполняется. Затем `_report(info)` публикует `userMessage` в шину.
+- 21.1.4. `App.tsx`: `useEffect(() => services.errors.subscribe(showError), [services, showError])` — единственный канал; модалка — существующий `ErrorModal`.
+- 21.1.5. Дедупликация: `StatsService` не публикует повторно ту же пару `action + userMessage`, пока не было успешной записи или смены режима (A79: одна ошибка — одно сообщение).
+- 21.1.6. TR-78: тип уже `reset | skip | memory`; тесты «действие применено» на все три (`repo.clear()` вызван и `load()` = defaults; после `memory` основной репозиторий не вызывается; при `skip` запись отсутствует). Проверка `grep -RIn "retry" src` — пусто.
+- 21.1.7. Каждый правленый сьют — ≤ 200 строк (лимит действует с этого шага).
 
-### 20.2. ESLint и Prettier
+**Критерий:** `npm test` зелёный; тест на повреждённые данные видит и сообщение в шине, и очистку записи; тест на недоступное хранилище подтверждает работу из памяти.
 
-- `eslint.config.js`: js recommended + typescript-eslint recommended + `rules-of-hooks`/`exhaustive-deps`;
-  ignores `node_modules`, `dist`, `coverage`, `.idea`; `_`-параметры не считаются неиспользуемыми.
-- Исправить найденное: `App.tsx` — зависимости `useCallback` через деструктуризацию методов хуков;
-  `src/data/repository.ts` — `save(_data)`; удалить неиспользуемые `import type { AudioService }` из 4 тестов.
-- `.prettierrc.json`, `.prettierignore`; `npm run format`; `format:check` — чисто.
+---
 
-**Критерий:** `npm run lint` — 0 ошибок; `npm run format:check` — 0 файлов.
+### 21.2. Провал сохранения не зачитывает очки (TR-72)
 
-### 20.3. Мёртвый код
+**Зависимость:** 21.1
+**Файлы:** `src/data/stats-service.ts`, `src/hooks/useResults.ts`, `test/data/stats-service.test.ts`, `test/hooks/useResults.test.tsx`, фейковый `Services` в тестах
 
-- `grep` подтверждает отсутствие `useAudio`, `SessionService`, `SessionRepository` в `src/**`.
-- `test/support/memory-repository.ts`; удалить `src/data/memory-repository.ts`; 5 тестов перевести на новый путь.
-- `SessionModel.recordCorrect` считает `roundScore` через `Scoring.calculateRoundScore(this._correct)`.
-- `Repository.save(_data)` — параметр контракта.
+- 21.2.1. `save`, `updateAfterRound`, `saveTrainerIndex`, `switchMap`, `reset` возвращают `boolean` (true — запись на диск прошла); `updateAfterRound` при провале возвращает `false` и **не** меняет состояние в памяти (write-ahead, A12).
+- 21.2.2. `useResults.show`: `const written = isSuccessful && services.stats.updateAfterRound(roundScore)`; строка — `Заработано: N ✓` только при `written`, иначе `Заработано: N (не зачтено)`; при `false` счёт не меняется, сообщение приходит из 21.1.
+- 21.2.3. Звук раунда не меняется (`win` при победе, `lose` при провале) — решение 7.
+- 21.2.4. Тесты: репозиторий бросает `QuotaExceededError` на `save` → `updateAfterRound` = false, `getTotalScore()` = 0, `earnings` содержит `(не зачтено)`, в шине есть сообщение; успешная запись → true и `✓`. Фейковые `Services` возвращают `true`.
 
-**Критерий:** `npm test` — 261/261; в `src/data/` нет `memory-repository.ts`.
+**Критерий:** тест «провал записи» проверяет неизменный счёт, пометку и сообщение; `npm test` зелёный.
 
-### 20.4. CSS-долг
+---
 
-- `css/game.css`: 4 импорта — `game-header`, `game-question`, `game-answers`, `game-feedback`;
-  дубль `game-answers` убран.
-- Удалить `css/result_items/results-streak.css` и его `@import` из `css/results.css`.
-- Проверить бандл: `.game-header`/`.progress-fill`/`.lives` есть, `.streak-badge` нет.
+### 21.3. Блокировка второй вкладки (TR-73)
 
-**Критерий:** `css/` — 20 файлов; в `dist/assets/*.css` есть `.game-header`, нет `.streak-badge`.
+**Зависимость:** 21.1
+**Файлы:** `src/hooks/useSessionLock.ts`, `src/App.tsx`, `test/hooks/useSessionLock.test.tsx`, `scripts/verify-dist.mjs`, `test/components/App.test.tsx`
 
-### 20.5. CI и smoke
+- 21.3.1. Канал `BroadcastChannel('mathlingo_session')`: на монтаже `postMessage({ type: 'hello' })`; владелец на `hello` отвечает `{ type: 'busy' }` и **не** показывает модалку; претендент на `busy` → `blocked = true` + `showError('Игра уже запущена', 'Закройте другую вкладку с MathLingo.')`.
+- 21.3.2. Heartbeat-метка `ml_session_lock` = `JSON.stringify({ id, ts })`, TTL 2500 мс, обновление каждые 1000 мс; на монтировании метка проверяется: свежая чужая → `blocked`; иначе — запись своей. Значение `'1'`/не-JSON считается свободным (решение 9).
+- 21.3.3. `useSessionLock` возвращает `{ blocked }`; `App` не стартует раунд при `blocked` (`handleSelectDifficulty`, `handlePlayAgain` повторяют модалку).
+- 21.3.4. Cleanup: закрыть канал, снять интервал, удалить метку только своего `id`; в `StrictMode` двойной монтаж не блокирует сам себя.
+- 21.3.5. Fallback без `BroadcastChannel` — та же метка и та же семантика (занята → модалка, свободна → запись); пустой `catch` — только с комментарием (Z39).
+- 21.3.6. Тесты хука переписываются: владелец получил `hello` — молчит и отвечает `busy`; претендент получил `busy` — модалка один раз и `blocked`; истёкшая/удалённая метка → запуск без модалки; fallback занят/свободен.
+- 21.3.7. `verify-dist.mjs`: второй CDP-target открывает тот же URL; первая вкладка — без `.modal-overlay.open`, вторая — с модалкой и без старта игры; проверка печатается отдельной строкой.
 
-- `scripts/smoke.mjs`: `vite preview --port 4173 --strictPort`, ожидание 200, 10 HTTP-проверок,
-  `SIGTERM` в `finally`, `SMOKE_PORT`.
-- `.github/workflows/ci.yml`: checkout, setup-node 22 + `cache: npm`, шаги критерия, `permissions`,
-  `concurrency`, `timeout-minutes: 15`.
+**Критерий:** `npm run smoke:browser` — **11/11** (10 HTTP + сводная; 11 браузерных сценариев), сценарий второй вкладки виден в выводе; юнит-тесты хука зелёные.
 
-**Критерий:** `npm run smoke` — 10/10.
+---
 
-### 20.6. Документация
+### 21.4. Актуальный счёт на карте (TR-74)
 
-- README: команды (`npm ci`, `lint`, `format`, `smoke`), структура, CSS 20 файлов, тесты 28/261,
-  покрытие 96.83/88.74, раздел «Архитектурное решение».
-- GIGACODE: структура, команды, раздел «Линтер, форматирование, CI», история 1.9.0.
-- `test/README.md`: путь `test/support/memory-repository.ts`, команды `lint`/`format`/`smoke`.
+**Зависимость:** 21.2 (порядок записи)
+**Файлы:** `src/App.tsx`, `src/hooks/useResults.ts`, `test/hooks/useResults.test.tsx`, `test/components/App.test.tsx`, при нехватке места — новый `test/components/App.map-freshness.test.tsx`
 
-**Критерий:** в документах нет несуществующих файлов и команд.
+- 21.4.1. ✕ во время игры: `exitGame(); reloadMap(); navigate('map')` — тот же путь, что «На карту» (`handleBackToMap`).
+- 21.4.2. Порядок в `useResults.show`: `updateAfterRound` → `onRoundFinished(isSuccessful)`; `map.gameFinished` читает `getTotalScore()` уже после записи.
+- 21.4.3. Производные значения не кэшируются: `map.stats` обновляется в `reload()`/`gameFinished` из хранилища (A78).
+- 21.4.4. Тест-последовательность: счёт 0 → победа 10/10 (100 очков) → результаты → «Играть снова» → ✕ → в шапке карты `🏆 100`; «На карту» даёт тот же результат.
+- 21.4.5. Новые сценарии не вытесняют существующие; при нехватке бюджета заводится **новый** сьют, а не дробится старый (A60).
 
-### 20.7. spec/rules/PLAN/TASKS 1.9.0
+**Критерий:** тесты «✕ после „Играть снова“» и «На карту» видят `🏆 100`; регресс 1.9.0 зелёный.
 
-- Новые `spec_v1_9_0.md`, `rules_v_1_9_0.md`; блоки 1.9.0 в `SPEC.md`/`RULES.md` (включая историю).
-- `PLAN.md` = 1.9.0; архив `PLAN_v1_8_4.md`; `TASKS.md` = 1.9.0; архив `TASKS_v1_8_4.md`.
+---
 
-**Критерий:** индексы версий и архивы на месте, ссылки рабочие.
+### 21.5. Пороги оценки из `CONFIG.RATINGS` (TR-75)
 
-### 20.8. Финальный прогон
+**Зависимость:** нет
+**Файлы:** `src/core/game-rules.ts`, `test/core/game-rules.test.ts`
+
+- 21.5.1. `getRating`: `lives <= 0` → `CONFIG.GAMEOVER`; далее перебор `CONFIG.RATINGS` по убыванию `min` (`find(r => accuracy >= r.min) ?? CONFIG.RATINGS[CONFIG.RATINGS.length - 1]`).
+- 21.5.2. Точность округляется один раз, до сравнения; литералов `100/70/40` в `src/**` нет.
+- 21.5.3. Тест: границы 100/70/40 сохранены; подмена `CONFIG.RATINGS[0].min` (например, 90) меняет оценку для 95%, восстановление в `afterEach`.
+
+**Критерий:** `grep -RIn ">= 100\|>= 70\|>= 40" src/core/game-rules.ts` — пусто; тест на правку порога зелёный.
+
+---
+
+### 21.6. Бюджет строк (TR-76)
+
+**Зависимость:** 21.1–21.5 (сьюты правятся вместе с кодом)
+**Файлы:** `src/hooks/useMap.ts`, `test/{core,data,components}/*.test.ts(x)`, `test/support/*.ts` (NEW)
+
+- 21.6.1. `useMap.ts` 209 → ≤ 200: сократить шапку и комментарии, сжать дубли `useCallback`-обвязки; логика, `UseMap` и тесты не меняются.
+- 21.6.2. `stats-service.test.ts` 317 → ≤ 200: `defaults()`, `withEnglish()`, `emptyMap`, `beforeEach`-фабрики — в `test/support/stats-fixtures.ts`; все 26 сценариев сохраняются.
+- 21.6.3. `generator.test.ts` 281 → ≤ 200: табличные кейсы через `test.each` с массивом в `test/support/generator-fixtures.ts`; сценарии 1:1.
+- 21.6.4. `session-model.test.ts` 213 → ≤ 200 и `App.test.tsx` 203 → ≤ 200 — те же приёмы (фикстуры/хелперы), без удаления тестов.
+- 21.6.5. `scripts/*.mjs` (225/134/130) и `css/*.css` — проверить `wc -l`, лимиты 250/200; при превышении — хелперы в отдельный модуль (как `cdp.mjs`).
+- 21.6.6. Число тестов не уменьшается: не меньше 261, новые сценарии только добавляются (Z42).
+
+**Критерий:** каждый `src`/`test`-файл ≤ 200 строк, скрипты ≤ 250, CSS ≤ 200; `npm test` — не меньше 261 теста.
+
+---
+
+### 21.7. Диагностика миграций (TR-77)
+
+**Зависимость:** нет
+**Файлы:** `src/core/stats-schema.ts`, `test/core/stats-schema.test.ts`
+
+- 21.7.1. В цикле `migrate` каждая выполненная ступень пишет `console.info('[StatsSchema] миграция', version - 1, '→', version)` — один раз за ступень.
+- 21.7.2. Загрузка актуальной записи (без миграции) ничего не пишет; повторный `load()` не дублирует вывод.
+- 21.7.3. `console.log` в `src/**` не появляется; ошибки хранилища по-прежнему логирует `handleError()`.
+- 21.7.4. Тест: `vi.spyOn(console, 'info')` — запись v1 → ровно две ступени/два вызова; запись v3 → ноль.
+
+**Критерий:** `grep -RIn "console\.log" src` — пусто; тест на спай зелёный.
+
+---
+
+### 21.8. Гигиена репозитория и документов (TR-79)
+
+**Зависимость:** 21.1–21.7
+**Файлы:** `.gitignore`, `package.json`, `package-lock.json`, `README.md`, `GIGACODE.md`, `test/README.md`, `.github/workflows/ci.yml`, `.gigacode/**`
+
+- 21.8.1. `git rm -r --cached .idea` (8 файлов); `.gitignore` += `.idea/`, `.npm-cache/`; история git не переписывается.
+- 21.8.2. `package.json` `version` → `1.10.0`; `package-lock.json` — `npm install --package-lock-only`.
+- 21.8.3. Документы версии: `PLAN.md` = 1.10.0 (этот файл); `PLAN_v1_9_0.md` — архив 1.9.0; `PLAN_v1_10_0.md` не создаётся; `TASKS.md` = 1.10.0 + `TASKS_v1_9_0.md` (архив); `SPEC.md`/`RULES.md` уже содержат 1.10.0 — сверить индексы, историю и ссылки.
+- 21.8.4. README/GIGACODE/`test/README.md`: 11 браузерных проверок (`smoke:browser` 11/11), структура без `.idea/` и с `src/app/error-bus.ts` + `src/data/memory-fallback.ts`, раздел «Бюджет строк», диагностика `console.info`, версия 1.10.0, 29 сьютов / 276 тестов.
+- 21.8.5. CI: добавить `format:check`, `test:coverage` и шаг «Бюджет строк» (bash-цикл по `wc -l` + три `grep` из TR-80); без новых зависимостей.
+- 21.8.6. Ни один документ не ссылается на несуществующие команды/файлы; битых ссылок на `PLAN_v1_10_0.md` нет.
+
+**Критерий:** `git ls-files .idea | wc -l` → 0; `version` 1.10.0; `.gitignore` содержит оба пути; документы соответствуют фактическому дереву.
+
+---
+
+### 21.9. Финальный прогон TR-80
+
+**Зависимость:** 21.1–21.8
+**Файлы:** отчёт в коммите/описании PR; `dist/`, `coverage/` не коммитятся
 
 ```bash
 npm ci
 npm run typecheck
 npm test
+npm run test:coverage
 npm run build
 npm run lint
 npm run format:check
 npm run smoke
+npm run smoke:browser
 ```
 
-**Критерий:** все команды — код 0; тесты 261/261; smoke 10/10.
+Дополнительно, с кодом 0:
+
+```bash
+wc -l src/**/*.ts src/**/*.tsx test/**/*.test.ts test/**/*.test.tsx   # каждый ≤ 200
+wc -l scripts/*.mjs css/**/*.css                                      # 250 / 200
+git ls-files .idea | wc -l                                            # 0
+grep -RIn ">= 100\|>= 70\|>= 40" src/core/game-rules.ts               # пусто
+grep -RIn "retry" src/core src/data src/hooks src/App.tsx             # пусто
+grep -RIn "console\.log" src                                          # пусто
+```
+
+**Критерий:** порядок обязателен (`coverage` после тестов, `smoke` после `build`); все команды — код 0; фактические числа (тесты, покрытие, размеры файлов, проверки dist) записаны в отчёт.
 
 ---
 
@@ -146,32 +259,58 @@ npm run smoke
 
 | Проверка | Ожидание |
 |---|---|
-| `npm ci` | 0 ошибок, дерево из lock |
 | `npm run typecheck` | 0 ошибок |
-| `npm test` | 261/261 в 28 сьютах |
-| `npm run build` | `dist/`: JS + `.map`, CSS 7.04 КБ, три mp3 |
+| `npm test` | **не меньше 261** теста (факт — 276 в 29 сьютах) |
+| `npm run test:coverage` | не ниже 96.83 / 88.74; пороги 80/60 не понижены |
+| `npm run build` | `dist/`: JS + `.map`, CSS ~7 КБ, три mp3 |
 | `npm run lint` | 0 ошибок, 0 предупреждений |
 | `npm run format:check` | «All matched files use Prettier code style» |
-| `npm run smoke` | 10/10 |
-| `dependencies` | ровно 2 |
-| CSS | 20 файлов; `.game-header` в бандле, `.streak-badge` нет |
+| `npm run smoke` | 10/10 HTTP |
+| `npm run smoke:browser` | **11/11** (11 браузерных сценариев), включая вторую вкладку |
+| Бюджет строк | `src`/`test` ≤ 200, `scripts` ≤ 250, `css` ≤ 200 |
+| `git ls-files .idea` | пусто; `.npm-cache/` в `.gitignore` |
+| `grep` из TR-80 | все три — пусто |
+| `version` | 1.10.0 в `package.json` и lock |
+| Документы | `PLAN.md`/`TASKS.md` = 1.10.0, версии в `SPEC.md`/`RULES.md`, ссылки рабочие |
 
 ---
 
 ## ⚠️ Риски и меры
 
-- **Битое дерево после прерванной установки.** Мера: установка только с нуля; `npm ci` как проверка.
-- **`exhaustive-deps` в `App.tsx`.** Мера: деструктуризация методов; `useGame` не зависит от
-  идентичности обработчиков.
-- **Массовый `format`.** Мера: прогон полного критерия после; `.md` в `.prettierignore`.
-- **Smoke-порт.** Мера: `--strictPort` + `SMOKE_PORT`; сервер гасится в `finally`.
-- **Удаление CSS-файла.** Мера: `grep` по `.tsx`/`.css` до удаления; проверка собранного бандла.
+- **Инверсия блокировки вкладок.** Мера: юнит-тест «владелец молчит / претендент блокируется» + браузерный сценарий на две цели CDP; TTL 2500 мс при интервале 1000 мс; проверка `StrictMode`.
+- **Возврат `boolean` из сервиса ломает фейковые `Services`.** Мера: обновить фейки в тестах осознанно (T51), прогнать `useResults`/`useMap`/`App`-сьюты.
+- **Режим «память».** Мера: тест «основной репозиторий бросает → `save` не падает, `load` читает память, основной репозиторий больше не вызывается»; режим не переживает F5 (T72).
+- **Дедупликация сообщений может скрыть повторную ошибку.** Мера: сброс памяти сообщений при успешной записи/смене режима.
+- **`useMap.ts` на грани 200 строк.** Мера: сокращать только шапку/комментарии/дубли; тесты карты и поведение неизменны.
+- **Сьюты у предела 200 строк.** Мера: фикстуры/хелперы — в `test/support/`; сценарии не удаляются, число тестов не падает (A60/Z42).
+- **Подмена `CONFIG.RATINGS` в тесте протекает между кейсами.** Мера: восстановление в `afterEach` и копия массива на тест.
+- **Скрипт `verify-dist.mjs` (225/250) при добавлении сценария.** Мера: второй target — через существующие хелперы `cdp.mjs`; при необходимости новый хелпер в `cdp.mjs`.
+- **`.idea/` из индекса.** Мера: `git rm -r --cached` не трогает файлы на диске; force-push запрещён (Z43).
+- **CI-время.** Мера: coverage и format:check добавляются к уже имеющимся шагам; `smoke:browser` в CI не ставится.
 
 ---
 
 ## 📌 Инварианты
 
-- Поведение игры, разметка, тексты, значения стилей, `CONFIG`, `Stats` v3 и ключи хранилища не меняются.
-- 261 тест — контрольная цифра на каждом шаге; пороги 80/60 не понижаются.
-- `dependencies` — две записи; глобального стора нет.
-- `dist/` и `coverage/` в git не попадают.
+- Поведение раунда, карты, звука и навигации не меняется, кроме перечисленного в TR-71…TR-74.
+- `CONFIG` (значения), `Stats` v3, ключи `ml_stats`/`ml_session_lock`, тексты подсказок — без изменений.
+- 28 сьютов / 261 тест — минимальная планка; покрытие не понижается.
+- `dependencies` — две записи; глобального стора нет; публичные контракты `Repository`/`StatsService`/хуков сохраняются; сервисы создаются только в `createServices()`.
+- Никаких новых рантайм-зависимостей, Playwright/Puppeteer, type-aware ESLint, Prettier для `.md`.
+- `dist/` и `coverage/` в git не попадают; `git add -A` не используется.
+
+---
+
+## 📎 Документы версии 1.10.0
+
+| Документ | Состояние | Примечание |
+|---|---|---|
+| `specs/SPEC.md` | индекс 1.10.0 | обновлён вместе со спецификацией |
+| `specs/spec_v1_10_0.md` | действующий | TR-71…TR-80 |
+| `rulles/RULES.md` | индекс 1.10.0 | обновлён вместе с конституцией |
+| `rulles/rules_v1_10_0.md` | действующий | A79–A85, T71–T78, Z39–Z43 |
+| `plans/PLAN.md` | **этот файл**, 1.10.0 | этап 21 |
+| `plans/PLAN_v1_9_0.md` | архив 1.9.0 | больше не дубль: содержимое отличается от текущего плана |
+| `plans/PLAN_v1_10_0.md` | **не создаётся** | дубль текущего плана запрещён (TR-79) |
+| `tasks/TASKS.md` | 1.9.0 → 1.10.0 | переводится в шаге 21.8 |
+| `tasks/TASKS_v1_9_0.md` | архив | создаётся при переводе `TASKS.md` |

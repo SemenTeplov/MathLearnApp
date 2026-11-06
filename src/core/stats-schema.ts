@@ -64,6 +64,8 @@ export const StatsSchema = {
                 default:
                     break;
             }
+            // Диагностика разрешённым каналом: одна запись на выполненную ступень (A85).
+            console.info('[StatsSchema] миграция', version - 1, '→', version);
         }
 
         stats.version = current;
