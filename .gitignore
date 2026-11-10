@@ -20,6 +20,10 @@ coverage/
 *.log
 npm-debug.log*
 
+# Локальные настройки IDE и кеш npm (Z37, T77)
+.idea/
+.npm-cache/
+
 # Мусор ОС
 .DS_Store
 Thumbs.db

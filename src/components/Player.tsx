@@ -5,6 +5,7 @@
 // Движение — CSS transition 600ms (map-player.css) + onTransitionEnd (A47).
 
 import type { TransitionEvent } from 'react';
+import type { Point } from '../core/types';
 
 export interface PlayerProps {
     point: Point | null;

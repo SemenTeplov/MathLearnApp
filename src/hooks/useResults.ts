@@ -1,11 +1,15 @@
 // ============================================
-// SRC/HOOKS/useResults.ts — экран результатов (1.8.0)
+// SRC/HOOKS/useResults.ts — экран результатов (1.10.0)
 // ============================================
-// Перенос логики экрана результатов 1:1 (бывший контроллер):
-// оценка → успешность → onRoundFinished (позиция игрока) →
-// StatsService.updateAfterRound (только победа) → звук → строка «Заработано».
+// Оценка → успешность → запись очков (updateAfterRound) → onRoundFinished →
+// звук → строка «Заработано». Провал записи не зачитывает очки (A80, T74).
 
 import { useCallback, useState } from 'react';
+import type { Services } from '../app/types';
+import { GameRules } from '../core/game-rules';
+import { Scoring } from '../core/scoring';
+import type { GameResult, Rating } from '../core/types';
+import type { ResultsView } from '../ui/types';
 
 export interface UseResults {
     /** Данные экрана результатов; null — экран не показывался. */
@@ -15,30 +19,30 @@ export interface UseResults {
 }
 
 /**
+ * @param services — сервисы приложения (статистика, звук)
  * @param onRoundFinished — сообщает об итоге раунда (позиция на карте)
  */
-export function useResults(onRoundFinished: (isSuccessful: boolean) => void): UseResults {
+export function useResults(services: Services, onRoundFinished: (isSuccessful: boolean) => void): UseResults {
     const [view, setView] = useState<ResultsView | null>(null);
 
-    const show = useCallback((results: GameResult): void => {
-        const rating: Rating = GameRules.getRating(results);
-        const isSuccessful = Scoring.isRoundSuccessful(results.lives, results.completed);
+    const show = useCallback(
+        (results: GameResult): void => {
+            const rating: Rating = GameRules.getRating(results);
+            const isSuccessful = Scoring.isRoundSuccessful(results.lives, results.completed);
+            const written = isSuccessful && services.stats.updateAfterRound(results.roundScore);
 
-        onRoundFinished(isSuccessful);
+            // Карта читает счёт в gameFinished уже после записи (корень P4).
+            onRoundFinished(isSuccessful);
 
-        if (isSuccessful) {
-            StatsService.updateAfterRound(results.roundScore);
-            AudioService.play('win');
-        } else {
-            AudioService.play('lose');
-        }
+            // Звук раунда не зависит от результата записи (решение 7 плана).
+            services.audio.play(isSuccessful ? 'win' : 'lose');
 
-        const earnings = isSuccessful
-            ? 'Заработано: ' + results.roundScore + ' ✓'
-            : 'Заработано: ' + results.roundScore + ' (не зачтено)';
+            const earnings = 'Заработано: ' + results.roundScore + (isSuccessful && written ? ' ✓' : ' (не зачтено)');
 
-        setView({ results, rating, earnings });
-    }, [onRoundFinished]);
+            setView({ results, rating, earnings });
+        },
+        [onRoundFinished, services]
+    );
 
     return { view, show };
 }

@@ -1,11 +1,12 @@
 // ============================================
-// SRC/APP.TSX — весь каркас приложения на React (1.8.0)
+// SRC/APP.TSX — каркас приложения на React (1.10.2)
 // ============================================
-// 15.17: React рендерит #mapScreen и .app с теми же id/классами, что были
-// в index.html; .active вычисляется из состояния, а не из DOM-роутера.
-// Модалки — в дереве App. Состояние экранов — локальное (хуки), без сторов.
+// .active вычисляется из состояния, а не из DOM-роутера; модалки — в дереве App.
+// Сообщения копятся очередью (A94), звук ✕ играет оболочка (A93).
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { Services } from './app/types';
+import { ConfirmModal } from './components/ConfirmModal';
 import { ErrorModal } from './components/ErrorModal';
 import { GameScreen } from './components/GameScreen';
 import { Header } from './components/Header';
@@ -16,87 +17,118 @@ import { useGame } from './hooks/useGame';
 import { useMap } from './hooks/useMap';
 import { useMapSelection } from './hooks/useMapSelection';
 import { useResults } from './hooks/useResults';
-import { useSessionLock } from './hooks/useSessionLock';
+import { SESSION_BUSY_MESSAGE, SESSION_BUSY_TITLE, useSessionLock } from './hooks/useSessionLock';
+import type { Difficulty, GameResult } from './core/types';
 
 type ScreenName = 'map' | 'game' | 'results';
 
-interface ErrorMessage {
-    title: string;
-    message: string;
+export interface AppProps {
+    services: Services;
 }
 
-/** Класс экрана: `.screen` + `.active` у текущего (как в 1.7.0). */
 function screenClass(name: ScreenName, current: ScreenName): string {
     return 'screen' + (name === current ? ' active' : '');
 }
 
-export function App() {
+export function App({ services }: AppProps) {
     const [screen, setScreen] = useState<ScreenName>('map');
-    const [error, setError] = useState<ErrorMessage | null>(null);
+    const [messages, setMessages] = useState<Array<{ title: string; message: string }>>([]);
+    const [exitConfirm, setExitConfirm] = useState<{ roundScore: number } | null>(null);
 
     const navigate = useCallback((name: ScreenName) => {
         setScreen(name);
     }, []);
 
+    // Сообщение встаёт в конец очереди (A94/T88); подписка на шину — единственный канал (A79).
     const showError = useCallback((title: string, message: string) => {
-        setError({ title, message });
+        setMessages((prev) => [...prev, { title, message }]);
     }, []);
+    useEffect(() => services.errors.subscribe(showError), [services, showError]);
 
-    useSessionLock(showError);
+    const { blocked } = useSessionLock(showError);
+    const map = useMap(services);
+    const results = useResults(services, map.gameFinished);
+    const { exitGame, reload: reloadMap, chooseDifficulty } = map;
+    const { show: showResults } = results;
 
-    const map = useMap();
-    const results = useResults(map.gameFinished);
-
-    const handleGameFinished = useCallback((roundResults: GameResult) => {
-        results.show(roundResults);
-        navigate('results');
-    }, [results.show, navigate]);
-
-    const handleExitToMap = useCallback(() => {
-        map.exitGame();
+    // Единственный путь возврата: статистика читается до переключения экрана (A82/T82).
+    const returnToMap = useCallback(() => {
+        reloadMap();
         navigate('map');
-    }, [map.exitGame, navigate]);
+    }, [reloadMap, navigate]);
 
-    const game = useGame({ onRoundFinished: handleGameFinished, onExitToMap: handleExitToMap });
+    const handleGameFinished = useCallback(
+        (roundResults: GameResult) => {
+            showResults(roundResults);
+            navigate('results');
+        },
+        [showResults, navigate]
+    );
 
-    const handleMapChanged = useCallback(() => {
-        map.reload();
-        navigate('map');
-    }, [map.reload, navigate]);
+    // ✕ не завершает раунд: звук и подтверждение — здесь, повторный ✕ — no-op (A93/T87).
+    const handleExitRequested = useCallback(
+        (roundScore: number) => {
+            if (exitConfirm) return;
+            services.audio.play('click');
+            setExitConfirm({ roundScore });
+        },
+        [exitConfirm, services]
+    );
 
-    const mapSelection = useMapSelection(handleMapChanged);
+    const game = useGame(services, { onRoundFinished: handleGameFinished, onExitRequested: handleExitRequested });
+    const { start: startGame } = game;
+    const mapSelection = useMapSelection(services, returnToMap);
 
-    const handleSelectDifficulty = useCallback((difficulty: Difficulty) => {
-        map.chooseDifficulty(difficulty);
-        game.start(difficulty);
-        navigate('game');
-    }, [map.chooseDifficulty, game.start, navigate]);
+    const handleSelectDifficulty = useCallback(
+        (difficulty: Difficulty) => {
+            if (blocked) {
+                showError(SESSION_BUSY_TITLE, SESSION_BUSY_MESSAGE);
+                return;
+            }
+            chooseDifficulty(difficulty);
+            startGame(difficulty);
+            navigate('game');
+        },
+        [blocked, chooseDifficulty, showError, startGame, navigate]
+    );
 
     const handlePlayAgain = useCallback(() => {
-        AudioService.play('click');
-        game.start();
+        if (blocked) {
+            showError(SESSION_BUSY_TITLE, SESSION_BUSY_MESSAGE);
+            return;
+        }
+        services.audio.play('click');
+        startGame();
         navigate('game');
-    }, [game.start, navigate]);
+    }, [blocked, services, showError, startGame, navigate]);
 
     const handleBackToMap = useCallback(() => {
-        AudioService.play('click');
-        map.reload();
-        navigate('map');
-    }, [map.reload, navigate]);
+        services.audio.play('click');
+        returnToMap();
+    }, [services, returnToMap]);
 
-    const handleOpenMapSelection = useCallback(() => {
-        mapSelection.open();
-    }, [mapSelection.open]);
+    const handleExitConfirmed = useCallback(() => {
+        services.audio.play('click');
+        setExitConfirm(null);
+        exitGame();
+        returnToMap();
+    }, [services, exitGame, returnToMap]);
 
+    const handleExitCancelled = useCallback(() => {
+        services.audio.play('click');
+        setExitConfirm(null);
+    }, [services]);
+
+    // Закрытие снимает ровно одно сообщение — следующее показывается сразу (A94).
     const handleCloseError = useCallback(() => {
-        AudioService.play('click');
-        setError(null);
-    }, []);
+        services.audio.play('click');
+        setMessages((prev) => prev.slice(1));
+    }, [services]);
 
     return (
         <>
             <div className={screenClass('map', screen)} id="mapScreen">
-                <Header totalScore={map.stats.totalScore} onOpenMapSelection={handleOpenMapSelection} />
+                <Header totalScore={map.stats.totalScore} onOpenMapSelection={mapSelection.open} />
                 <MapScreen
                     stats={map.stats}
                     mapData={map.mapData}
@@ -149,7 +181,19 @@ export function App() {
                     onClose={mapSelection.close}
                 />
             )}
-            {error && <ErrorModal title={error.title} message={error.message} onClose={handleCloseError} />}
+            {exitConfirm && (
+                <ConfirmModal
+                    title="Выйти из игры?"
+                    message={'Заработано ' + exitConfirm.roundScore + ' очков сгорят.'}
+                    confirmLabel="Выйти"
+                    cancelLabel="Остаться"
+                    onConfirm={handleExitConfirmed}
+                    onCancel={handleExitCancelled}
+                />
+            )}
+            {messages.length > 0 && (
+                <ErrorModal title={messages[0].title} message={messages[0].message} onClose={handleCloseError} />
+            )}
         </>
     );
 }

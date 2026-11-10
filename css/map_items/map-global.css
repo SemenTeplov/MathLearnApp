@@ -22,7 +22,9 @@
     cursor: pointer;
     z-index: 4;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition:
+        transform 0.2s,
+        box-shadow 0.2s;
 }
 
 .global-map-btn:hover {

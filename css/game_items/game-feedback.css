@@ -15,8 +15,14 @@
 }
 
 @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .feedback.correct-fb {
@@ -35,8 +41,12 @@
     margin-bottom: 6px;
 }
 
-.feedback.correct-fb .feedback-title { color: #58a700; }
-.feedback.wrong-fb .feedback-title { color: #ea2b2b; }
+.feedback.correct-fb .feedback-title {
+    color: #58a700;
+}
+.feedback.wrong-fb .feedback-title {
+    color: #ea2b2b;
+}
 
 .feedback-text {
     color: #666;
