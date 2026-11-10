@@ -20,7 +20,10 @@ ES-модулей на TypeScript: домен, данные, сервисы и R
 - 💬 **Объяснения** — после каждого ответа показывается решение
 - 📊 **Экран результатов** — статистика и оценка
 - 🏆 **Общий счёт** — сохраняется между сессиями (localStorage)
-- 🔒 **Одна вкладка** — открытие второй вкладки показывает предупреждение
+- 🔒 **Одна вкладка** — вторая вкладка получает предупреждение «Игра уже запущена», а
+  владелец продолжает игру (известное ограничение: гонка двух вкладок, открытых
+  одновременно, и разблокировка уже открытой вкладки после закрытия владельца — backlog
+  `tasks/TASKS.md`)
 - 🔊 **Звуковое сопровождение** — клики, победа, поражение; ошибки звука не ломают игру
 
 ## Запуск
@@ -38,7 +41,7 @@ npm run dev        # http://localhost:5173
 
 ```bash
 npm run typecheck      # tsc --noEmit — 0 ошибок
-npm test               # vitest: 276 тестов в 29 сьютах
+npm test               # vitest: 303 теста в 33 сьютах
 npm run test:coverage  # покрытие v8 по группам + пороги 80/60
 npm run build          # tsc --noEmit && vite build → dist/
 npm run preview        # собранный dist на http://localhost:4173
@@ -49,7 +52,7 @@ npm run smoke          # 10 HTTP-проверок dist через vite preview
 npm run smoke:browser  # smoke + 11 браузерных проверок dist (Chromium, CDP)
 ```
 
-Полный локальный критерий TR-80 (порядок обязателен; CI повторяет его, кроме
+Полный локальный критерий TR-88 (порядок обязателен; CI повторяет его, кроме
 `smoke:browser` — Chromium в CI не ставится):
 
 ```bash
@@ -58,7 +61,17 @@ npm run build && npm run lint && npm run format:check && npm run smoke
 npm run smoke:browser
 ```
 
-> ✅ **1.10.0 — закрытие замечаний аудита 1.9.0.** Ошибки хранилища снова доходят до игрока:
+> ✅ **1.10.1 — закрытие замечаний аудита 1.10.0.** Ошибка хранилища, возникшая при старте,
+> снова доходит до игрока: `ErrorBus` держит очередь недоставленных сообщений и отдаёт её
+> первому подписчику. Слой `data` больше не импортирует `app` — в `core` появился порт
+> `ErrorReporter`. Выход из раунда подтверждается модалкой `ConfirmModal` (нативных
+> `confirm`/`alert`/`prompt` в `src/**` нет). Миграция `Stats` сохраняется write-back, а её
+> ступень логируется один раз. Возврат на карту идёт одним `returnToMap()`, провал записи
+> позиции не двигает игрока. `SessionState` удалён, CI-проверки TR-88 больше не маскируют
+> падение через `|| true`. Итог — **33 сьюта / 303 теста**, coverage **97.57 / 89.19**,
+> `smoke` **10/10**, `smoke:browser` **11/11**.
+>
+> 📜 **1.10.0 — закрытие замечаний аудита 1.9.0.** Ошибки хранилища снова доходят до игрока:
 > `StatsService` применяет действие (`reset` / `skip` / `memory`) и публикует сообщение в
 > `ErrorBus`, `App` показывает его существующей модалкой. Провал записи больше не выглядит
 > зачтёнными очками — строка результатов помечается «(не зачтено)», общий счёт не меняется.
@@ -71,17 +84,19 @@ npm run smoke:browser
 > карта, звук и тексты подсказок не менялись. История: 1.9.0 — зависимости, ESLint/Prettier,
 > CI и smoke; 1.8.4 — настоящая сборка Vite и проверка `dist`.
 
-## Архитектура (1.10.0)
+## Архитектура (1.10.1)
 
 Один граф ES-модулей вместо 19 `<script>`-тегов и глобальных переменных:
 
 - `index.html` — только `#root` (`display: contents`) и **один**
   `<script type="module" src="/src/main.tsx">`. CSS импортируется из `src/main.tsx`
   в прежнем порядке: `base`, `buttons`, `screens`, `game`, `results`, `map`.
-- `src/core/` — домен (13 модулей): `config`, `types`, `errors`, `error-handler`,
-  `session-model`, `map-catalog`, `stats-schema`, `game-rules`, `generator`, `scoring`,
-  `player-rules`, `player-state`, `map-layout`. Без React, DOM и `localStorage`.
+- `src/core/` — домен (14 модулей): `config`, `types`, `errors`, `error-handler`,
+  `error-reporting`, `session-model`, `map-catalog`, `stats-schema`, `game-rules`,
+  `generator`, `scoring`, `player-rules`, `player-state`, `map-layout`. Без React, DOM
+  и `localStorage`.
 - `src/data/` — `Repository`, `LocalStorageRepository`, `StatsService(repo, errors, fallback)`
+  (`errors` — порт `ErrorReporter` из `core`)
   и декоратор `MemoryFallback` («память вместо диска»); единственное место, где используется
   `localStorage`. `MemoryRepository` — тестовый двойник — лежит в
   `test/support/memory-repository.ts` и в прод-бандл не попадает.
@@ -89,14 +104,15 @@ npm run smoke:browser
   ошибки загрузки и воспроизведения глотаются.
 - `src/ui/types.ts` — view-модели React-слоя; доменные типы — `src/core/types.ts`.
 - `src/app/` — `Services`, `createServices()` (единственная точка создания сервисов) и
-  `ErrorBus` — мини-шина сообщений data-слоя (`subscribe`/`report`) без глобального состояния.
+  `ErrorBus` — мини-шина сообщений data-слоя (`subscribe`/`report`) без глобального состояния;
+  сообщения, опубликованные до подписки, ждут в очереди экземпляра (A86).
 - `src/main.tsx` — `createServices()` → `audio.preload()` → `initGlobalErrorHandlers()` →
   `createRoot(...).render(<StrictMode><App services={services}/></StrictMode>)`.
 - `src/App.tsx` — каркас и навигация: экраны `#mapScreen`, `#gameScreen`, `#resultScreen`,
-  модалки выбора карты/сложности/ошибок. Ошибки data-слоя приходят в единственный
+  модалки выбора карты/сложности/ошибок/подтверждения выхода. Ошибки data-слоя приходят в единственный
   `showError` через `services.errors`; возврат на карту всегда перечитывает статистику.
   Состояние — локальное (`useState` в хуках), без Context/Zustand/redux.
-- `src/components/` — 10 презентационных компонентов; `src/hooks/` — 5 хуков
+- `src/components/` — 11 презентационных компонентов (включая `ConfirmModal`); `src/hooks/` — 5 хуков
   (`useGame`, `useMap`, `useMapSelection`, `useResults`, `useSessionLock`). Сервисы
   приходят в хуки **первым аргументом** (`useMap(services)`), создаются один раз и не
   хранятся в модульных переменных; `useAudio` удалён.
@@ -182,7 +198,7 @@ npm run smoke:browser
 
 ## Диагностика и бюджет строк
 
-- Миграции `Stats` (`1 → 2 → 3`) пишут ровно одну строку на ступень:
+- Миграции `Stats` (`1 → 2 → 3`) фиксируются write-back и пишут ровно одну строку на ступень:
   `console.info('[StatsSchema] миграция', N, '→', N + 1)`. Загрузка актуальной записи и
   повторный `load()` ничего не печатают.
 - `console.log` в `src/**` запрещён (A85); для диагностики разрешены `console.info`,
@@ -190,15 +206,16 @@ npm run smoke:browser
   показывается модалка «Ошибка хранилища» с текстом `ErrorInfo.userMessage`.
 - Бюджет строк (A84, T76) проверяется локально и шагом CI:
 
-| Область | Лимит (`wc -l`) | Факт 1.10.0 |
+| Область | Лимит (`wc -l`) | Факт 1.10.1 |
 |---|---|---|
 | `src/**/*.ts(x)` | 200 | `useMap.ts` — 200 |
 | `test/**/*.test.ts(x)` | 200 | `stats-service.test.ts` — 199 |
 | `scripts/**/*.mjs` | 250 | `verify-dist.mjs` — 247 |
 | `css/**/*.css` | 200 | `map-global.css` — 64 |
 
-Фикстуры и хелперы вынесены в `test/support/*.ts` (`stats-fixtures`, `generator-fixtures`,
-`app-drivers`, `session-channel`); сценарии не удалялись, число тестов не уменьшилось.
+Фикстуры и хелперы вынесены в `test/support/*` (`stats-fixtures`, `generator-fixtures`,
+`app-drivers`, `app-setup`, `session-channel`); сценарии не удалялись, число тестов выросло
+с 276 до 303.
 
 ## Тесты
 
@@ -208,27 +225,28 @@ npm test
 npm run test:coverage
 ```
 
-**276 тестов в 29 сьютах** (vitest + jsdom): домен — `test/core/`, данные —
+**303 теста в 33 сьютах** (vitest + jsdom): домен — `test/core/`, данные —
 `test/data/` (`StatsService` через `test/support/memory-repository.ts`), сервисы —
 `test/services/` (звук), UI — `test/components/` и `test/hooks/`
 (`@testing-library/react` + `user-event` + `jest-dom`).
 
 | Группа | Сьюты | Тесты | Что проверяет |
 |---|---|---|---|
-| `test/core/**` | 12 | 139 | домен: `CONFIG`, ошибки, `error-handler`, правила, генератор, карта, `SessionModel`, `StatsSchema` (включая `console.info` миграций) |
-| `test/data/**` | 4 | 40 | `StatsService` через `MemoryRepository`: действия `reset`/`skip`/`memory`, провал записи; `LocalStorageRepository`, `Repository` |
+| `test/core/**` | 12 | 140 | домен: `CONFIG`, ошибки, `error-handler`, правила, генератор, карта, `SessionModel`, `StatsSchema` (включая `onStep` и `console.info` миграций) |
+| `test/data/**` | 5 | 49 | `StatsService` через `MemoryRepository`: действия `reset`/`skip`/`memory`, провал записи, write-back и лог миграций; `LocalStorageRepository`, `Repository` |
+| `test/app/**` | 1 | 5 | `ErrorBus`: очередь до подписки, доставка, отписка (A86) |
 | `test/services/**` | 1 | 9 | `AudioService`: preload, play, ошибки |
-| `test/components/**` | 8 | 49 | RTL: `App`, `App.map-freshness`, `GameScreen`, `MapScreen`, `ResultsScreen`, `MapSelectionModal`, `Header`, `ErrorModal` |
-| `test/hooks/**` | 4 | 39 | `renderHook`: `useGame`, `useMap`, `useResults` (включая «не зачтено»), `useSessionLock` (владелец/претендент) |
-| **Итого** | **29** | **276** | покрытие **97.36%** stmts / **88.79%** branches |
+| `test/components/**` | 10 | 60 | RTL: `App`, `App.map-freshness`, `App.startup`, `ConfirmModal`, `GameScreen`, `MapScreen`, `ResultsScreen`, `MapSelectionModal`, `Header`, `ErrorModal` |
+| `test/hooks/**` | 4 | 40 | `renderHook`: `useGame` (выход через `onExitRequested`), `useMap` (провал записи позиции), `useResults`, `useSessionLock` |
+| **Итого** | **33** | **303** | покрытие **97.57%** stmts / **89.19%** branches |
 
 Пороги покрытия — `coverage.thresholds` в `vitest.config.ts`: **80%**
 (`core`/`data`/`services`) и **60%** (`components`/`hooks`/`App.tsx`); пороги не
 понижаются. Тестовые двойники и фикстуры живут в `test/support/` и в покрытие `src/**`
 не входят. E2E (Playwright) в `npm test` не входит — backlog записан в `test/README.md`.
-Подробности — `test/README.md` и `spec_v1_10_0.md`.
+Подробности — `test/README.md` и `spec_v1_10_1.md`.
 
-## Проверки и CI (1.10.0)
+## Проверки и CI (1.10.1)
 
 Пайплайн `.github/workflows/ci.yml` (Node 22, `cache: npm`) повторяет локальный критерий:
 
@@ -251,18 +269,19 @@ npm ci → typecheck → test → test:coverage → format:check → build → l
   игра на 10/10, результаты, вторая вкладка: модалка у претендента и тишина у владельца,
   сеть без 4xx/5xx, чистая консоль).
 - **Бюджет строк** — отдельный шаг CI: bash-цикл `wc -l` по `src`, `test`, `scripts`, `css`
-  (лимиты 200/200/250/200) и три `grep` из TR-80 (пороги-литералы, `retry`, `console.log`).
-  Новых зависимостей и Chromium в CI нет — `smoke:browser` остаётся локальным.
+  (лимиты 200/200/250/200) и `grep`-запреты без `|| true` (`if grep …; then …; fail=1; fi`):
+  пороги-литералы, `retry`, `console.log`, `from '../app'` в `src/data`, `SessionState`,
+  нативные диалоги. Новых зависимостей и Chromium в CI нет — `smoke:browser` остаётся локальным.
 
-Срез на **1.10.0** (ветка `feature/1.10`):
+Срез на **1.10.1** (ветка `feature/1.10`):
 
 | Проверка | Команда | Результат |
 |---|---|---|
-| Установка | `npm ci` | ✅ 239 пакетов по lock |
+| Установка | `npm ci` | ✅ по lock |
 | Типы | `npm run typecheck` | ✅ **0 ошибок** |
-| Тесты | `npm test` | ✅ **276/276** в 29 сьютах |
-| Покрытие | `npm run test:coverage` | ✅ **97.36%** stmts / **88.79%** branches, пороги 80/60 |
-| Прод-сборка | `npm run build` | ✅ `dist/`: JS 247.51 КБ + `.map` 1.19 МБ, CSS 7.04 КБ, три mp3 |
+| Тесты | `npm test` | ✅ **303/303** в 33 сьютах |
+| Покрытие | `npm run test:coverage` | ✅ **97.57%** stmts / **89.19%** branches, пороги 80/60 |
+| Прод-сборка | `npm run build` | ✅ `dist/`: JS 248.80 КБ + `.map` 1.19 МБ, CSS 7.04 КБ, три mp3 |
 | Линтер | `npm run lint` | ✅ **0 ошибок** |
 | Формат | `npm run format:check` | ✅ все файлы соответствуют стилю |
 | Бюджет строк | шаг CI / `wc -l` | ✅ `src` 200, `test` 199, `scripts` 247, `css` 64 |
@@ -291,11 +310,11 @@ src/
   App.tsx           # Каркас: экраны, модалки, состояние навигации
   app/
     createServices.ts  # Composition root: StatsService + AudioService + ErrorBus
-    error-bus.ts       # Шина сообщений: subscribe / report (без глобального состояния)
+    error-bus.ts       # Шина сообщений: subscribe / report + очередь до подписки
     types.ts           # interface Services (audio, stats, errors)
-  core/             # 13 модулей домена (без React/DOM/localStorage)
-    config.ts types.ts errors.ts error-handler.ts session-model.ts map-catalog.ts
-    stats-schema.ts game-rules.ts generator.ts scoring.ts player-rules.ts
+  core/             # 14 модулей домена (без React/DOM/localStorage)
+    config.ts types.ts errors.ts error-handler.ts error-reporting.ts session-model.ts
+    map-catalog.ts stats-schema.ts game-rules.ts generator.ts scoring.ts player-rules.ts
     player-state.ts map-layout.ts
   data/
     repository.ts local-repository.ts stats-service.ts
@@ -307,8 +326,8 @@ src/
     audio-urls.ts                # AUDIO_URLS и AudioKind
   ui/
     types.ts          # View-модели (MapViewData, ResultsView, …)
-  components/       # ResultsScreen, MapSelectionModal, GameScreen, MapScreen,
-                    # Zone, Trainer, Player, Path, Header, ErrorModal
+  components/       # ResultsScreen, MapSelectionModal, GameScreen, MapScreen, Zone,
+                    # Trainer, Player, Path, Header, ErrorModal, ConfirmModal
   hooks/            # useResults, useMapSelection, useGame, useMap, useSessionLock
 css/                # 20 файлов
   base.css          # Базовые стили
@@ -321,9 +340,9 @@ css/                # 20 файлов
   map_items/        # Стили карты: экран, зоны, дорога, игрок, тренажёры, модалки, глобальная карта
   game_items/       # Шапка, вопрос, ответы, обратная связь
   result_items/     # Иконка и статистика результата
-test/               # 29 сьютов / 276 тестов: core, data, services, components, hooks
+test/               # 33 сьюта / 303 теста: core, data, app, services, components, hooks
   support/          # memory-repository.ts, stats-fixtures.ts, generator-fixtures.ts,
-                    # app-drivers.ts, session-channel.ts — двойники, фикстуры, драйверы
+                    # app-drivers.ts, app-setup.tsx, session-channel.ts — двойники и драйверы
 ```
 
 TypeScript используется везде, включая все шесть бывших `.js`-файлов
@@ -350,10 +369,10 @@ TypeScript используется везде, включая все шесть
 
 Требования и планы лежат в `.gigacode/`: `rulles/RULES.md` (конституция),
 `specs/SPEC.md` (поведение и требования), `plans/PLAN.md` (архитектура и шаги),
-`tasks/TASKS.md` (задачи). Актуальная версия — **1.10.0**:
-`spec_v1_10_0.md` (TR-71…TR-80) и `rules_v1_10_0.md` (A79–A85, T71–T78, Z39–Z43).
-Архивы предыдущей версии — `spec_v1_9_0.md`, `rules_v_1_9_0.md`, `plans/PLAN_v1_9_0.md`,
-`tasks/TASKS_v1_9_0.md`.
+`tasks/TASKS.md` (задачи). Актуальная версия — **1.10.1**:
+`spec_v1_10_1.md` (TR-81…TR-88) и `rules_v1_10_1.md` (A86–A91, T79–T85, Z44–Z48).
+Архивы предыдущих версий — `spec_v1_10_0.md`, `rules_v1_10_0.md`,
+`plans/PLAN_v1_10_0.md`, `tasks/TASKS_v1_10_0.md`, а также `*_v1_9_0.md`.
 
 ## Лицензия
 

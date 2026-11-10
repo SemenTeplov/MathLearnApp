@@ -2,7 +2,7 @@
 // ошибок — сообщения в шине, провал записи и режим памяти (TR-71, TR-72, TR-78).
 
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { STORAGE_ERROR_TITLE } from '../../src/app/error-bus';
+import { STORAGE_ERROR_TITLE } from '../../src/core/error-reporting';
 import { handleError } from '../../src/core/error-handler';
 import { CorruptedDataError, QuotaExceededError, StorageUnavailableError } from '../../src/core/errors';
 import { StatsService } from '../../src/data/stats-service';

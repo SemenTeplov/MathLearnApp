@@ -1,5 +1,5 @@
 // ============================================
-// SRC/HOOKS/useMap.ts — карта: позиция, движение, модалка (1.10.0)
+// SRC/HOOKS/useMap.ts — карта: позиция, движение, модалка (1.10.1)
 // ============================================
 // PlayerState + transition 600ms + onTransitionEnd (A47); ширина — ref .map.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -157,13 +157,13 @@ export function useMap(services: Services): UseMap {
             const player = playerRef.current;
             if (!player || player.isReplay()) return;
 
-            if (isSuccessful) {
-                services.stats.saveTrainerIndex(player.commitWin());
-            } else {
-                services.stats.saveTrainerIndex(player.revert());
+            // Write-ahead: позиция фиксируется только после успешной записи (A90/T83).
+            const target = isSuccessful ? player.index : player.previous;
+            if (services.stats.saveTrainerIndex(target)) {
+                if (isSuccessful) player.commitWin();
+                else player.revert();
             }
 
-            // Счёт читается из хранилища после записи раунда (A82).
             setState((prev) => ({
                 ...prev,
                 currentTrainerIndex: player.index,

@@ -38,15 +38,6 @@ export interface Stats {
     maps: Record<string, MapData>;
 }
 
-/** Состояние раунда. */
-export interface SessionState {
-    lives: number;
-    roundScore: number;
-    currentQuestionIndex: number;
-    difficulty: Difficulty;
-    completed: boolean;
-}
-
 /** Инструкция обработчика ошибок. */
 export interface ErrorInfo {
     action: 'reset' | 'skip' | 'memory';

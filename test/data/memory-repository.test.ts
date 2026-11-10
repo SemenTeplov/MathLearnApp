@@ -1,4 +1,4 @@
-// MemoryRepository: save/load в памяти, null до записи и clear.
+// MemoryRepository: save/load в памяти, сериализация как в localStorage (T84.4).
 
 import { beforeEach, describe, expect, test } from 'vitest';
 import { MemoryRepository } from '../support/memory-repository';
@@ -14,12 +14,31 @@ describe('MemoryRepository', () => {
         expect(repo.load()).toBeNull();
     });
 
-    test('save и load возвращают одни и те же данные', () => {
+    test('save и load возвращают равные данные', () => {
         const data = { totalScore: 5 };
 
         repo.save(data);
 
-        expect(repo.load()).toBe(data);
+        expect(repo.load()).toEqual(data);
+    });
+
+    test('load отдаёт копию: мутация не меняет сохранённое', () => {
+        repo.save({ totalScore: 5, nested: { index: 1 } });
+
+        const loaded = repo.load() as { totalScore: number; nested: { index: number } };
+        loaded.totalScore = 99;
+        loaded.nested.index = 7;
+
+        expect(repo.load()).toEqual({ totalScore: 5, nested: { index: 1 } });
+    });
+
+    test('save копирует данные: мутация исходного объекта не видна', () => {
+        const data = { totalScore: 5 };
+        repo.save(data);
+
+        data.totalScore = 99;
+
+        expect(repo.load()).toEqual({ totalScore: 5 });
     });
 
     test('clear обнуляет данные', () => {

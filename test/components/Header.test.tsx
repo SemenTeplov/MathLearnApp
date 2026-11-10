@@ -1,4 +1,4 @@
-// Header: счёт 🏆 и кнопка выбора карты — фактический контракт 1.8.2 (D36).
+// Header: счёт 🏆 и кнопка 🌍 (T52); жизни проверяет GameScreen.test.tsx (N5).
 
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

@@ -1,13 +1,14 @@
 // ============================================
-// DATA/STATS-SERVICE.TS — счёт и позиция по картам (1.10.0)
+// DATA/STATS-SERVICE.TS — счёт и позиция по картам (1.10.1)
 // ============================================
 // Ожидаемая ошибка хранилища не глотается: handleError() классифицирует её,
-// сервис применяет действие (reset/skip/memory) и публикует сообщение в ErrorBus.
-// Записывающие методы возвращают результат записи (A11, A79, A80, T71, T72).
+// сервис применяет действие (reset/skip/memory) и публикует сообщение через
+// порт ErrorReporter (A79/A87). Миграция фиксируется write-back (A89).
 
-import { STORAGE_ERROR_TITLE } from '../app/error-bus';
-import type { ErrorBus } from '../app/error-bus';
+import { CONFIG } from '../core/config';
 import { handleError } from '../core/error-handler';
+import { STORAGE_ERROR_TITLE } from '../core/error-reporting';
+import type { ErrorReporter } from '../core/error-reporting';
 import { MapCatalog } from '../core/map-catalog';
 import { StatsSchema } from '../core/stats-schema';
 import type { ErrorInfo, Stats } from '../core/types';
@@ -26,16 +27,21 @@ function clone(stats: Stats): Stats {
  */
 export class StatsService {
     _repo: Repository;
-    _errors: ErrorBus | null;
+    _errors: ErrorReporter | null;
     _fallback: FallbackFactory;
     _reported: string | null = null;
+    _logged: Set<string> = new Set();
 
     /**
      * @param repo — основное хранилище
-     * @param errors — шина игровых сообщений (без неё сообщения не публикуются)
+     * @param errors — получатель игровых сообщений (без него сообщения не публикуются)
      * @param fallback — фабрика резервного репозитория для режима «память»
      */
-    constructor(repo: Repository, errors: ErrorBus | null = null, fallback: FallbackFactory = createMemoryFallback) {
+    constructor(
+        repo: Repository,
+        errors: ErrorReporter | null = null,
+        fallback: FallbackFactory = createMemoryFallback
+    ) {
         this._repo = repo;
         this._errors = errors;
         this._fallback = fallback;
@@ -44,8 +50,7 @@ export class StatsService {
     /** Загружает статистику: ошибка классифицируется, действие применяется (A79). */
     load(): Stats {
         try {
-            const data = this._repo.load();
-            return data ? StatsSchema.migrate(data) : StatsSchema.defaults();
+            return this._read();
         } catch (e) {
             this._recover(handleError(e as Error, 'StatsService.load'));
             return this._readOrDefaults();
@@ -153,11 +158,39 @@ export class StatsService {
         this._errors.report(STORAGE_ERROR_TITLE, info.userMessage);
     }
 
+    /** Читает запись, мигрирует и фиксирует миграцию в хранилище (A89/T81). */
+    _read(): Stats {
+        const data = this._repo.load();
+        if (!data) return StatsSchema.defaults();
+
+        const version = (data as { version?: number }).version || 0;
+        const migrated = StatsSchema.migrate(data, (from, to) => this._logStep(from, to));
+        if (version < CONFIG.VERSION) this._writeBack(migrated);
+        return migrated;
+    }
+
+    /** Write-back мигрированной записи: провал не прерывает игру (A89/Z47). */
+    _writeBack(stats: Stats): void {
+        try {
+            this._repo.save(stats);
+            this._reported = null;
+        } catch (e) {
+            this._recover(handleError(e as Error, 'StatsService.save'));
+        }
+    }
+
+    /** Ступень миграции печатается один раз за экземпляр (A89/Z47). */
+    _logStep(from: number, to: number): void {
+        const key = from + '→' + to;
+        if (this._logged.has(key)) return;
+        this._logged.add(key);
+        console.info('[StatsSchema] миграция', from, '→', to);
+    }
+
     /** Чтение после применённого действия: сбой чтения уже не показывается повторно. */
     _readOrDefaults(): Stats {
         try {
-            const data = this._repo.load();
-            return data ? StatsSchema.migrate(data) : StatsSchema.defaults();
+            return this._read();
         } catch {
             return StatsSchema.defaults();
         }

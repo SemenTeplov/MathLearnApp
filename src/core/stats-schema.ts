@@ -13,6 +13,11 @@ type LegacyStats = Stats & {
     totalScore?: number;
 };
 
+/** Диагностика выполненной ступени: одна строка на миграцию (A85). */
+function logStep(from: number, to: number): void {
+    console.info('[StatsSchema] миграция', from, '→', to);
+}
+
 /**
  * Схема сохранённой статистики: версия, текущая карта и данные по картам.
  * Только данные: без DOM, Storage, сервисов и звука.
@@ -42,8 +47,12 @@ export const StatsSchema = {
         return stats.maps[stats.currentMap];
     },
 
-    /** Приводит запись к актуальной версии (пошагово 1 → 2 → 3). */
-    migrate(data: unknown): Stats {
+    /**
+     * Приводит запись к актуальной версии (пошагово 1 → 2 → 3).
+     * `onStep` вызывается на каждую ступень; по умолчанию — одна строка
+     * диагностики `console.info` (A85/T81).
+     */
+    migrate(data: unknown, onStep: (from: number, to: number) => void = logStep): Stats {
         const stats = (data || {}) as LegacyStats;
         const current = CONFIG.VERSION;
         let version = stats.version || 0;
@@ -53,6 +62,7 @@ export const StatsSchema = {
         }
 
         while (version < current) {
+            const from = version;
             version++;
             switch (version) {
                 case 2:
@@ -64,8 +74,7 @@ export const StatsSchema = {
                 default:
                     break;
             }
-            // Диагностика разрешённым каналом: одна запись на выполненную ступень (A85).
-            console.info('[StatsSchema] миграция', version - 1, '→', version);
+            onStep(from, version);
         }
 
         stats.version = current;

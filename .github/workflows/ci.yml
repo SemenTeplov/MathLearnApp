@@ -65,9 +65,16 @@ jobs:
                       lines=$(wc -l < "$file")
                       if [ "$lines" -gt 200 ]; then echo "✗ $file: $lines > 200"; fail=1; fi
                   done
-                  grep -RIn ">= 100\|>= 70\|>= 40" src/core/game-rules.ts && fail=1 || true
-                  grep -RIn "retry" src/core src/data src/hooks src/App.tsx && fail=1 || true
-                  grep -RIn "console\.log" src && fail=1 || true
+                  if grep -RIn ">= 100\|>= 70\|>= 40" src/core/game-rules.ts; then
+                      echo "✗ пороги-литералы в src/core/game-rules.ts"; fail=1
+                  fi
+                  if grep -RIn "retry" src/core src/data src/hooks src/App.tsx; then
+                      echo "✗ retry в src"; fail=1
+                  fi
+                  if grep -RIn "console\.log" src; then echo "✗ console.log в src"; fail=1; fi
+                  if grep -RIn "from '../app" src/data; then echo "✗ data импортирует app"; fail=1; fi
+                  if grep -RIn "SessionState" src; then echo "✗ SessionState в src"; fail=1; fi
+                  if grep -RIn "confirm(\|alert(\|prompt(" src; then echo "✗ нативные диалоги в src"; fail=1; fi
                   exit "$fail"
 
             - name: Smoke собранного dist

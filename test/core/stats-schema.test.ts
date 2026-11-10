@@ -165,6 +165,17 @@ describe('StatsSchema — диагностика миграций', () => {
         info.mockRestore();
     });
 
+    test('свой onStep получает ступени, console.info молчит (T81)', () => {
+        const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+        const steps: string[] = [];
+
+        StatsSchema.migrate({ version: 1, totalScore: 30 }, (from, to) => steps.push(from + '→' + to));
+
+        expect(steps).toEqual(['1→2', '2→3']);
+        expect(info).not.toHaveBeenCalled();
+        info.mockRestore();
+    });
+
     test('запись v2 — одна ступень, актуальная запись — ни одной', () => {
         const info = vi.spyOn(console, 'info').mockImplementation(() => {});
 

@@ -7,7 +7,7 @@
 // Только Node 20.19+: fetch + child_process, без npm-зависимостей.
 //
 // Запуск: npm run smoke            (перед этим npm run build)
-//         npm run smoke:browser    (--browser: ещё 10 проверок в headless Chromium)
+//         npm run smoke:browser    (--browser: ещё 11 проверок в headless Chromium)
 //         SMOKE_PORT=4180 npm run smoke
 
 import { spawn } from 'node:child_process';
