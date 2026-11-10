@@ -16,9 +16,9 @@ function makeServices(): { services: Services; audio: { play: ReturnType<typeof 
 function setup() {
     const { services, audio } = makeServices();
     const onRoundFinished = vi.fn();
-    const onExitToMap = vi.fn();
-    const view = renderHook(() => useGame(services, { onRoundFinished, onExitToMap }));
-    return { ...view, audio, onRoundFinished, onExitToMap };
+    const onExitRequested = vi.fn();
+    const view = renderHook(() => useGame(services, { onRoundFinished, onExitRequested }));
+    return { ...view, audio, onRoundFinished, onExitRequested };
 }
 
 const correctIndexOf = (question: Problem): number => question.options.indexOf(question.answer);
@@ -160,22 +160,26 @@ describe('useGame', () => {
         expect(result.current.floatingScore).toBeNull();
     });
 
-    test('exit с подтверждением выходит на карту и играет звук', () => {
-        vi.spyOn(window, 'confirm').mockReturnValue(true);
-        const { result, onExitToMap, audio } = setup();
+    test('exit сообщает roundScore, играет звук и не завершает раунд', () => {
+        const { result, onExitRequested, onRoundFinished, audio } = setup();
+        act(() => result.current.start('easy'));
+        act(() => result.current.answer(correctIndexOf(result.current.question!)));
 
         act(() => result.current.exit());
 
-        expect(onExitToMap).toHaveBeenCalledTimes(1);
+        expect(onExitRequested).toHaveBeenCalledTimes(1);
+        expect(onExitRequested).toHaveBeenCalledWith(CONFIG.POINTS_BASE);
+        expect(onRoundFinished).not.toHaveBeenCalled();
         expect(audio.play).toHaveBeenCalledWith('click');
+        expect(result.current.question).not.toBeNull();
     });
 
-    test('exit с отменой остаётся в игре', () => {
-        vi.spyOn(window, 'confirm').mockReturnValue(false);
-        const { result, onExitToMap } = setup();
+    test('exit до первого ответа передаёт 0 очков', () => {
+        const { result, onExitRequested } = setup();
+        act(() => result.current.start('easy'));
 
         act(() => result.current.exit());
 
-        expect(onExitToMap).not.toHaveBeenCalled();
+        expect(onExitRequested).toHaveBeenCalledWith(0);
     });
 });

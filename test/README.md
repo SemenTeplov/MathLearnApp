@@ -4,7 +4,7 @@
 
 ```bash
 npm ci               # установка по package-lock.json
-npm test             # vitest run: 28 сьютов, 261 тест
+npm test             # vitest run: 33 сьюта, 303 теста
 npm run test:watch   # watch-режим
 npm run test:coverage# покрытие (v8) по группам + html-отчёт в coverage/
 npm run typecheck    # tsc --noEmit (src/ + test/, включая .tsx)
@@ -12,7 +12,7 @@ npm run lint         # ESLint 10: src/, test/, scripts/ и конфиги
 npm run format:check # Prettier: стиль без записи
 npm run build        # tsc --noEmit && vite build → dist/ (ассеты проверяются отдельно)
 npm run smoke        # vite preview + 10 HTTP-проверок dist
-npm run smoke:browser# smoke + 10 браузерных проверок dist (headless Chromium)
+npm run smoke:browser# smoke + 11 браузерных проверок dist (headless Chromium)
 ```
 
 Раннер — **vitest** (не Jest), среда — `jsdom`. Конфигурация — `vitest.config.ts`:
@@ -69,40 +69,51 @@ expect(calls).toEqual([AUDIO_URLS.click, AUDIO_URLS.win, AUDIO_URLS.lose]);
 test/
 ├── setup.ts                       # jest-dom + мок Audio + заглушка BroadcastChannel
 ├── support/
-│   └── memory-repository.ts       # тестовый двойник Repository (вне src/ и coverage)
-├── core/                          # 12 файлов / 135 тестов
+│   ├── memory-repository.ts       # тестовый двойник Repository (вне src/ и coverage)
+│   ├── stats-fixtures.ts          # defaults/withEnglish/mapStats/read/failsOn, makeService
+│   ├── generator-fixtures.ts      # таблица диапазонов генератора по сложностям
+│   ├── app-drivers.ts             # шаги пользователя для App-сьютов (карта → раунд → ✕)
+│   ├── app-setup.tsx              # renderApp/makeAppServices для App-сьютов
+│   └── session-channel.ts         # управляемая заглушка BroadcastChannel (вторая вкладка)
+├── core/                          # 12 файлов / 140 тестов
 │   ├── config.test.ts             # CONFIG: версия 3, каталог, зоны, константы (6)
 │   ├── errors.test.ts             # цепочка наследования и name (3)
 │   ├── error-handler.test.ts      # handleError, глобальные обработчики (8)
-│   ├── game-rules.test.ts         # checkAnswer, shouldEndGame, getRating (14)
-│   ├── generator.test.ts          # ProblemGenerator: диапазоны, 4 варианта (15)
+│   ├── game-rules.test.ts         # checkAnswer, shouldEndGame, getRating из CONFIG (16)
+│   ├── generator.test.ts          # ProblemGenerator: диапазоны по таблице, 4 варианта (15)
 │   ├── scoring.test.ts            # calculateRoundScore, isRoundSuccessful (8)
 │   ├── player-rules.test.ts       # getAction, normalizeIndex (14)
 │   ├── player-state.test.ts       # moveTo, revert, commitWin (7)
 │   ├── map-layout.test.ts         # шаг 100px, полосы, SVG-путь, точка (19)
 │   ├── map-catalog.test.ts        # get / getDefault / has (9)
 │   ├── session-model.test.ts      # счётчики, getResults, reset (15)
-│   └── stats-schema.test.ts       # defaults, миграции 1→2→3 (17)
-├── data/                          # 4 файла / 40 тестов
-│   ├── stats-service.test.ts      # счёт/позиция, switchMap, ошибки (26)
+│   └── stats-schema.test.ts       # defaults, миграции 1→2→3, onStep, console.info (20)
+├── data/                          # 5 файлов / 49 тестов
+│   ├── stats-service.test.ts      # счёт/позиция, switchMap, reset/skip/memory (26)
+│   ├── stats-service.migration.test.ts # write-back, лог ступени, дедупликация (7)
 │   ├── local-repository.test.ts   # round-trip, порча, квота, недоступность (8)
 │   ├── repository.test.ts         # контракт «Not implemented» (3)
-│   └── memory-repository.test.ts  # save/load/clear в памяти (3)
+│   └── memory-repository.test.ts  # save/load/clear, сериализация (5)
+├── app/
+│   └── error-bus.test.ts          # очередь до подписки, доставка, отписка (5)
 ├── services/
 │   └── audio-service.test.ts      # preload, play, ошибки (9)
-├── components/                    # 7 файлов / 45 тестов
-│   ├── App.test.tsx               # интеграция: карта → игра → результаты (10)
+├── components/                    # 10 файлов / 60 тестов
+│   ├── App.test.tsx               # карта → игра → результаты, шина ошибок, выход (14)
+│   ├── App.map-freshness.test.tsx # «Играть снова» → ✕ → «Выйти» и «На карту»: счёт 100 (3)
+│   ├── App.startup.test.tsx       # стартовая ошибка хранилища без ручного report (3)
+│   ├── ConfirmModal.test.tsx      # тексты, кнопки, оверлей (5)
 │   ├── GameScreen.test.tsx        # вопрос, 4 ответа, feedback, «+10» (10)
 │   ├── MapScreen.test.tsx         # 15 тренажёров, зоны, модалка, transitionend (9)
 │   ├── ResultsScreen.test.tsx     # оценка, карточки, кнопки (4)
 │   ├── MapSelectionModal.test.tsx # карты из props, selected, выбор (5)
-│   ├── Header.test.tsx            # счёт и кнопка карты (4)
+│   ├── Header.test.tsx            # счёт 🏆 и кнопка 🌍 (4)
 │   └── ErrorModal.test.tsx        # текст, «OK», оверлей (3)
-└── hooks/                         # 4 файла / 32 теста
+└── hooks/                         # 4 файла / 40 тестов
     ├── useGame.test.tsx           # ответы, счёт, жизни, таймер, выход (10)
-    ├── useMap.test.tsx            # движение, модалка, откат, запись (11)
-    ├── useResults.test.tsx        # оценка, статистика только за победу (5)
-    └── useSessionLock.test.tsx    # канал, одно сообщение, fallback (6)
+    ├── useMap.test.tsx            # движение, модалка, откат, запись (12)
+    ├── useResults.test.tsx        # оценка, «(не зачтено)», порядок записи (8)
+    └── useSessionLock.test.tsx    # владелец/претендент, heartbeat, fallback (10)
 ```
 
 ## Как писать RTL-тесты
@@ -118,29 +129,39 @@ test/
 - **Fake timers.** Только там, где таймеры есть в проде: 100 мс debounce `resize`
   в `useMap` и 1500 мс плашки `+10` в `useGame`. Обязательно `act(() => vi.advanceTimersByTime(n))`
   и `vi.useRealTimers()` в `afterEach`; `setTimeout`/`sleep` в тестах запрещены.
-- **Фейковый `Services`.** Собирается в каждом сьюте (общего `test/fixtures/` нет):
-  `{ audio: { play: vi.fn() }, stats: new StatsService(new MemoryRepository()) }`.
-  `AudioService`/`StatsService` в тестах не создаются в module scope.
+- **Фейковый `Services`.** Собирается в каждом сьюте из фикстур `test/support/`:
+  `{ audio: { play: vi.fn() }, stats: new StatsService(repo, errors), errors: new ErrorBus() }`.
+  `AudioService`/`StatsService` в тестах не создаются в module scope; для App-сьютов есть
+  `renderApp()`/`makeAppServices()` из `test/support/app-setup.tsx`, шаги пользователя —
+  в `test/support/app-drivers.ts`.
 - **`BroadcastChannel`.** В `setup.ts` — безопасная заглушка (ничего не рассылает).
-  Управляемую (с перехватом `onmessage`/`close`) сьют ставит сам через `vi.stubGlobal`
-  в `beforeEach`, а `vi.unstubAllGlobals()` — в `afterEach`.
+  Управляемая заглушка — `test/support/session-channel.ts` (`ControlledChannel`,
+  `channels`, `sendFromOtherTab`): сьют сам «шлёт» `hello`/`busy` другой вкладки,
+  ставит её через `vi.stubGlobal` в `beforeEach`, `vi.unstubAllGlobals()` — в `afterEach`.
 - **Запрещено.** `eval`, `new Function`, `readSource`, `fs.readFileSync`, `require`,
   копии `CONFIG`/логики в тестах, `.only`/`.skip` без объяснения, снимки всего DOM,
-  проверка приватных полей вместо публичного API. Файл сьюта — не больше 200 строк.
+  проверка приватных полей вместо публичного API.
+- **Бюджет сьюта — 200 строк** (`wc -l`), проверяется локально и шагом CI. Превышение
+  устраняется выносом фикстур/драйверов в `test/support/*.ts`, а не удалением сценариев
+  и не дроблением сьюта. Новый сценарий, не влезающий в лимит, живёт отдельным сьютом —
+  это исключение A91, и оно фиксируется здесь: `App.map-freshness.test.tsx` (счёт на
+  путях возврата, TR-85), `App.startup.test.tsx` (стартовая ошибка хранилища, A86) и
+  `stats-service.migration.test.ts` (write-back миграции и лог, A89) — отдельные сценарии,
+  а не дробление основных сьютов; фикстуры для них уже в `test/support/`.
 
-## Покрытие (1.9.0)
+## Покрытие (1.10.1)
 
-`npm run test:coverage`, срез 1.9.0 — 28 сьютов, 261 тест:
+`npm run test:coverage`, срез 1.10.1 — 33 сьюта, 303 теста:
 
 | Группа | Stmts | Branch | Funcs | Lines | Порог |
 |---|---|---|---|---|---|
-| `src/core/**` | 99.32 | 90.44 | 98.61 | 99.63 | 80 |
-| `src/data/**` | 100 | 100 | 100 | 100 | 80 |
+| `src/core/**` | 99.32 | 89.47 | 98.64 | 99.63 | 80 |
+| `src/data/**` | 98.01 | 94.28 | 96.96 | 98.91 | 80 |
 | `src/services/**` | 100 | 100 | 100 | 100 | 80 |
-| `src/components/**` | 93.44 | 87.75 | 100 | 98.14 | 60 |
-| `src/hooks/**` | 95.21 | 81.92 | 97.61 | 98.23 | 60 |
-| `src/App.tsx` | 88.37 | 100 | 83.33 | 88.37 | 60 |
-| **Итого** | **96.83** | **88.74** | **97.68** | **98.37** | — |
+| `src/components/**` | 93.93 | 86.27 | 100 | 98.3 | 60 |
+| `src/hooks/**` | 96.57 | 87.5 | 97.91 | 98.84 | 60 |
+| `src/App.tsx` | 96.42 | 94.44 | 100 | 96.29 | 60 |
+| **Итого** | **97.57** | **89.19** | **98.52** | **98.94** | — |
 
 Baseline 1.8.3 (до этапа 18) — 46.3% statements / 41.39% branches, потому что в отчёт
 попадали только загруженные модули. После `coverage.include` итог считается по всем
@@ -152,10 +173,11 @@ Baseline 1.8.3 (до этапа 18) — 46.3% statements / 41.39% branches, по
 
 ## E2E — backlog
 
-Playwright **не установлен**, в `npm test` E2E не входит. В 1.9.0 добавлен HTTP-smoke
-(`npm run smoke`): `vite preview` + 10 проверок контракта `dist`, без браузера. Браузерные
-проверки — `npm run smoke:browser` (`scripts/verify-dist.mjs`). Когда появится Playwright —
-сценарии (7), парные smoke-листу из корневого `README.md`:
+Playwright **не установлен**, в `npm test` E2E не входит. HTTP-smoke (`npm run smoke`):
+`vite preview` + 10 проверок контракта `dist`, без браузера. Браузерные проверки —
+`npm run smoke:browser` (`scripts/verify-dist.mjs`): 11 сценариев, включая вторую вкладку
+(модалка у претендента, тишина у владельца). Когда появится Playwright — сценарии (7),
+парные smoke-листу из корневого `README.md`:
 
 1. Карта: 3 зоны, 15 тренажёров, игрок перед первым; клик по соседнему → 600 мс → модалка.
 2. «Отмена»: индекс откатывается, статистика не пишется.
@@ -169,6 +191,30 @@ Playwright **не установлен**, в `npm test` E2E не входит. �
 отдельным конфигом; в `npm test` он не входит.
 
 ## История
+
+### 1.10.1 — стартовая ошибка, выход через `ConfirmModal`, write-back миграции
+
+Модуль `src/app/error-bus.ts` получил очередь сообщений до подписки (`test/app/error-bus.test.ts`, 5),
+`StatsService` переведён на порт `ErrorReporter` из `core`. Добавлены `ConfirmModal.test.tsx` (5),
+`App.startup.test.tsx` (3), `stats-service.migration.test.ts` (7); `App.test.tsx` +2 (выход),
+`App.map-freshness.test.tsx` +1 (смена карты), `useMap.test.tsx` +1 (провал записи позиции),
+`useGame.test.tsx` — тесты выхода без `confirm`, `stats-schema.test.ts` +1 (`onStep`),
+`memory-repository.test.ts` 3 → 5 (сериализация), `Header.test.tsx` приведён к T52.
+`App.test.tsx` переведён на общий `test/support/app-setup.tsx` и остаётся ≤ 200 строк.
+Итог — **33 сьюта / 303 теста**, coverage — **97.57 / 89.19** (пороги 80/60 зелёные).
+
+### 1.10.0 — бюджет сьютов и новые сценарии аудита
+
+Фикстуры и драйверы вынесены в `test/support/`: `stats-fixtures.ts` (26 сценариев
+`StatsService` + действия `reset`/`skip`/`memory`), `generator-fixtures.ts` (таблица
+диапазонов вместо трёх длинных блоков), `app-drivers.ts` (шаги карта → раунд → ✕),
+`session-channel.ts` (управляемая заглушка `BroadcastChannel`). `stats-service.test.ts`
+317 → 199 строк (Prettier, `printWidth 120`), `generator.test.ts` 281 → 163, `session-model.test.ts` 213 → 195,
+`App.test.tsx` 203 → 191; сценарии не удалялись. Новые сьюты/тесты: `App.map-freshness`
+(2), шина ошибок и блокировка в `App` (2), «не зачтено» в `useResults` (3),
+владелец/претендент/fallback/StrictMode в `useSessionLock` (10), порог `CONFIG.RATINGS`
+(2), `console.info` миграций (2). Итог — **29 сьютов / 276 тестов**, coverage —
+**97.36 / 88.79** (пороги 80/60 зелёные).
 
 ### 1.9.0 — тестовый двойник в `test/support`
 

@@ -3,8 +3,11 @@
 
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import { ErrorBus } from '../../src/app/error-bus';
 import type { Services } from '../../src/app/types';
 import { CONFIG } from '../../src/core/config';
+import { QuotaExceededError } from '../../src/core/errors';
+import { STORAGE_ERROR_TITLE } from '../../src/core/error-reporting';
 import { MapLayout } from '../../src/core/map-layout';
 import { MemoryRepository } from '../support/memory-repository';
 import { StatsService } from '../../src/data/stats-service';
@@ -13,12 +16,16 @@ import { useMap } from '../../src/hooks/useMap';
 const ADDITION = CONFIG.ZONES[0];
 
 function setup(startIndex = -1) {
-    const stats = new StatsService(new MemoryRepository());
+    const repo = new MemoryRepository();
+    const errors = new ErrorBus();
+    const received: string[][] = [];
+    errors.subscribe((title, message) => received.push([title, message]));
+    const stats = new StatsService(repo, errors);
     if (startIndex >= 0) stats.saveTrainerIndex(startIndex);
     const audio = { play: vi.fn() };
     const services = { audio, stats } as unknown as Services;
     const view = renderHook(() => useMap(services));
-    return { ...view, stats, audio };
+    return { ...view, stats, repo, received, audio };
 }
 
 describe('useMap', () => {
@@ -124,6 +131,21 @@ describe('useMap', () => {
         expect(save).toHaveBeenCalledWith(-1);
         expect(result.current.stats.currentTrainerIndex).toBe(-1);
         expect(stats.getTrainerIndex()).toBe(-1);
+    });
+
+    test('провал saveTrainerIndex: позиция и счёт не двигаются (A90/T83)', () => {
+        const { result, stats, repo, received } = setup(0);
+        act(() => result.current.onTrainerClick(ADDITION, 2, 1));
+        vi.spyOn(repo, 'save').mockImplementation(() => {
+            throw new QuotaExceededError('Переполнено.');
+        });
+
+        act(() => result.current.gameFinished(false));
+
+        expect(result.current.stats.currentTrainerIndex).toBe(1);
+        expect(stats.getTrainerIndex()).toBe(0);
+        expect(result.current.stats.totalScore).toBe(0);
+        expect(received).toEqual([[STORAGE_ERROR_TITLE, 'Хранилище заполнено. Данные не сохранятся.']]);
     });
 
     test('exitGame() откатывает индекс без записи в статистику', () => {

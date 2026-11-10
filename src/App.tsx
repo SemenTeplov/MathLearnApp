@@ -1,12 +1,12 @@
 // ============================================
-// SRC/APP.TSX — весь каркас приложения на React (1.8.2)
+// SRC/APP.TSX — каркас приложения на React (1.10.1)
 // ============================================
-// 15.17: React рендерит #mapScreen и .app с теми же id/классами, что были
-// в index.html; .active вычисляется из состояния, а не из DOM-роутера.
-// Модалки — в дереве App. Состояние экранов — локальное (хуки), без сторов.
+// .active вычисляется из состояния, а не из DOM-роутера; модалки — в дереве App.
+// Ошибки data-слоя приходят в единственный showError через ErrorBus (1.10.1).
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Services } from './app/types';
+import { ConfirmModal } from './components/ConfirmModal';
 import { ErrorModal } from './components/ErrorModal';
 import { GameScreen } from './components/GameScreen';
 import { Header } from './components/Header';
@@ -17,15 +17,10 @@ import { useGame } from './hooks/useGame';
 import { useMap } from './hooks/useMap';
 import { useMapSelection } from './hooks/useMapSelection';
 import { useResults } from './hooks/useResults';
-import { useSessionLock } from './hooks/useSessionLock';
+import { SESSION_BUSY_MESSAGE, SESSION_BUSY_TITLE, useSessionLock } from './hooks/useSessionLock';
 import type { Difficulty, GameResult } from './core/types';
 
 type ScreenName = 'map' | 'game' | 'results';
-
-interface ErrorMessage {
-    title: string;
-    message: string;
-}
 
 export interface AppProps {
     services: Services;
@@ -38,7 +33,8 @@ function screenClass(name: ScreenName, current: ScreenName): string {
 
 export function App({ services }: AppProps) {
     const [screen, setScreen] = useState<ScreenName>('map');
-    const [error, setError] = useState<ErrorMessage | null>(null);
+    const [error, setError] = useState<{ title: string; message: string } | null>(null);
+    const [exitConfirm, setExitConfirm] = useState<{ roundScore: number } | null>(null);
 
     const navigate = useCallback((name: ScreenName) => {
         setScreen(name);
@@ -48,15 +44,23 @@ export function App({ services }: AppProps) {
         setError({ title, message });
     }, []);
 
-    useSessionLock(showError);
+    // Единственный канал показа ошибок data-слоя (A79, решение 1).
+    useEffect(() => services.errors.subscribe(showError), [services, showError]);
+
+    const { blocked } = useSessionLock(showError);
 
     const map = useMap(services);
     const results = useResults(services, map.gameFinished);
 
-    // Методы хуков деструктурируются: объекты хуков новые на каждый рендер,
-    // а сами методы стабильны, поэтому в зависимостях useCallback — методы.
+    // Объекты хуков новые на каждый рендер, их методы стабильны (A82).
     const { exitGame, reload: reloadMap, chooseDifficulty } = map;
     const { show: showResults } = results;
+
+    // Единственный путь возврата: чтение статистики до переключения экрана (A82/T82).
+    const returnToMap = useCallback(() => {
+        reloadMap();
+        navigate('map');
+    }, [reloadMap, navigate]);
 
     const handleGameFinished = useCallback(
         (roundResults: GameResult) => {
@@ -66,46 +70,55 @@ export function App({ services }: AppProps) {
         [showResults, navigate]
     );
 
-    const handleExitToMap = useCallback(() => {
-        exitGame();
-        navigate('map');
-    }, [exitGame, navigate]);
+    // ✕ не завершает раунд: подтверждение показывает App (A88/T80).
+    const handleExitRequested = useCallback((roundScore: number) => {
+        setExitConfirm((prev) => prev ?? { roundScore });
+    }, []);
 
-    const game = useGame(services, { onRoundFinished: handleGameFinished, onExitToMap: handleExitToMap });
+    const game = useGame(services, { onRoundFinished: handleGameFinished, onExitRequested: handleExitRequested });
     const { start: startGame } = game;
 
-    const handleMapChanged = useCallback(() => {
-        reloadMap();
-        navigate('map');
-    }, [reloadMap, navigate]);
-
-    const mapSelection = useMapSelection(services, handleMapChanged);
-    const { open: openMapSelection } = mapSelection;
+    const mapSelection = useMapSelection(services, returnToMap);
 
     const handleSelectDifficulty = useCallback(
         (difficulty: Difficulty) => {
+            if (blocked) {
+                showError(SESSION_BUSY_TITLE, SESSION_BUSY_MESSAGE);
+                return;
+            }
             chooseDifficulty(difficulty);
             startGame(difficulty);
             navigate('game');
         },
-        [chooseDifficulty, startGame, navigate]
+        [blocked, chooseDifficulty, showError, startGame, navigate]
     );
 
     const handlePlayAgain = useCallback(() => {
+        if (blocked) {
+            showError(SESSION_BUSY_TITLE, SESSION_BUSY_MESSAGE);
+            return;
+        }
         services.audio.play('click');
         startGame();
         navigate('game');
-    }, [services, startGame, navigate]);
+    }, [blocked, services, showError, startGame, navigate]);
 
     const handleBackToMap = useCallback(() => {
         services.audio.play('click');
-        reloadMap();
-        navigate('map');
-    }, [services, reloadMap, navigate]);
+        returnToMap();
+    }, [services, returnToMap]);
 
-    const handleOpenMapSelection = useCallback(() => {
-        openMapSelection();
-    }, [openMapSelection]);
+    const handleExitConfirmed = useCallback(() => {
+        services.audio.play('click');
+        setExitConfirm(null);
+        exitGame();
+        returnToMap();
+    }, [services, exitGame, returnToMap]);
+
+    const handleExitCancelled = useCallback(() => {
+        services.audio.play('click');
+        setExitConfirm(null);
+    }, [services]);
 
     const handleCloseError = useCallback(() => {
         services.audio.play('click');
@@ -115,7 +128,7 @@ export function App({ services }: AppProps) {
     return (
         <>
             <div className={screenClass('map', screen)} id="mapScreen">
-                <Header totalScore={map.stats.totalScore} onOpenMapSelection={handleOpenMapSelection} />
+                <Header totalScore={map.stats.totalScore} onOpenMapSelection={mapSelection.open} />
                 <MapScreen
                     stats={map.stats}
                     mapData={map.mapData}
@@ -166,6 +179,16 @@ export function App({ services }: AppProps) {
                     currentMap={mapSelection.currentMap}
                     onSelect={mapSelection.select}
                     onClose={mapSelection.close}
+                />
+            )}
+            {exitConfirm && (
+                <ConfirmModal
+                    title="Выйти из игры?"
+                    message={'Заработано ' + exitConfirm.roundScore + ' очков сгорят.'}
+                    confirmLabel="Выйти"
+                    cancelLabel="Остаться"
+                    onConfirm={handleExitConfirmed}
+                    onCancel={handleExitCancelled}
                 />
             )}
             {error && <ErrorModal title={error.title} message={error.message} onClose={handleCloseError} />}

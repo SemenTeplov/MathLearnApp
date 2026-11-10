@@ -113,6 +113,30 @@ export async function connectPage(port, timeout) {
     return { cdp: new Cdp(socket), socket };
 }
 
+/** Открывает новую вкладку (target) в том же Chromium и возвращает её описание. */
+export async function openTarget(port, url, timeout = 10000) {
+    return poll(
+        async () => {
+            const response = await fetch(`http://127.0.0.1:${port}/json/new?${url}`, { method: 'PUT' });
+            if (!response.ok) return null;
+            const target = await response.json();
+            return target.webSocketDebuggerUrl ? target : null;
+        },
+        'новая цель DevTools',
+        timeout
+    );
+}
+
+/** Подключается к произвольной цели по её WebSocket URL. */
+export async function connectTarget(webSocketDebuggerUrl) {
+    const socket = new WebSocket(webSocketDebuggerUrl);
+    await new Promise((resolve, reject) => {
+        socket.addEventListener('open', resolve, { once: true });
+        socket.addEventListener('error', () => reject(new Error('WebSocket цели не подключился')), { once: true });
+    });
+    return { cdp: new Cdp(socket), socket };
+}
+
 /** Запускает headless Chromium с временным профилем и CDP-портом. */
 export function launchChromium(binary, port, profile) {
     return spawn(

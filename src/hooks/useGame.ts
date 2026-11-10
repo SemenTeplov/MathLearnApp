@@ -1,5 +1,5 @@
 // ============================================
-// SRC/HOOKS/useGame.ts — игровой процесс (1.8.2)
+// SRC/HOOKS/useGame.ts — игровой процесс (1.10.1)
 // ============================================
 // Модель раунда и генератор живут в ref; наружу — снимок GameSessionView.
 // Порядок 1:1 с game-controller 1.8.0: ответ → правила → счёт/жизни →
@@ -17,8 +17,8 @@ import type { GameFeedbackView, GameSessionView } from '../ui/types';
 export interface UseGameDeps {
     /** Конец раунда: показывает результаты и переключает экран. */
     onRoundFinished(results: GameResult): void;
-    /** Подтверждённый выход из игры на карту. */
-    onExitToMap(): void;
+    /** ✕ в раунде: игрок хочет выйти, раунд не завершается. */
+    onExitRequested(roundScore: number): void;
 }
 
 export interface UseGame {
@@ -45,14 +45,14 @@ function initialSession(): GameSessionView {
     };
 }
 
-export function useGame(services: Services, { onRoundFinished, onExitToMap }: UseGameDeps): UseGame {
+export function useGame(services: Services, { onRoundFinished, onExitRequested }: UseGameDeps): UseGame {
     const modelRef = useRef<SessionModel | null>(null);
     const generatorRef = useRef<ProblemGenerator | null>(null);
     const questionCountRef = useRef(0);
     const answeredRef = useRef(false);
     const floatingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const depsRef = useRef({ onRoundFinished, onExitToMap });
-    depsRef.current = { onRoundFinished, onExitToMap };
+    const depsRef = useRef({ onRoundFinished, onExitRequested });
+    depsRef.current = { onRoundFinished, onExitRequested };
 
     if (!modelRef.current) modelRef.current = new SessionModel();
     if (!generatorRef.current) generatorRef.current = new ProblemGenerator(CONFIG.START_DIFFICULTY);
@@ -173,13 +173,10 @@ export function useGame(services: Services, { onRoundFinished, onExitToMap }: Us
         }));
     }, [services]);
 
+    // Подтверждение — кастомная модалка App: раунд не завершается (A88/T80).
     const exit = useCallback(() => {
-        const model = modelRef.current!;
         services.audio.play('click');
-
-        if (confirm('Выйти из игры? Заработано ' + model.roundScore + ' очков сгорят.')) {
-            depsRef.current.onExitToMap();
-        }
+        depsRef.current.onExitRequested(modelRef.current!.roundScore);
     }, [services]);
 
     return { session, question, feedback, selectedIndex, correctIndex, floatingScore, start, answer, next, exit };

@@ -1,8 +1,7 @@
 // ============================================
-// SRC/HOOKS/useMap.ts — карта: позиция, движение, модалка (1.8.2)
+// SRC/HOOKS/useMap.ts — карта: позиция, движение, модалка (1.10.1)
 // ============================================
 // PlayerState + transition 600ms + onTransitionEnd (A47); ширина — ref .map.
-
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { Services } from '../app/types';
@@ -13,6 +12,7 @@ import { PlayerRules } from '../core/player-rules';
 import { PlayerState } from '../core/player-state';
 import type { Difficulty, MapData, Zone } from '../core/types';
 import type { MapModalTarget, MapViewData } from '../ui/types';
+
 export interface UseMap {
     stats: MapData;
     mapData: MapViewData;
@@ -33,12 +33,12 @@ export interface UseMap {
 interface MapState extends MapData {
     zones: Zone[];
 }
+
 /** Снимок карты из каталога и Stats (позиция нормализуется). */
 function readMapState(services: Services): MapState {
     const map = MapCatalog.get(services.stats.getCurrentMap());
     const zones: Zone[] = Array.isArray(map && map.zones) ? map.zones : CONFIG.ZONES;
     const total = zones.reduce((sum, zone) => sum + (zone.trainersCount || 0), 0);
-
     return {
         zones,
         totalScore: services.stats.getTotalScore(),
@@ -50,26 +50,22 @@ export function useMap(services: Services): UseMap {
     const mapRef = useRef<HTMLDivElement | null>(null);
     const playerRef = useRef<PlayerState | null>(null);
     const pendingRef = useRef<MapModalTarget | null>(null);
-
     const [state, setState] = useState<MapState>(() => readMapState(services));
     playerRef.current ??= new PlayerState(state.currentTrainerIndex);
-
     const [width, setWidth] = useState<number>(MapLayout.FALLBACK_WIDTH);
     const [isMoving, setIsMoving] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalTarget, setModalTarget] = useState<MapModalTarget | null>(null);
     const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>(CONFIG.START_DIFFICULTY);
-
     const measure = useCallback(() => {
         const element = mapRef.current;
         if (!element) return;
         const measured = element.clientWidth;
         if (measured > 0) setWidth((prev) => (Math.abs(measured - prev) > 0.5 ? measured : prev));
     }, []);
+
     // Замер после каждого рендера: ширина меняется при появлении скроллбара.
-    useLayoutEffect(() => {
-        measure();
-    });
+    useLayoutEffect(measure);
 
     useEffect(() => {
         let timer: ReturnType<typeof setTimeout> | null = null;
@@ -80,7 +76,6 @@ export function useMap(services: Services): UseMap {
                 measure();
             }, 100);
         };
-
         window.addEventListener('resize', onResize);
         return () => {
             window.removeEventListener('resize', onResize);
@@ -91,7 +86,6 @@ export function useMap(services: Services): UseMap {
     const geometry = MapLayout.buildLayout(state.zones, width);
     const playerPoint = MapLayout.getPlayerPoint(geometry.trainers, state.currentTrainerIndex);
     const mapData: MapViewData = { zones: state.zones, geometry, playerPoint };
-
     const reload = useCallback(() => {
         pendingRef.current = null;
         const next = readMapState(services);
@@ -101,7 +95,6 @@ export function useMap(services: Services): UseMap {
         setModalTarget(null);
         setState(next);
     }, [services]);
-
     const onTrainerClick = useCallback(
         (zone: Zone | undefined, trainerNumber: number, trainerIndex: number) => {
             if (isMoving || isModalOpen) return;
@@ -162,15 +155,13 @@ export function useMap(services: Services): UseMap {
     const gameFinished = useCallback(
         (isSuccessful: boolean) => {
             const player = playerRef.current;
-            if (!player) return;
+            if (!player || player.isReplay()) return;
 
-            if (player.isReplay()) return;
-
-            if (isSuccessful) {
-                services.stats.saveTrainerIndex(player.commitWin());
-            } else {
-                player.revert();
-                services.stats.saveTrainerIndex(player.index);
+            // Write-ahead: позиция фиксируется только после успешной записи (A90/T83).
+            const target = isSuccessful ? player.index : player.previous;
+            if (services.stats.saveTrainerIndex(target)) {
+                if (isSuccessful) player.commitWin();
+                else player.revert();
             }
 
             setState((prev) => ({

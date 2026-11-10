@@ -1,6 +1,6 @@
 // Боевой GameRules: ответ, конец игры и оценка по точности.
 
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test } from 'vitest';
 import { CONFIG } from '../../src/core/config';
 import { GameRules } from '../../src/core/game-rules';
 import { SessionModel } from '../../src/core/session-model';
@@ -89,5 +89,26 @@ describe('GameRules.getRating', () => {
     test('округляет точность до целых процентов', () => {
         // 2/3 = 66.67% → 67%, всё ещё ниже порога 70%.
         expect(GameRules.getRating(results({ correct: 2, wrong: 1, total: 3 }))).toBe(CONFIG.RATINGS[2]);
+    });
+});
+
+describe('GameRules.getRating — пороги из CONFIG.RATINGS', () => {
+    const original = CONFIG.RATINGS.map((rating) => ({ ...rating }));
+
+    afterEach(() => {
+        CONFIG.RATINGS.splice(0, CONFIG.RATINGS.length, ...original.map((rating) => ({ ...rating })));
+    });
+
+    test('правка порога в CONFIG меняет оценку без правок кода (A83)', () => {
+        const ninetyFive = results({ correct: 19, total: 20 });
+        expect(GameRules.getRating(ninetyFive)).toBe(CONFIG.RATINGS[1]);
+
+        CONFIG.RATINGS[0].min = 90;
+        expect(GameRules.getRating(ninetyFive)).toBe(CONFIG.RATINGS[0]);
+    });
+
+    test('порядок проверок: lives <= 0 важнее любого порога', () => {
+        CONFIG.RATINGS[0].min = 0;
+        expect(GameRules.getRating(results({ lives: 0, correct: 10, total: 10 }))).toBe(CONFIG.GAMEOVER);
     });
 });
