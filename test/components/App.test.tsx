@@ -71,9 +71,10 @@ describe('App', () => {
     });
 
     test('смена карты: switchMap(true) меняет карту и закрывает модалку', async () => {
-        const { user, services } = renderApp();
+        // Каталог расширяется до первого чтения статистики: кэш сервиса уже прогрет (A95).
         CONFIG.MAPS.push(ENGLISH);
         try {
+            const { user, services } = renderApp();
             await user.click(screen.getByRole('button', { name: 'Выбор карты' }));
             await user.click(screen.getByText('Английский'));
 
@@ -144,16 +145,32 @@ describe('App', () => {
         expect(container.querySelector('#resultScreen')).not.toHaveClass('active');
     });
 
-    test('✕ → «Остаться»: экран игры активен, статистика не изменилась', async () => {
-        const { user, container, services } = renderApp();
+    test('✕ → «Остаться»: экран игры активен, статистика не изменилась, два click', async () => {
+        const { user, container, services, audio } = renderApp();
         await startGame(user, container);
+        const before = audio.play.mock.calls.length;
 
         await user.click(container.querySelector('.close-btn') as HTMLElement);
         expect(screen.getByRole('heading', { name: 'Выйти из игры?' })).toBeInTheDocument();
+        expect(audio.play.mock.calls.length).toBe(before + 1);
         await user.click(screen.getByRole('button', { name: 'Остаться' }));
 
         expect(container.querySelector('#gameScreen')).toHaveClass('active');
         expect(services.stats.getTotalScore()).toBe(0);
+        expect(audio.play.mock.calls.length).toBe(before + 2);
+    });
+
+    test('два ✕ подряд: одна модалка и один click', async () => {
+        const { user, container, audio } = renderApp();
+        await startGame(user, container);
+        const before = audio.play.mock.calls.length;
+        const close = container.querySelector('.close-btn') as HTMLElement;
+
+        await user.click(close);
+        await user.click(close);
+
+        expect(screen.getAllByRole('heading', { name: 'Выйти из игры?' })).toHaveLength(1);
+        expect(audio.play.mock.calls.length).toBe(before + 1);
     });
 
     test('✕ → «Выйти»: карта активна, счёт раунда не записан', async () => {

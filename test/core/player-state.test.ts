@@ -1,4 +1,4 @@
-// Боевая машина состояний PlayerState: moveTo / revert / commitWin.
+// Боевая машина состояний PlayerState: moveTo / revert / commitWin / restore.
 
 import { describe, expect, test } from 'vitest';
 import { PlayerState } from '../../src/core/player-state';
@@ -66,6 +66,16 @@ describe('PlayerState', () => {
 
         expect(state.revert()).toBe(3);
         expect(state.index).toBe(3);
+        expect(state.isReplay()).toBe(true);
+    });
+
+    test('restore синхронизирует обе позиции с хранилищем и возвращает индекс', () => {
+        const state = new PlayerState(0);
+        state.moveTo(3);
+
+        expect(state.restore(1)).toBe(1);
+        expect(state.index).toBe(1);
+        expect(state.previous).toBe(1);
         expect(state.isReplay()).toBe(true);
     });
 });

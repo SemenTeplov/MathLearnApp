@@ -7,16 +7,17 @@ import { CorruptedDataError, QuotaExceededError } from '../../src/core/errors';
 import { STORAGE_ERROR_TITLE } from '../../src/core/error-reporting';
 import { StatsService } from '../../src/data/stats-service';
 import { MemoryRepository } from '../support/memory-repository';
-import { failsOn, mapStats, read } from '../support/stats-fixtures';
+import { defaults, failsOn, mapStats, read } from '../support/stats-fixtures';
 
 let repo: MemoryRepository;
+let errors: ErrorBus;
 let received: string[][];
 let stats: StatsService;
 
 beforeEach(() => {
     repo = new MemoryRepository();
     received = [];
-    const errors = new ErrorBus();
+    errors = new ErrorBus();
     errors.subscribe((title, message) => received.push([title, message]));
     stats = new StatsService(repo, errors);
 });
@@ -97,12 +98,18 @@ describe('StatsService — дедупликация сообщений (A79)', (
 
         vi.mocked(repo.save).mockRestore();
         failsOn(repo, 'load', new CorruptedDataError('Данные повреждены.'));
-        stats.load();
+        new StatsService(repo, errors).load();
 
         expect(received).toEqual([
             [STORAGE_ERROR_TITLE, 'Хранилище заполнено. Данные не сохранятся.'],
             [STORAGE_ERROR_TITLE, 'Данные повреждены. Счёт сброшен.']
         ]);
+    });
+
+    test('без репортёра ошибка не публикуется и не ломает чтение', () => {
+        failsOn(repo, 'load', new CorruptedDataError('Данные повреждены.'));
+        expect(new StatsService(repo).load()).toEqual(defaults());
+        expect(received).toEqual([]);
     });
 
     test('успешная запись сбрасывает память сообщений', () => {

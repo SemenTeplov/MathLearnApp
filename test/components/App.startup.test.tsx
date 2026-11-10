@@ -1,7 +1,7 @@
-// App при старте: ошибка хранилища, возникшая до подписки на шину, доходит до
-// игрока без ручного report() (A86/A91, TR-81). Реальный StatsService и ErrorBus.
+// App при старте: ошибка хранилища до подписки доходит до игрока (A86/A91, TR-81),
+// сообщения показываются очередью без потерь и замен (A94/T88, TR-91).
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -13,7 +13,7 @@ import { StorageUnavailableError } from '../../src/core/errors';
 import { StatsService } from '../../src/data/stats-service';
 import type { Repository } from '../../src/data/repository';
 import { MemoryRepository } from '../support/memory-repository';
-import { ControlledChannel, resetChannels } from '../support/session-channel';
+import { ControlledChannel, resetChannels, sendFromOtherTab } from '../support/session-channel';
 import { arrive } from '../support/app-drivers';
 
 function makeServices(repo: Repository) {
@@ -90,5 +90,47 @@ describe('App — стартовая ошибка хранилища', () => {
 
         await user.click(screen.getByRole('button', { name: 'OK' }));
         expect(screen.queryByRole('heading', { name: 'Ошибка хранилища' })).toBeNull();
+    });
+});
+
+describe('App — очередь сообщений', () => {
+    test('два report() подряд: первое, затем второе, затем модалки нет', async () => {
+        const user = userEvent.setup();
+        const { services } = makeServices(new MemoryRepository());
+        render(<App services={services} />);
+
+        act(() => {
+            services.errors.report('Первая ошибка', 'Первое сообщение.');
+            services.errors.report('Вторая ошибка', 'Второе сообщение.');
+        });
+
+        expect(screen.getByRole('heading', { name: 'Первая ошибка' })).toBeInTheDocument();
+        expect(screen.queryByText('Второе сообщение.')).toBeNull();
+
+        await user.click(screen.getByRole('button', { name: 'OK' }));
+        expect(screen.queryByRole('heading', { name: 'Первая ошибка' })).toBeNull();
+        expect(screen.getByRole('heading', { name: 'Вторая ошибка' })).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'OK' }));
+        expect(screen.queryByRole('heading', { name: 'Вторая ошибка' })).toBeNull();
+    });
+
+    test('стартовая ошибка хранилища не теряется при busy второй вкладки', async () => {
+        const user = userEvent.setup();
+        const repo = new MemoryRepository();
+        repo.save({ version: CONFIG.VERSION + 1, totalScore: 100 });
+        const { services } = makeServices(repo);
+        render(<App services={services} />);
+        sendFromOtherTab(0, { type: 'busy' });
+
+        expect(await screen.findByRole('heading', { name: 'Ошибка хранилища' })).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'OK' }));
+
+        expect(screen.getByRole('heading', { name: 'Игра уже запущена' })).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Ошибка хранилища' })).toBeNull();
+
+        await user.click(screen.getByRole('button', { name: 'OK' }));
+        expect(screen.queryByRole('heading', { name: 'Игра уже запущена' })).toBeNull();
     });
 });

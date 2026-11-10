@@ -1,7 +1,6 @@
 // ============================================
-// SRC/HOOKS/useMap.ts — карта: позиция, движение, модалка (1.10.1)
+// SRC/HOOKS/useMap.ts — карта: позиция, движение, модалка (1.10.2)
 // ============================================
-// PlayerState + transition 600ms + onTransitionEnd (A47); ширина — ref .map.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { Services } from '../app/types';
@@ -34,7 +33,6 @@ interface MapState extends MapData {
     zones: Zone[];
 }
 
-/** Снимок карты из каталога и Stats (позиция нормализуется). */
 function readMapState(services: Services): MapState {
     const map = MapCatalog.get(services.stats.getCurrentMap());
     const zones: Zone[] = Array.isArray(map && map.zones) ? map.zones : CONFIG.ZONES;
@@ -64,7 +62,6 @@ export function useMap(services: Services): UseMap {
         if (measured > 0) setWidth((prev) => (Math.abs(measured - prev) > 0.5 ? measured : prev));
     }, []);
 
-    // Замер после каждого рендера: ширина меняется при появлении скроллбара.
     useLayoutEffect(measure);
 
     useEffect(() => {
@@ -84,6 +81,7 @@ export function useMap(services: Services): UseMap {
     }, [measure]);
 
     const geometry = MapLayout.buildLayout(state.zones, width);
+    const total = geometry.trainers.length;
     const playerPoint = MapLayout.getPlayerPoint(geometry.trainers, state.currentTrainerIndex);
     const mapData: MapViewData = { zones: state.zones, geometry, playerPoint };
     const reload = useCallback(() => {
@@ -157,12 +155,13 @@ export function useMap(services: Services): UseMap {
             const player = playerRef.current;
             if (!player || player.isReplay()) return;
 
-            // Write-ahead: позиция фиксируется только после успешной записи (A90/T83).
+            // Write-ahead: без записи позиция берётся из хранилища (A90/A92, T86).
             const target = isSuccessful ? player.index : player.previous;
-            if (services.stats.saveTrainerIndex(target)) {
+            const saved = services.stats.saveTrainerIndex(target);
+            if (saved) {
                 if (isSuccessful) player.commitWin();
                 else player.revert();
-            }
+            } else player.restore(PlayerRules.normalizeIndex(services.stats.getTrainerIndex(), total));
 
             setState((prev) => ({
                 ...prev,
@@ -170,7 +169,7 @@ export function useMap(services: Services): UseMap {
                 totalScore: services.stats.getTotalScore()
             }));
         },
-        [services]
+        [services, total]
     );
 
     const exitGame = useCallback(() => {

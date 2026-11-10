@@ -1,8 +1,8 @@
 // ============================================
-// SRC/APP.TSX — каркас приложения на React (1.10.1)
+// SRC/APP.TSX — каркас приложения на React (1.10.2)
 // ============================================
 // .active вычисляется из состояния, а не из DOM-роутера; модалки — в дереве App.
-// Ошибки data-слоя приходят в единственный showError через ErrorBus (1.10.1).
+// Сообщения копятся очередью (A94), звук ✕ играет оболочка (A93).
 
 import { useCallback, useEffect, useState } from 'react';
 import type { Services } from './app/types';
@@ -26,37 +26,32 @@ export interface AppProps {
     services: Services;
 }
 
-/** Класс экрана: `.screen` + `.active` у текущего (как в 1.7.0). */
 function screenClass(name: ScreenName, current: ScreenName): string {
     return 'screen' + (name === current ? ' active' : '');
 }
 
 export function App({ services }: AppProps) {
     const [screen, setScreen] = useState<ScreenName>('map');
-    const [error, setError] = useState<{ title: string; message: string } | null>(null);
+    const [messages, setMessages] = useState<Array<{ title: string; message: string }>>([]);
     const [exitConfirm, setExitConfirm] = useState<{ roundScore: number } | null>(null);
 
     const navigate = useCallback((name: ScreenName) => {
         setScreen(name);
     }, []);
 
+    // Сообщение встаёт в конец очереди (A94/T88); подписка на шину — единственный канал (A79).
     const showError = useCallback((title: string, message: string) => {
-        setError({ title, message });
+        setMessages((prev) => [...prev, { title, message }]);
     }, []);
-
-    // Единственный канал показа ошибок data-слоя (A79, решение 1).
     useEffect(() => services.errors.subscribe(showError), [services, showError]);
 
     const { blocked } = useSessionLock(showError);
-
     const map = useMap(services);
     const results = useResults(services, map.gameFinished);
-
-    // Объекты хуков новые на каждый рендер, их методы стабильны (A82).
     const { exitGame, reload: reloadMap, chooseDifficulty } = map;
     const { show: showResults } = results;
 
-    // Единственный путь возврата: чтение статистики до переключения экрана (A82/T82).
+    // Единственный путь возврата: статистика читается до переключения экрана (A82/T82).
     const returnToMap = useCallback(() => {
         reloadMap();
         navigate('map');
@@ -70,14 +65,18 @@ export function App({ services }: AppProps) {
         [showResults, navigate]
     );
 
-    // ✕ не завершает раунд: подтверждение показывает App (A88/T80).
-    const handleExitRequested = useCallback((roundScore: number) => {
-        setExitConfirm((prev) => prev ?? { roundScore });
-    }, []);
+    // ✕ не завершает раунд: звук и подтверждение — здесь, повторный ✕ — no-op (A93/T87).
+    const handleExitRequested = useCallback(
+        (roundScore: number) => {
+            if (exitConfirm) return;
+            services.audio.play('click');
+            setExitConfirm({ roundScore });
+        },
+        [exitConfirm, services]
+    );
 
     const game = useGame(services, { onRoundFinished: handleGameFinished, onExitRequested: handleExitRequested });
     const { start: startGame } = game;
-
     const mapSelection = useMapSelection(services, returnToMap);
 
     const handleSelectDifficulty = useCallback(
@@ -120,9 +119,10 @@ export function App({ services }: AppProps) {
         setExitConfirm(null);
     }, [services]);
 
+    // Закрытие снимает ровно одно сообщение — следующее показывается сразу (A94).
     const handleCloseError = useCallback(() => {
         services.audio.play('click');
-        setError(null);
+        setMessages((prev) => prev.slice(1));
     }, [services]);
 
     return (
@@ -191,7 +191,9 @@ export function App({ services }: AppProps) {
                     onCancel={handleExitCancelled}
                 />
             )}
-            {error && <ErrorModal title={error.title} message={error.message} onClose={handleCloseError} />}
+            {messages.length > 0 && (
+                <ErrorModal title={messages[0].title} message={messages[0].message} onClose={handleCloseError} />
+            )}
         </>
     );
 }

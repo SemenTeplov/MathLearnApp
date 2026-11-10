@@ -160,17 +160,18 @@ describe('useGame', () => {
         expect(result.current.floatingScore).toBeNull();
     });
 
-    test('exit сообщает roundScore, играет звук и не завершает раунд', () => {
+    test('exit сообщает roundScore, не играет звук и не завершает раунд', () => {
         const { result, onExitRequested, onRoundFinished, audio } = setup();
         act(() => result.current.start('easy'));
         act(() => result.current.answer(correctIndexOf(result.current.question!)));
+        const calls = audio.play.mock.calls.length;
 
         act(() => result.current.exit());
 
         expect(onExitRequested).toHaveBeenCalledTimes(1);
         expect(onExitRequested).toHaveBeenCalledWith(CONFIG.POINTS_BASE);
         expect(onRoundFinished).not.toHaveBeenCalled();
-        expect(audio.play).toHaveBeenCalledWith('click');
+        expect(audio.play.mock.calls.length).toBe(calls);
         expect(result.current.question).not.toBeNull();
     });
 

@@ -1,213 +1,207 @@
 # TASKS.md — MathLingo
 
-**Версия:** 1.10.1
-**Основа:** PLAN.md 1.10.1 (этап 22), SPEC 1.10.1 (`TR-81…TR-88`), RULES 1.10.1 (`A86–A91`, `T79–T85`, `Z44–Z48`)
-**Предыдущая версия:** `TASKS_v1_10_0.md` (архив, снимок HEAD `0fa9aa0`)
-**Статус:** задачи 22.1–22.9 **выполнены** (ветка `feature/1.10`, база `0fa9aa0`); код 1.10.1 собран и проверен
-**Базовая линия 1.10.1:** `typecheck` **0**, `lint` **0**, `format:check` **0**, **276 тестов в 29 сьютах** (перемерено), coverage **97.36 / 88.79** (по аудиту 1.10.0), `build` 247.51 КБ JS + 7.04 КБ CSS + три mp3, `smoke` **10/10**, `smoke:browser` **11/11**; бюджеты: `src` **200**, `test` **199**, `scripts` **247**, `css` **64**; `.idea/` — 0; `version` — **1.10.0**
-**Факт выполнения:** **303 теста в 33 сьютах**; coverage **97.57 / 89.19**; `typecheck`/`lint`/`format:check` — **0**; `build` 248.80 КБ JS (+`map` 1.19 МБ) + 7.04 КБ CSS + три mp3; `smoke` **10/10**; `smoke:browser` **11/11**; бюджеты: `src` 200 (`useMap.ts`), `test` 199 (`stats-service.test.ts`), `scripts` 247 (`verify-dist.mjs`), `css` 64; `.idea/` — 0; `version` — **1.10.1**
+**Версия:** 1.10.2
+**Основа:** PLAN.md 1.10.2 (этап 23), SPEC 1.10.2 (`TR-89…TR-95`), RULES 1.10.2 (`A92–A96`, `T86–T91`, `Z49–Z51`)
+**Предыдущая версия:** `TASKS_v1_10_1.md` (архив, снимок этапа 22)
+**Статус:** задачи 23.1–23.9 **выполнены** (кроме коммита 23.7.6): код, тесты и документы 1.10.2 собраны, критерий TR-94 зелёный
+**Базовая линия 1.10.2:** `typecheck` **0**, `lint` **0**, `format:check` **0**, **303 теста в 33 сьютах**, coverage **97.57 / 89.19**, `build` 248.80 КБ JS + 7.04 КБ CSS + три mp3, `smoke` **10/10**, `smoke:browser` **11/11**; бюджеты: `src` **200** (`useMap.ts`), `test` **199** (`stats-service.test.ts`), `scripts` **247** (`verify-dist.mjs`), `css` **64**; `.idea/` — 0; `version` — **1.10.1**
+**Факт выполнения:** **316 тестов в 35 сьютах**, coverage **97.63 / 89.25**, `build` 249.12 КБ JS (249 122 B) + 7.04 КБ CSS + три mp3, `smoke` **10/10**, `smoke:browser` **11/11**; бюджеты: `src` **199** (`useMap.ts`), `test` **199** (`stats-service.test.ts`), `scripts` **247** (`verify-dist.mjs`), `css` **43** (`buttons.css`); `.idea/` — 0; `version` — **1.10.2**
 
 ---
 
 ## 📖 Правила
 
 - Задачи — **строго по порядку**; зависимость указана в каждой задаче.
-- После задачи — критерий готовности и `npm test` зелёный: **не меньше 276** тестов (факт 1.10.1 фиксируется в отчёте).
-- Бюджет строк проверяется сразу, а не «потом»: `src`/`test` ≤ 200, `scripts` ≤ 250, `css` ≤ 200 (A84, Z42).
+- После задачи — критерий готовности и `npm test` зелёный: **не меньше 303** тестов; каждый новый пункт закрывается тестом (ожидаемо **+10…15**), факт фиксируется в отчёте.
+- Бюджет строк проверяется сразу, а не «потом»: `src`/`test` ≤ 200, `scripts` ≤ 250, `css` ≤ 200 (A60/A84, Z42). Правки в `stats-service.ts` (198), `useMap.ts` (200), `App.tsx` (197) компенсируются сокращением шапок/doc-комментариев, а не удалением логики.
 - `console.log` в `src/**` запрещён; диагностика — `console.info` / `console.warn` / `console.error` (A85).
-- `alert()` / `confirm()` / `prompt()` в `src/**` запрещены — только `ErrorModal` и `ConfirmModal` (A88, Z46).
+- `alert()` / `confirm()` / `prompt()` в `src/**` запрещены — только `ErrorModal` и `ConfirmModal` (A88, Z46, Z50).
 - `src/data/**` импортирует только `core`/`data`; `app/**` из `data/**` — запрещено (A87, Z45).
+- **Один жест — один звук:** звук выхода играет `App` при открытии подтверждения, `useGame` молчит (A93/T87).
+- Сообщения показываются **очередью** в `App`; потеря или замена сообщения, второй канал показа запрещены (A94/T88, Z50).
+- Кэш статистики — поле экземпляра `StatsService`; ошибка чтения не кэшируется (A95/T89, Z49).
+- A91: основной сьют + **не более двух** дополнительных; новые сьюты — `useMap.save-failure.test.tsx` и `stats-service.cache.test.ts`.
 - При обрыве — продолжать с **последней** незавершённой задачей.
-- `git add -A` не используется; `dist/` и `coverage/` не коммитятся.
-- Новые зависимости, Playwright/Puppeteer, type-aware ESLint, Prettier для `.md` — не добавляются (Z48).
+- `git add -A` не используется; `dist/` и `coverage/` не коммитятся (Z37).
+- Новые зависимости, Playwright/Puppeteer, type-aware ESLint, Prettier для `.md` — не добавляются (Z51).
 
 ---
 
-## 📂 Структура (1.10.1)
+## 📂 Структура (1.10.2)
 
 ```
-package.json                      # version 1.10.0 → 1.10.1 на выпуске (22.8.3)
-.gigacode/plans/PLAN.md           # 1.10.1 — текущий план (этап 22)
-.gigacode/plans/PLAN_v1_10_0.md   # архив 1.10.0 (создан)
-.gigacode/tasks/TASKS.md          # этот файл, 1.10.1
-.gigacode/tasks/TASKS_v1_10_0.md  # архив 1.10.0 (создан)
-src/core/error-reporting.ts       # NEW: ErrorReporter + STORAGE_ERROR_TITLE (T79)
-src/core/types.ts                 # − SessionState (N1/A75)
-src/core/stats-schema.ts          # migrate(data, onStep?) (T81)
-src/data/stats-service.ts         # порт вместо app; write-back миграции; Set ступеней лога
-src/app/error-bus.ts              # реализует ErrorReporter; очередь недоставленных сообщений
-src/App.tsx                       # returnToMap(); состояние подтверждения; ConfirmModal
-src/components/ConfirmModal.tsx   # NEW: подтверждение выхода (T80)
-src/hooks/useGame.ts              # onExitRequested(roundScore); без confirm()
-src/hooks/useMap.ts               # проверка saveTrainerIndex, write-ahead позиция, ≤ 200 строк
-test/app/error-bus.test.ts        # NEW: очередь, подписка/отписка
-test/components/ConfirmModal.test.tsx  # NEW: тексты, кнопки, оверлей
-test/components/App.startup.test.tsx   # NEW: стартовая ошибка хранилища (A91)
-test/support/memory-repository.ts # сериализация save/load (T84.4)
-test/{core,data,hooks,components}/*    # правки под новые контракты
-.github/workflows/ci.yml          # grep-проверки без `|| true` (T66/A77)
-scripts/smoke.mjs                 # комментарий «11 проверок» (D7)
-README.md, GIGACODE.md, test/README.md # структура, A91, версия 1.10.1
+package.json                             # version 1.10.1 → 1.10.2 на выпуске (23.7.5)
+.gigacode/plans/PLAN.md                  # 1.10.2 — текущий план (этап 23)
+.gigacode/plans/PLAN_v1_10_1.md          # архив 1.10.1 (создан)
+.gigacode/tasks/TASKS.md                 # этот файл, 1.10.2
+.gigacode/tasks/TASKS_v1_10_1.md         # архив 1.10.1 (создан)
+.gigacode/specs/spec_v1_10_2.md          # действующая спецификация (TR-89…TR-95)
+.gigacode/rulles/rules_v1_10_2.md        # действующие правила (A92–A96, T86–T91, Z49–Z51)
+src/core/player-state.ts                 # + restore(index) — синхронизация с хранилищем (T86)
+src/hooks/useMap.ts                      # провал записи → restore(normalizeIndex(...)); ≤ 200
+src/hooks/useGame.ts                     # exit() без звука и без завершения раунда (A93/T87)
+src/App.tsx                              # очередь сообщений (A94/T88); звук ✕ (T87); ≤ 200
+src/data/stats-service.ts                # _cache в экземпляре, наполнение в _read() (A95/T89); ≤ 200
+scripts/smoke.mjs                        # размер ассета в байтах (Buffer.byteLength)
+test/core/player-state.test.ts           # restore(): current/previous/replay
+test/hooks/useMap.test.tsx               # успешные пути (победа/провал/повтор)
+test/hooks/useMap.save-failure.test.tsx  # NEW: UI === storage при бросающем save (A91)
+test/hooks/useGame.test.tsx              # exit() без звука — тесты переписаны (Z42)
+test/components/App.test.tsx             # два ✕ → одна модалка и один click
+test/components/App.startup.test.tsx     # очередь сообщений, startup + busy, StrictMode
+test/data/stats-service.cache.test.ts    # NEW: одно чтение на экземпляр (A91)
+test/data/stats-service.test.ts          # ≤ 200 без кэш-сценариев
+test/README.md                           # A91: три сьюта App, useMap/stats-service
+README.md, GIGACODE.md                   # числа, структура, версия 1.10.2
 ```
 
 ---
 
 ## 🧩 Задачи
 
-### 22.1. Порт `ErrorReporter` и буфер шины
+### 23.1. Позиция после раунда синхронизируется с хранилищем
 
-**Требования:** TR-81, TR-82 · **Зависимость:** нет
-**Файлы:** `src/core/error-reporting.ts` (NEW), `src/data/stats-service.ts`, `src/app/error-bus.ts`, `test/app/error-bus.test.ts` (NEW), `test/components/App.startup.test.tsx` (NEW), `test/data/stats-service.test.ts`, `test/support/stats-fixtures.ts`
+**Требования:** TR-89 · **Зависимость:** нет (пересекается с 23.4 по чтению статистики)
+**Файлы:** `src/core/player-state.ts`, `src/hooks/useMap.ts`, `test/core/player-state.test.ts`, `test/hooks/useMap.test.tsx`, `test/hooks/useMap.save-failure.test.tsx` (NEW)
 
-- [x] 22.1.1. `src/core/error-reporting.ts` [NEW]: `export interface ErrorReporter { report(title: string, message: string): void }` и `export const STORAGE_ERROR_TITLE = 'Ошибка хранилища'`; файл без рантайм-логики, кроме константы (T79).
-- [x] 22.1.2. `StatsService`: поле `_errors: ErrorReporter | null`; `STORAGE_ERROR_TITLE` импортируется из `core`; `grep -RIn "from '../app" src/data` — пусто (A53/A87/Z45).
-- [x] 22.1.3. `ErrorBus` реализует порт: поле `_pending: Array<[string, string]>`; `report()` без подписчиков кладёт пару в очередь, с подписчиками — доставляет сразу; `subscribe()` сначала синхронно отдаёт очередь в порядке публикации и очищает её, затем регистрирует слушателя (A86/T79).
-- [x] 22.1.4. Очередь — поле экземпляра: `window.*`, `globalThis.*`, модульных переменных нет (A78/Z44); два экземпляра шины не делят сообщения.
-- [x] 22.1.5. `test/app/error-bus.test.ts` [NEW]: две публикации до подписки → подписчик получает обе по порядку, очередь пуста; вторая подписка ничего не получает; отписка снимает слушателя; `report()` после подписки доставляется сразу; очередь одного экземпляра не видна другому.
-- [x] 22.1.6. `test/components/App.startup.test.tsx` [NEW]: реальный `StatsService` на репозитории, бросающем на **первом** `load()`, **без** ручного `errors.report(...)`:
-  повреждённая запись (`version` новее `CONFIG.VERSION`) → модалка «Ошибка хранилища» + «Данные повреждены. Счёт сброшен.», счёт 0, карта активна, раунд стартует;
-  недоступное хранилище → модалка + «Хранилище недоступно. Игра работает без сохранения.», `save` не бросает, игра идёт.
-- [x] 22.1.7. `App.tsx`: порядок не меняется — чтение статистики остаётся в `useMap`, подписка в `useEffect`; доставку обеспечивает очередь. Тест на повторный монтаж (эмуляция `StrictMode`) не показывает модалку дважды.
-- [x] 22.1.8. Дедупликация сохранена: тот же `action + userMessage` не публикуется повторно без успешной записи; другой текст — публикуется (тест в `stats-service.test.ts`).
-- [x] 22.1.9. Правленые и новые сьюты ≤ 200 строк; `npm test` зелёный, число тестов не уменьшилось.
+- [x] 23.1.1. `PlayerState.restore(index)`: `_current = _previous = index`, возвращает индекс — единственный способ синхронизации с хранилищем (T86). Второй источник позиции («черновой» индекс, `lastAttempt`) не вводится (Z49).
+- [x] 23.1.2. `gameFinished`: ранний выход для `isReplay()`; целевой индекс `isSuccessful ? player.index : player.previous`; `saveTrainerIndex(target) === true` → `commitWin()` / `revert()`.
+- [x] 23.1.3. При `false` — `commitWin`/`revert` **не вызываются**; `player.restore(PlayerRules.normalizeIndex(services.stats.getTrainerIndex(), geometry.trainers.length))`; `total` — длина уже построенной геометрии, нормализация защищает от испорченного значения (T86).
+- [x] 23.1.4. `setState` после ветвления: `currentTrainerIndex: player.index`, `totalScore: services.stats.getTotalScore()`; инвариант `stats.currentTrainerIndex === services.stats.getTrainerIndex()` при любом исходе.
+- [x] 23.1.5. `test/hooks/useMap.save-failure.test.tsx` [NEW]: (1) победа + `repo.save` бросает → UI = хранилище = прежний индекс, счёт раунда не зачтён, сообщение в шине; (2) проигрыш + `repo.save` бросает → UI = хранилище = предыдущий индекс. Оба теста сверяют `stats.currentTrainerIndex` с `getTrainerIndex()`, а не только UI.
+- [x] 23.1.6. `useMap.test.tsx`: тест `136-149` (UI 1 / storage 0) переписывается в инвариант `UI === storage` и переносится в новый сьют; успешные пути (победа закрепляет, провал откатывает, повтор позицию не пишет) не меняют поведения.
+- [x] 23.1.7. `player-state.test.ts`: `restore` выставляет текущую позицию и точку отката, возвращает индекс, после неё `isReplay()` — `true` (повторная игра на сохранённом тренажёре — replay, A28/T23).
+- [x] 23.1.8. Бюджет: `useMap.ts` 200 → ≤ 200 — правка компенсируется сокращением шапки/doc-комментариев на 2–3 строки; логика движения, модалки и `UseMap` не меняются.
 
-**Критерий:** тест «ошибка при старте» видит модалку без ручной публикации в шину; `grep -RIn "from '../app" src/data` пуст; `npm test` зелёный.
+**Критерий:** оба сценария провала записи дают `UI === storage`; успешные пути не изменились; `wc -l src/hooks/useMap.ts` ≤ 200; `npm test` зелёный.
 
 ---
 
-### 22.2. Подтверждение выхода — `ConfirmModal`
+### 23.2. Один звук на одно открытие подтверждения
 
-**Требования:** TR-83 · **Зависимость:** 22.1
-**Файлы:** `src/components/ConfirmModal.tsx` (NEW), `src/hooks/useGame.ts`, `src/App.tsx`, `test/components/ConfirmModal.test.tsx` (NEW), `test/hooks/useGame.test.tsx`, `test/components/App.test.tsx`, `test/components/App.map-freshness.test.tsx`
+**Требования:** TR-90 · **Зависимость:** нет (меняет `src/App.tsx` вместе с 23.3; коммит — вместе)
+**Файлы:** `src/hooks/useGame.ts`, `src/App.tsx`, `test/hooks/useGame.test.tsx`, `test/components/App.test.tsx`
 
-- [x] 22.2.1. `ConfirmModal` [NEW]: props `{ title, message, confirmLabel, cancelLabel, onConfirm, onCancel }`; разметка `.modal-overlay.open > .modal > h2 + p + .btn.btn-primary + .btn.btn-secondary`; клик по оверлею — `onCancel`, клик по `.modal` не закрывает (как `ErrorModal`, T33); новых CSS-правил и значений не вводится (T80).
-- [x] 22.2.2. `UseGameDeps`: `onExitToMap` заменяется на `onExitRequested(roundScore: number)`; `exit()` = `audio.play('click')` + `onExitRequested(model.roundScore)`; раунд не завершается, `onRoundFinished` не вызывается; `confirm` удаляется (A88/Z46).
-- [x] 22.2.3. `App`: состояние `const [exitConfirm, setExitConfirm] = useState<{ roundScore: number } | null>(null)`; ✕ → `setExitConfirm(prev => prev ?? { roundScore })` (повторный ✕ — no-op); «Остаться»/оверлей → `null`; «Выйти» → `null`, `exitGame()`, затем существующий путь возврата, который в 22.4 сводится к `returnToMap()`.
-- [x] 22.2.4. Тексты фиксированы: «Выйти из игры?», «Заработано N очков сгорят.», «Выйти», «Остаться»; `N` — `roundScore` из модели; звук `click` на кнопках модалки играют обработчики `App`.
-- [x] 22.2.5. `test/components/ConfirmModal.test.tsx` [NEW]: тексты и кнопки, `onConfirm`, `onCancel` по кнопке и по оверлею, клик внутри `.modal` не закрывает.
-- [x] 22.2.6. `useGame.test.tsx`: оба «exit»-теста переписываются без `vi.spyOn(window, 'confirm')` — `exit()` вызывает `onExitRequested(roundScore)` один раз, играет `click`, раунд не завершается.
-- [x] 22.2.7. `App.test.tsx`: выход из раунда через модалку — «Остаться» → экран игры активен, статистика не изменилась; «Выйти» → карта, счёт раунда не записан.
-- [x] 22.2.8. `App.map-freshness.test.tsx`: `vi.stubGlobal('confirm', …)` удаляется; путь «победа → Играть снова → ✕ → Выйти» даёт `🏆 100`.
-- [x] 22.2.9. `grep -RIn "confirm(\|alert(\|prompt(" src` — пусто; нативные диалоги в тестах не подменяются (Z46).
+- [x] 23.2.1. `useGame.exit()`: только `depsRef.current.onExitRequested(modelRef.current!.roundScore)` — без `audio.play`, без завершения раунда, без записи статистики (A93/T87).
+- [x] 23.2.2. `App.handleExitRequested(roundScore)`: `if (exitConfirm) return;` иначе `services.audio.play('click')` и `setExitConfirm({ roundScore })`; звук не играется внутри апдейтера состояния (StrictMode).
+- [x] 23.2.3. Зависимость `handleExitRequested` от `exitConfirm` допустима: идентичность меняется при открытии/закрытии, подписок на неё нет (T87).
+- [x] 23.2.4. «Выйти» / «Остаться» / клик по оверлею — по одному `click` на нажатие; тексты и разметка `ConfirmModal` не меняются (T80).
+- [x] 23.2.5. `useGame.test.tsx`: оба exit-теста переписываются (Z42): `exit()` вызывает `onExitRequested(roundScore)` один раз, **не** вызывает `audio.play`, раунд не завершён; тест «exit до первого ответа» остаётся.
+- [x] 23.2.6. `App.test.tsx`: компактный тест «два ✕ подряд → одна модалка и один `click`»; в тесте «Остаться» дополнительно проверяется ровно один `click`; сьют остаётся ≤ 200 строк (178 → ~192).
 
-**Критерий:** модалка выхода покрыта тестами; нативных диалогов в `src/**` нет; `npm test` зелёный.
+**Критерий:** два ✕ — ровно один звук и одна модалка; `exit()` не играет звук; `ConfirmModal` не изменён; `npm test` зелёный.
 
 ---
 
-### 22.3. Миграция сохраняется, лог — один раз на ступень
+### 23.3. Сообщения показываются очередью, ни одно не теряется
 
-**Требования:** TR-84 · **Зависимость:** нет (пересекается с 22.1 по `load()`)
-**Файлы:** `src/core/stats-schema.ts`, `src/data/stats-service.ts`, `test/support/memory-repository.ts`, `test/data/memory-repository.test.ts`, `test/core/stats-schema.test.ts`, `test/data/stats-service.test.ts`
+**Требования:** TR-91 · **Зависимость:** 23.2 (общий правленый `src/App.tsx`)
+**Файлы:** `src/App.tsx`, `test/components/App.startup.test.tsx`, `test/components/App.test.tsx`
 
-- [x] 22.3.1. `StatsSchema.migrate(data, onStep?: (from: number, to: number) => void)`; `onStep` вызывается на каждую выполненную ступень; по умолчанию `console.info('[StatsSchema] миграция', from, '→', to)`; без `onStep` поведение и сигнатура прежние (T81).
-- [x] 22.3.2. `StatsService`: единый приватный `_read()` для `load()` и `_readOrDefaults()` — читает запись, мигрирует с колбэком экземпляра; если версия исходных данных меньше `CONFIG.VERSION` — `repo.save(migrated)` (write-back).
-- [x] 22.3.3. Колбэк экземпляра хранит `Set<string>` ступеней (`from→to`) и не печатает ступень повторно, если write-back не удался (A89/Z47).
-- [x] 22.3.4. Провал write-back: `handleError` + сообщение через порт, игра продолжается; `load()` возвращает мигрированные данные; ступень в логе не дублируется.
-- [x] 22.3.5. Актуальная запись (`version = CONFIG.VERSION`): ни `save`, ни `console.info` (тест спаем).
-- [x] 22.3.6. `MemoryRepository`: `save` копирует через `JSON.parse(JSON.stringify(data))`, `load` отдаёт копию; сьют: `toEqual` вместо `toBe`, мутация загруженного объекта не меняет сохранённый (T84.4).
-- [x] 22.3.7. Тесты: сериализующий репозиторий + v1 → три `load()` дают ровно две строки лога (1→2, 2→3), после write-back следующий `load()` — ноль; v2 → одна строка; v3 → ноль; прямые тесты `migrate()` остаются зелёными.
-- [x] 22.3.8. Проверить тесты, считающие вызовы `repo.save`: write-back добавляет запись только при загрузке устаревшей записи.
+- [x] 23.3.1. `App`: `const [messages, setMessages] = useState<Array<{ title: string; message: string }>>([])`; `showError(title, message)` добавляет `{ title, message }` в конец; тип — локальный/inline, новый модуль не вводится (A94/T88).
+- [x] 23.3.2. Показывается `messages[0]`; `handleCloseError` играет `click` и снимает ровно один элемент (`prev.slice(1)`); при пустой очереди модалки нет; клик по оверлею идёт через `onClose` (T88).
+- [x] 23.3.3. Очередь наполняется и из шины, и из прямых `showError` (блокировка сессии); подписка одна (A86); второго канала показа нет (Z44/Z50); дедупликация — только в источнике (A79); оболочка не фильтрует и не склеивает сообщения.
+- [x] 23.3.4. `App.startup.test.tsx`: (1) два `report()` подряд → видно первое, после «OK» — второе, затем модалки нет; (2) повреждённое хранилище + `busy` второй вкладки → сначала «Ошибка хранилища», после «OK» — «Игра уже запущена»; (3) `StrictMode` — без дублей уже доставленных сообщений.
+- [x] 23.3.5. `App.tsx` ≤ 200 строк: 197 + очередь и guard выхода — сокращаются комментарии; хук-обёртка для очереди и второй канал не вводятся (A78/T88).
 
-**Критерий:** лог ступени — ровно один раз на запись; write-back подтверждён сериализующим двойником; `grep -RIn "console\.log" src` пуст.
+**Критерий:** два сообщения дают два показа в порядке публикации; стартовая ошибка не теряется при `busy`; StrictMode не дублирует; `wc -l src/App.tsx` ≤ 200.
 
 ---
 
-### 22.4. Единый путь возврата на карту
+### 23.4. Статистика читается один раз за экземпляр
 
-**Требования:** TR-85 · **Зависимость:** 22.2
-**Файлы:** `src/App.tsx`, `test/components/App.test.tsx`, `test/components/App.map-freshness.test.tsx`
+**Требования:** TR-92 · **Зависимость:** 23.1 (позиция читается из кэша после провала записи)
+**Файлы:** `src/data/stats-service.ts`, `src/hooks/useMap.ts` (только чтение), `test/data/stats-service.cache.test.ts` (NEW), `test/components/App.startup.test.tsx`
 
-- [x] 22.4.1. `returnToMap = useCallback(() => { reloadMap(); navigate('map'); }, [reloadMap, navigate])`; порядок обязателен — чтение статистики до переключения экрана (A82/T82).
-- [x] 22.4.2. ✕ → `exitGame(); returnToMap()`; «На карту» → `returnToMap()`; смена карты (`useMapSelection`) → `returnToMap()`; отдельных копий пары «reload + navigate» нет (`handleExitToMap`, `handleMapChanged` удаляются).
-- [x] 22.4.3. Тест: победа → результаты → «Играть снова» → ✕ → «Выйти» → `🏆 100`; «На карту» → `🏆 100`; смена карты (English) → счёт последнего раунда виден.
-- [x] 22.4.4. `App.tsx` укладывается в 200 строк: удаление двух копий обработчиков компенсирует состояние подтверждения и рендер модалки (сейчас 188).
-- [x] 22.4.5. `App.map-freshness` расширяется путём смены карты; регресс 1.9.0/1.10.0 не допускается.
+- [x] 23.4.1. `_cache: Stats | null = null`; `load()` возвращает кэш, если он есть; иначе `_read()` — чтение, миграция, write-back (A89) и запись результата в кэш; `defaults()` при пустой записи тоже кэшируются.
+- [x] 23.4.2. Ошибка чтения: `_cache = null` до `_recover`; ошибка не кэшируется — повторный `load()` снова идёт в хранилище один раз (T89/Z49).
+- [x] 23.4.3. `save(stats)`: успех → `_cache = clone(stats)` (A12, глубокая копия), `_reported = null`; провал — кэш не меняется. `_writeBack(stats)`: успех → `_cache = stats`; `_toMemory()` → `_cache = null`.
+- [x] 23.4.4. Геттеры (`getCurrentMap`, `getTotalScore`, `getTrainerIndex`) и `readMapState` только читают кэш и не мутируют объект из `load()`; write-методы по-прежнему клонируют (A12).
+- [x] 23.4.5. `stats-service.cache.test.ts` [NEW]: (1) три геттера подряд → `repo.load()` один раз; (2) первый рендер `App` в `StrictMode` → одно чтение; (3) после `updateAfterRound` новых чтений 0; (4) после `switchMap` карта и счёт из кэша, 0 чтений; (5) провал `save` не меняет кэш; (6) режим «память» сбрасывает кэш и далее читает из памяти; (7) ошибка чтения не кэшируется.
+- [x] 23.4.6. `stats-service.ts` 198 → ≤ 200: сокращаются шапка и doc-комментарии на ~7 строк; поведение и сигнатуры методов не меняются, новый модуль не вводится.
 
-**Критерий:** все пути возврата дают одинаковый счёт; `wc -l src/App.tsx` ≤ 200.
-
----
-
-### 22.5. Провал записи позиции откатывает отображение
-
-**Требования:** TR-86 · **Зависимость:** 22.1, 22.3
-**Файлы:** `src/hooks/useMap.ts`, `test/hooks/useMap.test.tsx`, `test/components/App.startup.test.tsx`
-
-- [x] 22.5.1. `gameFinished`: целевой индекс вычисляется без мутации (`isSuccessful ? player.index : player.previous`), затем `const written = services.stats.saveTrainerIndex(target)` (A90/T83).
-- [x] 22.5.2. При `true` — фиксация: победа → `player.commitWin()`, провал на новом → `player.revert()`; при `false` — `PlayerState` не меняется, отображаемый индекс остаётся прежним, счёт читается из хранилища.
-- [x] 22.5.3. Повторная игра (`isReplay()`) — ранний выход без записи (A28/T23) сохраняется.
-- [x] 22.5.4. `useMap.ts` остаётся ≤ 200 строк: правка компенсируется сокращением шапки/комментариев в том же файле; логика движения, модалки и `UseMap` не меняются.
-- [x] 22.5.5. Тест: репозиторий бросает `QuotaExceededError` на `save` → индекс в UI прежний, `getTrainerIndex()` не изменился, счёт не «прыгнул», в шине есть сообщение; при успешной записи поведение 1.10.0 (победа закрепляет, провал откатывает).
-
-**Критерий:** провал `saveTrainerIndex` не двигает игрока; `wc -l src/hooks/useMap.ts` ≤ 200; `npm test` зелёный.
+**Критерий:** одно чтение на экземпляр; после записи — 0 чтений; провал записи и ошибка чтения кэш не «залипают»; `wc -l src/data/stats-service.ts` ≤ 200.
 
 ---
 
-### 22.6. Документы, мёртвый код и CI
+### 23.5. Формулировки правил приведены к практике
 
-**Требования:** TR-87 · **Зависимость:** 22.1–22.5 (документы описывают итоговый код)
-**Файлы:** `src/core/types.ts`, `GIGACODE.md`, `README.md`, `test/README.md`, `test/components/Header.test.tsx`, `scripts/smoke.mjs`, `.github/workflows/ci.yml`, `.gigacode/tasks/TASKS.md`, `.gigacode/specs/SPEC.md`
+**Требования:** TR-93 · **Зависимость:** 23.1–23.4 (документы описывают итоговый код)
+**Файлы:** `test/README.md`, `README.md` (формулировка `errors` и A91; числа — в 23.7), `rules_v1_10_2.md` (уже содержит T90)
 
-- [x] 22.6.1. `SessionState` удалён из `src/core/types.ts`; `grep -RIn "SessionState" src` — пусто (N1/A75).
-- [x] 22.6.2. GIGACODE: D1 — модалку «Игра уже запущена» видит **претендент**, владелец молчит; D2 — `Services` с `errors`; D3 — актуальный список «Вне текущей области» (гонка двух вкладок, разблокировка открытой вкладки, новая функциональность, зависимости — вместо переписывания тестов на `import`/`allowJs`/React-тестов); структура дополнена `src/core/error-reporting.ts` и `src/components/ConfirmModal.tsx`.
-- [x] 22.6.3. `SPEC.md`: статус 1.10.0 → «Выполнено» (D5); `scripts/smoke.mjs:9`: комментарий «11 проверок» (D7); D4 закрыт ещё при переводе `TASKS.md` на 1.10.1 — в актуальном файле «12 проверок» нет.
-- [x] 22.6.4. CI (N3/T84.3): grep-проверки оформляются как `if grep …; then echo "✗ …"; fail=1; fi`; добавляются `from '../app'` в `src/data`, `SessionState` в `src`, `confirm(`/`alert(`/`prompt(` в `src`; ни одного `|| true` не остаётся.
-- [x] 22.6.5. `Header.test.tsx` (N5/T52): проверяются общий счёт `🏆` и кнопка `🌍`; жизни проверяет `GameScreen.test.tsx`; шапка сьюта соответствует T52.
-- [x] 22.6.6. `test/README.md`: A91 — почему `App.map-freshness.test.tsx` и `App.startup.test.tsx` отдельные сьюты; структура `test/{core,data,services,components,hooks,app}` (`test/app/error-bus.test.ts` — мирроринг `src/app`); бюджет сьюта 200 строк; число проверок `smoke:browser`.
-- [x] 22.6.7. `README.md`/`GIGACODE.md`: число тестов и сьютов, структура с новыми файлами, известное ограничение (гонка двух вкладок), версия 1.10.1.
-- [x] 22.6.8. Документы не ссылаются на несуществующие файлы и команды (T69/T77).
+- [x] 23.5.1. A91 в `test/README.md`: «основной сьют + **не более двух** дополнительных»; для `App` разрешены ровно `App.test.tsx`, `App.map-freshness.test.tsx`, `App.startup.test.tsx`; для `useMap` добавляется `useMap.save-failure.test.tsx`; для `stats-service` — `stats-service.migration.test.ts` и `stats-service.cache.test.ts`. Указать, почему сьюты отдельные и что сценарии не дублируют основные (T90.1).
+- [x] 23.5.2. TR-82 в документах: «`data` работает через порт `ErrorReporter`, `App` — с адаптером `ErrorBus`; подписка и очередь — обязанность адаптера»; `Services.errors` остаётся `ErrorBus` (A96/T90.3). В `README.md` строка «`errors` — порт `ErrorReporter`» уточняется до «`errors` — `ErrorBus`, реализующий порт».
+- [x] 23.5.3. T80: «повторный ✕ не дублирует ни окно, ни звук»; звук выхода — в `App` (T87); тесты `useGame` переписаны, а не удалены (T90.2/Z42).
+- [x] 23.5.4. История git и старые правила не переписываются: правки фиксируются в `rules_v1_10_2.md` (раздел T90) и `test/README.md`.
 
-**Критерий:** `grep` из TR-88 пуст; документы соответствуют дереву; `npm run lint` и `format:check` зелёные.
+**Критерий:** `test/README.md` перечисляет все действующие исключения A91; формулировки A91/TR-82/T80 совпадают с кодом; ссылок на несуществующее нет.
 
 ---
 
-### 22.7. Бюджет строк и новые сьюты
+### 23.6. Мелочи: байты в `smoke` и устаревшая строка в `TASKS.md`
 
-**Требования:** TR-88 · **Зависимость:** 22.1–22.6
+**Требования:** TR-95 · **Зависимость:** нет
+**Файлы:** `scripts/smoke.mjs`, `.gigacode/tasks/TASKS.md`
+
+- [x] 23.6.1. `scripts/smoke.mjs`: размер ассета считается как `Buffer.byteLength(body)`, а не `body.length`; вывод `N B` совпадает с `ls -l dist/assets/*.js` (T69/TR-95).
+- [x] 23.6.2. Устаревшая строка про `version` заменена при переводе `TASKS.md` на 1.10.2: в структуре — «1.10.1 → 1.10.2 на выпуске»; устаревшей строки в файле нет (T77).
+- [x] 23.6.3. Число проверок не меняется: 10 HTTP + 11 браузерных; комментарий smoke остаётся корректным.
+
+**Критерий:** `npm run smoke` печатает байты, совпадающие с файлом; в `TASKS.md` нет устаревшей версии.
+
+---
+
+### 23.7. Документы, архивы и версия 1.10.2
+
+**Требования:** TR-95 · **Зависимость:** 23.1–23.6 (документы описывают итоговый код)
+**Файлы:** `.gigacode/plans/**`, `.gigacode/tasks/**`, `.gigacode/specs/SPEC.md`, `.gigacode/rulles/RULES.md`, `README.md`, `GIGACODE.md`, `test/README.md`, `package.json`, `package-lock.json`
+
+- [x] 23.7.1. Архивы созданы: `plans/PLAN_v1_10_1.md` (снимок `PLAN.md` 1.10.1) и `tasks/TASKS_v1_10_1.md` (снимок `TASKS.md` 1.10.1); версионированные `PLAN_v1_10_2.md`/`TASKS_v1_10_2.md` **не создаются** (T77/T90.5).
+- [x] 23.7.2. `TASKS.md` переведён на 1.10.2 (задачи 23.x, покрытие TR-89…TR-95).
+- [x] 23.7.3. `SPEC.md`/`RULES.md`: 1.10.2 в индексах и истории версий; `spec_v1_10_2.md`/`rules_v1_10_2.md` созданы (в рабочем дереве, входят в коммит 23.7.6); ссылки только на существующие файлы.
+- [x] 23.7.4. `README.md`/`GIGACODE.md`/`test/README.md`: версия 1.10.2, число тестов и сьютов, покрытие, размеры — в объёме фактических изменений (числа и версия; формулировки — шаг 23.5).
+- [x] 23.7.5. `package.json`/`package-lock.json`: `version` 1.10.2 **только при выпуске**, после зелёного TR-94 (`npm install --package-lock-only`, дерево не переустанавливается).
+- [x] 23.7.6. Коммит — явным списком файлов (`src/core/player-state.ts`, `src/hooks/useMap.ts`, `src/hooks/useGame.ts`, `src/App.tsx`, `src/data/stats-service.ts`, `scripts/smoke.mjs`, правленые и новые тесты, `test/README.md`, `README.md`, `GIGACODE.md`, `.gigacode/**`); `git add -A` не используется (Z37).
+
+**Критерий:** архивы 1.10.1 на месте; документы и ссылки рабочие; `version` = `1.10.2` после выпуска (23.7.5), версионированных `*_v1_10_2.md` нет.
+
+---
+
+### 23.8. Бюджет строк и новые сьюты
+
+**Требования:** TR-94 · **Зависимость:** 23.1–23.4
 **Файлы:** `src/**/*.ts(x)`, `test/**/*.test.ts(x)`, `test/support/*.ts`, `scripts/*.mjs`, `css/**/*.css`
 
-- [x] 22.7.1. `wc -l`: каждый `src`/`test`-файл ≤ 200, `scripts` ≤ 250, `css` ≤ 200; под наблюдением `App.tsx` (188 → ≤ 200), `useMap.ts` (200), `stats-service.ts` (165), `App.test.tsx` (191).
-- [x] 22.7.2. Новые файлы (`error-bus.test.ts`, `ConfirmModal.test.tsx`, `App.startup.test.tsx`, `ConfirmModal.tsx`, `error-reporting.ts`) каждый ≤ 200; общие фикстуры — в `test/support/`.
-- [x] 22.7.3. Сьюты не дробятся ради бюджета: при переполнении — фикстуры/хелперы в `test/support/` (A60/A91), сценарии не удаляются (Z42).
-- [x] 22.7.4. `npm test` — не меньше 276 тестов; фактическое число и число сьютов фиксируются в отчёте.
+- [x] 23.8.1. `wc -l`: каждый `src`/`test`-файл ≤ 200, `scripts` ≤ 250, `css` ≤ 200; под наблюдением `stats-service.ts` (198), `useMap.ts` (200), `App.tsx` (197), `stats-service.test.ts` (199), `App.test.tsx` (178), `useMap.test.tsx` (178).
+- [x] 23.8.2. Новые сьюты `useMap.save-failure.test.tsx` и `stats-service.cache.test.ts` — каждый ≤ 200 строк; общие фикстуры — в `test/support/`, копий `CONFIG` и доменных данных нет (A60).
+- [x] 23.8.3. Сценарии не удаляются и не дробятся ради бюджета: при переполнении — фикстуры/драйверы в `test/support/` (A60/A91); тесты `useGame` переписываются (Z42).
+- [x] 23.8.4. `npm test` — не меньше **303** тестов; ожидаемо **+10…15** (313–318); фактическое число и число сьютов фиксируются в отчёте.
+- [x] 23.8.5. Покрытие не понижается: пороги 80/60, факт — не ниже **97.57 / 89.19**.
 
-**Критерий:** все лимиты соблюдены; число тестов не уменьшилось.
-
----
-
-### 22.8. Архивы документов и версия 1.10.1
-
-**Требования:** TR-87 · **Зависимость:** 22.6–22.7
-**Файлы:** `.gigacode/plans/**`, `.gigacode/tasks/**`, `.gigacode/specs/SPEC.md`, `.gigacode/rulles/RULES.md`, `package.json`, `package-lock.json`, `README.md`, `GIGACODE.md`
-
-- [x] 22.8.1. Архивы созданы: `plans/PLAN_v1_10_0.md` (снимок HEAD `0fa9aa0`) и `tasks/TASKS_v1_10_0.md`; версионированные `PLAN_v1_10_1.md`/`TASKS_v1_10_1.md` **не создаются** (T84.6, D6).
-- [x] 22.8.2. `TASKS.md` переведён на 1.10.1 (задачи 22.x, покрытие TR-81…TR-88).
-- [x] 22.8.3. `package.json` `version` → `1.10.1`; `package-lock.json` — `npm install --package-lock-only` (дерево не переустанавливается). Только после зелёного TR-88.
-- [x] 22.8.4. `SPEC.md`/`RULES.md`: 1.10.1 в индексах и истории, статус 1.10.1 актуален; ссылки только на существующие файлы.
-- [x] 22.8.5. Версия в `README.md`/`GIGACODE.md`/`test/README.md` — 1.10.1.
-
-**Критерий:** `node -p "require('./package.json').version"` = `1.10.1`; архивы 1.10.0 на месте; версия совпадает во всех документах.
+**Критерий:** все лимиты соблюдены; число тестов не уменьшилось; покрытие не ниже базовой линии.
 
 ---
 
-### 22.9. Финальный критерий TR-88
+### 23.9. Финальный критерий TR-94
 
-**Требования:** TR-88 · **Зависимость:** 22.1–22.8
+**Требования:** TR-94 · **Зависимость:** 23.1–23.8
 
-- [x] 22.9.1. `npm ci` — 0.
-- [x] 22.9.2. `npm run typecheck` — 0.
-- [x] 22.9.3. `npm test` — не меньше 276 тестов (факт фиксируется).
-- [x] 22.9.4. `npm run test:coverage` — не ниже 97.36 / 88.79, пороги 80/60 не понижены.
-- [x] 22.9.5. `npm run build` — `dist/`: JS + `.map`, CSS ~7 КБ, три mp3.
-- [x] 22.9.6. `npm run lint` — 0 ошибок, 0 предупреждений.
-- [x] 22.9.7. `npm run format:check` — «All matched files use Prettier code style».
-- [x] 22.9.8. `npm run smoke` — 10/10 HTTP.
-- [x] 22.9.9. `npm run smoke:browser` — 11/11 (11 браузерных сценариев).
-- [x] 22.9.10. Бюджет: `wc -l` по `src/**/*.ts(x)`, `test/**/*.test.ts(x)` (≤ 200), `scripts/*.mjs` (≤ 250), `css/**/*.css` (≤ 200).
-- [x] 22.9.11. `git ls-files .idea | wc -l` = 0.
-- [x] 22.9.12. `grep -RIn "confirm(\|alert(\|prompt(" src` — пусто; `grep -RIn "from '../app" src/data` — пусто; `grep -RIn "SessionState" src` — пусто.
-- [x] 22.9.13. `grep -RIn ">= 100\|>= 70\|>= 40" src/core/game-rules.ts` — пусто; `grep -RIn "retry" src/core src/data src/hooks src/App.tsx` — пусто.
-- [x] 22.9.14. `grep -RIn "console\.log" src` — пусто; `grep -RIn "|| true" .github/workflows/ci.yml` — пусто.
-- [x] 22.9.15. Фактические числа (тесты, сьюты, покрытие, размеры файлов, проверки `dist`) записаны в отчёт и сверены с PLAN 1.10.1.
+- [x] 23.9.1. `npm ci` — 0.
+- [x] 23.9.2. `npm run typecheck` — 0.
+- [x] 23.9.3. `npm test` — не меньше 303 тестов (факт фиксируется).
+- [x] 23.9.4. `npm run test:coverage` — не ниже 97.57 / 89.19, пороги 80/60 не понижены.
+- [x] 23.9.5. `npm run build` — `dist/`: JS + `.map`, CSS ~7 КБ, три mp3.
+- [x] 23.9.6. `npm run lint` — 0 ошибок, 0 предупреждений.
+- [x] 23.9.7. `npm run format:check` — «All matched files use Prettier code style».
+- [x] 23.9.8. `npm run smoke` — 10/10 HTTP; размер ассета в байтах совпадает с `ls -l dist/assets/*.js`.
+- [x] 23.9.9. `npm run smoke:browser` — 11/11 (11 браузерных сценариев).
+- [x] 23.9.10. Бюджет: `wc -l` по `src/**/*.ts(x)`, `test/**/*.test.ts(x)` (≤ 200), `scripts/*.mjs` (≤ 250), `css/**/*.css` (≤ 200).
+- [x] 23.9.11. `git ls-files .idea | wc -l` = 0.
+- [x] 23.9.12. `grep -RIn "confirm(\|alert(\|prompt(" src` — пусто; `grep -RIn "from '../app" src/data` — пусто; `grep -RIn "SessionState" src` — пусто.
+- [x] 23.9.13. `grep -RIn ">= 100\|>= 70\|>= 40" src/core/game-rules.ts` — пусто; `grep -RIn "retry" src/core src/data src/hooks src/App.tsx` — пусто.
+- [x] 23.9.14. `grep -RIn "console\.log" src` — пусто; `grep -RIn "|| true" .github/workflows/ci.yml` — пусто.
+- [x] 23.9.15. Инварианты подтверждены тестами, а не grep-ами: `UI === storage` при победе и провале; два ✕ → один `click` и одна модалка; два `report()` → два показа; один `repo.load()` на экземпляр.
+- [x] 23.9.16. Фактические числа (тесты, сьюты, покрытие, размеры файлов, размер JS в байтах) записаны в отчёт и сверены с PLAN 1.10.2.
 
 **Критерий:** порядок обязателен (`coverage` после тестов, `smoke` после `build`); все команды — код 0.
 
@@ -217,23 +211,25 @@ README.md, GIGACODE.md, test/README.md # структура, A91, версия 1
 
 | Требование | Задачи |
 |---|---|
-| TR-81 стартовая ошибка хранилища | 22.1.1–22.1.8 |
-| TR-82 слой `data` без `app` | 22.1.1–22.1.2, 22.1.9 |
-| TR-83 кастомное подтверждение выхода | 22.2.1–22.2.9 |
-| TR-84 миграция и лог | 22.3.1–22.3.8 |
-| TR-85 единый путь возврата на карту | 22.4.1–22.4.5 |
-| TR-86 провал записи позиции | 22.5.1–22.5.5 |
-| TR-87 документы, мёртвый код, CI | 22.6.1–22.6.8, 22.8.1–22.8.5 |
-| TR-88 критерий проверок | 22.7.1–22.7.4, 22.9.1–22.9.15 |
+| TR-89 позиция после раунда совпадает с хранилищем | 23.1.1–23.1.8 |
+| TR-90 один звук на одно открытие подтверждения | 23.2.1–23.2.6 |
+| TR-91 очередь сообщений без потерь | 23.3.1–23.3.5 |
+| TR-92 кэш статистики в экземпляре | 23.4.1–23.4.6 |
+| TR-93 формулировки A91/TR-82/T80 | 23.5.1–23.5.4 |
+| TR-94 критерий проверок | 23.8.1–23.8.5, 23.9.1–23.9.16 |
+| TR-95 документы, версия и мелочи | 23.6.1–23.6.3, 23.7.1–23.7.6 |
 
 ---
 
-## 🔜 Backlog после 1.10.1
+## 🔜 Backlog после 1.10.2
 
-- Гонка одновременного открытия двух вкладок (обе успели записать метку до `hello`) — tie-break не введён, ограничение описано в README/GIGACODE.
-- Разблокировка уже открытой второй вкладки после закрытия владельца (сейчас гарантируется запуск только следующей вкладки).
+- Перенос первичного чтения статистики из рендера в эффект: кэш (A95/TR-92) делает чтение однократным, перестройка порядка «рендер → эффект» меняет первый кадр карты — отдельный этап.
+- Устойчивость `ErrorBus` к исключению слушателя и ограничение `_pending`: сценарий не воспроизводится (слушатель — `setState`), очередь ограничена числом ошибок за сессию.
+- Защита от исключений репортёра внутри `_recover`: `report()` в `App` — `setState`, бросить не может; нужна при появлении второго репортёра.
+- Гонка двух вкладок, открытых одновременно (tie-break не введён), и разблокировка уже открытой второй вкладки после закрытия владельца — известные ограничения 1.10.0/1.10.1.
+- Новая функциональность (серии, бонусы, таймеры, достижения), редизайн, правка значений стилей и текстов существующих подсказок — отдельные версии.
 - Type-aware ESLint (`recommendedTypeChecked`) — отдельная версия, с замером времени прогона.
-- E2E на Playwright: 7 сценариев из `test/README.md`; только при согласии владельца на зависимость.
+- E2E на Playwright: сценарии из `test/README.md`; только при согласии владельца на зависимость.
 - `smoke:browser` в CI с установкой Chromium — после стабилизации сценария второй вкладки.
 - Автоматизация бюджета строк отдельным скриптом (`scripts/check-lines.mjs`) вместо bash-цикла в CI.
 - Вынести TTL/heartbeat блокировки сессии в константы модуля `useSessionLock` (значения `CONFIG` не трогаются).

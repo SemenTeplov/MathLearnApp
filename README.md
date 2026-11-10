@@ -41,7 +41,7 @@ npm run dev        # http://localhost:5173
 
 ```bash
 npm run typecheck      # tsc --noEmit — 0 ошибок
-npm test               # vitest: 303 теста в 33 сьютах
+npm test               # vitest: 316 тестов в 35 сьютах
 npm run test:coverage  # покрытие v8 по группам + пороги 80/60
 npm run build          # tsc --noEmit && vite build → dist/
 npm run preview        # собранный dist на http://localhost:4173
@@ -52,7 +52,7 @@ npm run smoke          # 10 HTTP-проверок dist через vite preview
 npm run smoke:browser  # smoke + 11 браузерных проверок dist (Chromium, CDP)
 ```
 
-Полный локальный критерий TR-88 (порядок обязателен; CI повторяет его, кроме
+Полный локальный критерий TR-91 (порядок обязателен; CI повторяет его, кроме
 `smoke:browser` — Chromium в CI не ставится):
 
 ```bash
@@ -61,6 +61,15 @@ npm run build && npm run lint && npm run format:check && npm run smoke
 npm run smoke:browser
 ```
 
+> ✅ **1.10.2 — закрытие замечаний аудита 1.10.1.** Позиция после раунда синхронизируется с
+> хранилищем: при провале записи `PlayerState.restore()` берёт индекс из `Stats`, поэтому
+> отображение и хранилище совпадают при любом исходе. Звук выхода играет оболочка ровно в
+> момент открытия `ConfirmModal` — повторный ✕ не даёт ни окна, ни звука. Сообщения игроку
+> показываются очередью, поэтому стартовая ошибка хранилища не затирается вторым сообщением,
+> а `StatsService` читает хранилище один раз за экземпляр: геттеры и рендер работают с кэшем,
+> запись его обновляет, ошибка чтения не кэшируется. Итог — **35 сьютов / 316 тестов**,
+> coverage **97.63 / 89.25**, `smoke` **10/10**, `smoke:browser` **11/11**.
+>
 > ✅ **1.10.1 — закрытие замечаний аудита 1.10.0.** Ошибка хранилища, возникшая при старте,
 > снова доходит до игрока: `ErrorBus` держит очередь недоставленных сообщений и отдаёт её
 > первому подписчику. Слой `data` больше не импортирует `app` — в `core` появился порт
@@ -84,7 +93,7 @@ npm run smoke:browser
 > карта, звук и тексты подсказок не менялись. История: 1.9.0 — зависимости, ESLint/Prettier,
 > CI и smoke; 1.8.4 — настоящая сборка Vite и проверка `dist`.
 
-## Архитектура (1.10.1)
+## Архитектура (1.10.2)
 
 Один граф ES-модулей вместо 19 `<script>`-тегов и глобальных переменных:
 
@@ -96,7 +105,8 @@ npm run smoke:browser
   `generator`, `scoring`, `player-rules`, `player-state`, `map-layout`. Без React, DOM
   и `localStorage`.
 - `src/data/` — `Repository`, `LocalStorageRepository`, `StatsService(repo, errors, fallback)`
-  (`errors` — порт `ErrorReporter` из `core`)
+  (`errors` — `ErrorBus`, реализующий порт `ErrorReporter` из `core`; кэш статистики —
+  поле экземпляра, A95)
   и декоратор `MemoryFallback` («память вместо диска»); единственное место, где используется
   `localStorage`. `MemoryRepository` — тестовый двойник — лежит в
   `test/support/memory-repository.ts` и в прод-бандл не попадает.
@@ -206,16 +216,16 @@ npm run smoke:browser
   показывается модалка «Ошибка хранилища» с текстом `ErrorInfo.userMessage`.
 - Бюджет строк (A84, T76) проверяется локально и шагом CI:
 
-| Область | Лимит (`wc -l`) | Факт 1.10.1 |
+| Область | Лимит (`wc -l`) | Факт 1.10.2 |
 |---|---|---|
-| `src/**/*.ts(x)` | 200 | `useMap.ts` — 200 |
+| `src/**/*.ts(x)` | 200 | `useMap.ts` — 199 |
 | `test/**/*.test.ts(x)` | 200 | `stats-service.test.ts` — 199 |
 | `scripts/**/*.mjs` | 250 | `verify-dist.mjs` — 247 |
-| `css/**/*.css` | 200 | `map-global.css` — 64 |
+| `css/**/*.css` | 200 | `buttons.css` — 43 |
 
 Фикстуры и хелперы вынесены в `test/support/*` (`stats-fixtures`, `generator-fixtures`,
 `app-drivers`, `app-setup`, `session-channel`); сценарии не удалялись, число тестов выросло
-с 276 до 303.
+с 276 до 316.
 
 ## Тесты
 
@@ -225,28 +235,28 @@ npm test
 npm run test:coverage
 ```
 
-**303 теста в 33 сьютах** (vitest + jsdom): домен — `test/core/`, данные —
+**316 тестов в 35 сьютах** (vitest + jsdom): домен — `test/core/`, данные —
 `test/data/` (`StatsService` через `test/support/memory-repository.ts`), сервисы —
 `test/services/` (звук), UI — `test/components/` и `test/hooks/`
 (`@testing-library/react` + `user-event` + `jest-dom`).
 
 | Группа | Сьюты | Тесты | Что проверяет |
 |---|---|---|---|
-| `test/core/**` | 12 | 140 | домен: `CONFIG`, ошибки, `error-handler`, правила, генератор, карта, `SessionModel`, `StatsSchema` (включая `onStep` и `console.info` миграций) |
-| `test/data/**` | 5 | 49 | `StatsService` через `MemoryRepository`: действия `reset`/`skip`/`memory`, провал записи, write-back и лог миграций; `LocalStorageRepository`, `Repository` |
+| `test/core/**` | 12 | 141 | домен: `CONFIG`, ошибки, `error-handler`, правила, генератор, карта, `SessionModel`, `PlayerState` (включая `restore`), `StatsSchema` (включая `onStep` и `console.info` миграций) |
+| `test/data/**` | 6 | 57 | `StatsService` через `MemoryRepository`: действия `reset`/`skip`/`memory`, провал записи, write-back и лог миграций, кэш экземпляра; `LocalStorageRepository`, `Repository` |
 | `test/app/**` | 1 | 5 | `ErrorBus`: очередь до подписки, доставка, отписка (A86) |
 | `test/services/**` | 1 | 9 | `AudioService`: preload, play, ошибки |
-| `test/components/**` | 10 | 60 | RTL: `App`, `App.map-freshness`, `App.startup`, `ConfirmModal`, `GameScreen`, `MapScreen`, `ResultsScreen`, `MapSelectionModal`, `Header`, `ErrorModal` |
-| `test/hooks/**` | 4 | 40 | `renderHook`: `useGame` (выход через `onExitRequested`), `useMap` (провал записи позиции), `useResults`, `useSessionLock` |
-| **Итого** | **33** | **303** | покрытие **97.57%** stmts / **89.19%** branches |
+| `test/components/**` | 10 | 63 | RTL: `App`, `App.map-freshness`, `App.startup` (очередь сообщений), `ConfirmModal`, `GameScreen`, `MapScreen`, `ResultsScreen`, `MapSelectionModal`, `Header`, `ErrorModal` |
+| `test/hooks/**` | 5 | 41 | `renderHook`: `useGame` (выход через `onExitRequested` без звука), `useMap` (успешные пути), `useMap.save-failure` (провал записи), `useResults`, `useSessionLock` |
+| **Итого** | **35** | **316** | покрытие **97.63%** stmts / **89.25%** branches |
 
 Пороги покрытия — `coverage.thresholds` в `vitest.config.ts`: **80%**
 (`core`/`data`/`services`) и **60%** (`components`/`hooks`/`App.tsx`); пороги не
 понижаются. Тестовые двойники и фикстуры живут в `test/support/` и в покрытие `src/**`
 не входят. E2E (Playwright) в `npm test` не входит — backlog записан в `test/README.md`.
-Подробности — `test/README.md` и `spec_v1_10_1.md`.
+Подробности — `test/README.md` и `spec_v1_10_2.md`.
 
-## Проверки и CI (1.10.1)
+## Проверки и CI (1.10.2)
 
 Пайплайн `.github/workflows/ci.yml` (Node 22, `cache: npm`) повторяет локальный критерий:
 
@@ -262,7 +272,8 @@ npm ci → typecheck → test → test:coverage → format:check → build → l
   и `*.md` — документация форматируется руками.
 - **Smoke** (`scripts/smoke.mjs`): поднимает `vite preview` на 4173 и проверяет HTTP-контракт
   `dist` — `#root`, ровно один JS и один CSS, отсутствие `/src/`, `js/`, `audio/`, живые
-  ассеты, три mp3. Только Node, без Playwright.
+  ассеты, три mp3. Размер ассета считается в байтах (`Buffer.byteLength`) и совпадает с
+  `ls -l dist/assets/*.js`. Только Node, без Playwright.
 - **Браузерная проверка** (`npm run smoke:browser`): `scripts/smoke.mjs --browser` сам
   поднимает `vite preview` и дополнительно запускает `scripts/verify-dist.mjs` +
   `scripts/cdp.mjs` — 11 проверок в headless Chromium (карта и 15 тренажёров, модалка,
@@ -273,18 +284,18 @@ npm ci → typecheck → test → test:coverage → format:check → build → l
   пороги-литералы, `retry`, `console.log`, `from '../app'` в `src/data`, `SessionState`,
   нативные диалоги. Новых зависимостей и Chromium в CI нет — `smoke:browser` остаётся локальным.
 
-Срез на **1.10.1** (ветка `feature/1.10`):
+Срез на **1.10.2** (ветка `feature/1.10`):
 
 | Проверка | Команда | Результат |
 |---|---|---|
 | Установка | `npm ci` | ✅ по lock |
 | Типы | `npm run typecheck` | ✅ **0 ошибок** |
-| Тесты | `npm test` | ✅ **303/303** в 33 сьютах |
-| Покрытие | `npm run test:coverage` | ✅ **97.57%** stmts / **89.19%** branches, пороги 80/60 |
-| Прод-сборка | `npm run build` | ✅ `dist/`: JS 248.80 КБ + `.map` 1.19 МБ, CSS 7.04 КБ, три mp3 |
+| Тесты | `npm test` | ✅ **316/316** в 35 сьютах |
+| Покрытие | `npm run test:coverage` | ✅ **97.63%** stmts / **89.25%** branches, пороги 80/60 |
+| Прод-сборка | `npm run build` | ✅ `dist/`: JS 249.12 КБ (249 122 B) + `.map` 1.19 МБ, CSS 7.04 КБ, три mp3 |
 | Линтер | `npm run lint` | ✅ **0 ошибок** |
 | Формат | `npm run format:check` | ✅ все файлы соответствуют стилю |
-| Бюджет строк | шаг CI / `wc -l` | ✅ `src` 200, `test` 199, `scripts` 247, `css` 64 |
+| Бюджет строк | шаг CI / `wc -l` | ✅ `src` 199, `test` 199, `scripts` 247, `css` 43 |
 | Smoke | `npm run smoke` | ✅ **10/10** HTTP-проверок |
 | Браузер | `npm run smoke:browser` | ✅ **11/11** (10 HTTP + сводная; внутри — 11 браузерных, включая вторую вкладку) |
 | Dev-сервер | `npm run dev` | ✅ `http://localhost:5173` |
@@ -340,7 +351,7 @@ css/                # 20 файлов
   map_items/        # Стили карты: экран, зоны, дорога, игрок, тренажёры, модалки, глобальная карта
   game_items/       # Шапка, вопрос, ответы, обратная связь
   result_items/     # Иконка и статистика результата
-test/               # 33 сьюта / 303 теста: core, data, app, services, components, hooks
+test/               # 35 сьютов / 316 тестов: core, data, app, services, components, hooks
   support/          # memory-repository.ts, stats-fixtures.ts, generator-fixtures.ts,
                     # app-drivers.ts, app-setup.tsx, session-channel.ts — двойники и драйверы
 ```
@@ -369,10 +380,10 @@ TypeScript используется везде, включая все шесть
 
 Требования и планы лежат в `.gigacode/`: `rulles/RULES.md` (конституция),
 `specs/SPEC.md` (поведение и требования), `plans/PLAN.md` (архитектура и шаги),
-`tasks/TASKS.md` (задачи). Актуальная версия — **1.10.1**:
-`spec_v1_10_1.md` (TR-81…TR-88) и `rules_v1_10_1.md` (A86–A91, T79–T85, Z44–Z48).
-Архивы предыдущих версий — `spec_v1_10_0.md`, `rules_v1_10_0.md`,
-`plans/PLAN_v1_10_0.md`, `tasks/TASKS_v1_10_0.md`, а также `*_v1_9_0.md`.
+`tasks/TASKS.md` (задачи). Актуальная версия — **1.10.2**:
+`spec_v1_10_2.md` (TR-89…TR-95) и `rules_v1_10_2.md` (A92–A96, T86–T91, Z49–Z51).
+Архивы предыдущих версий — `spec_v1_10_1.md`, `rules_v1_10_1.md`,
+`plans/PLAN_v1_10_1.md`, `tasks/TASKS_v1_10_1.md`, а также `*_v1_10_0.md` и `*_v1_9_0.md`.
 
 ## Лицензия
 
