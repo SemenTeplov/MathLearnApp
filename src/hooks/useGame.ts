@@ -1,5 +1,5 @@
 // ============================================
-// SRC/HOOKS/useGame.ts — игровой процесс (1.10.1)
+// SRC/HOOKS/useGame.ts — игровой процесс (1.10.2)
 // ============================================
 // Модель раунда и генератор живут в ref; наружу — снимок GameSessionView.
 // Порядок 1:1 с game-controller 1.8.0: ответ → правила → счёт/жизни →
@@ -173,11 +173,10 @@ export function useGame(services: Services, { onRoundFinished, onExitRequested }
         }));
     }, [services]);
 
-    // Подтверждение — кастомная модалка App: раунд не завершается (A88/T80).
+    // ✕ только сообщает о выходе: звук и подтверждение — в App (A93/T87).
     const exit = useCallback(() => {
-        services.audio.play('click');
         depsRef.current.onExitRequested(modelRef.current!.roundScore);
-    }, [services]);
+    }, []);
 
     return { session, question, feedback, selectedIndex, correctIndex, floatingScore, start, answer, next, exit };
 }

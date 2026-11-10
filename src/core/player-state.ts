@@ -1,5 +1,5 @@
 // ============================================
-// CORE/PLAYER-STATE.TS — состояние позиции игрока (1.8.2)
+// CORE/PLAYER-STATE.TS — состояние позиции игрока (1.10.2)
 // ============================================
 
 /**
@@ -47,5 +47,12 @@ export class PlayerState {
     commitWin(): number {
         this._previous = this._current;
         return this._current;
+    }
+
+    /** Синхронизация с хранилищем: текущая позиция и точка отката — один индекс (T86/A92). */
+    restore(index: number): number {
+        this._current = index;
+        this._previous = index;
+        return index;
     }
 }

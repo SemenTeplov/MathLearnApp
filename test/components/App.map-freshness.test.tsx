@@ -47,9 +47,10 @@ describe('App — актуальный счёт на карте', () => {
     });
 
     test('смена карты после победы читает счёт каждой карты заново', async () => {
-        const { user, container } = renderApp();
+        // Каталог расширяется до первого чтения статистики: кэш сервиса уже прогрет (A95).
         CONFIG.MAPS.push(ENGLISH);
         try {
+            const { user, container } = renderApp();
             await startGame(user, container);
             await playCorrectly(user, container);
             await user.click(screen.getByRole('button', { name: 'На карту' }));

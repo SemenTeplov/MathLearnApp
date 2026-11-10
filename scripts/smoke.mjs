@@ -99,7 +99,8 @@ async function main() {
             const url = new URL(ref.replace(/^\.\//, ''), BASE).href;
             const asset = await fetch(url, { cache: 'no-store' });
             const body = await asset.text();
-            check(`ассет ${ref}`, asset.ok && body.length > 0, `${asset.status}, ${body.length} B`);
+            const bytes = Buffer.byteLength(body, 'utf8');
+            check(`ассет ${ref}`, asset.ok && bytes > 0, `${asset.status}, ${bytes} B`);
         }
 
         const mp3 = existsSync(join(DIST, 'assets'))

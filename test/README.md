@@ -4,7 +4,7 @@
 
 ```bash
 npm ci               # установка по package-lock.json
-npm test             # vitest run: 33 сьюта, 303 теста
+npm test             # vitest run: 35 сьютов, 316 тестов
 npm run test:watch   # watch-режим
 npm run test:coverage# покрытие (v8) по группам + html-отчёт в coverage/
 npm run typecheck    # tsc --noEmit (src/ + test/, включая .tsx)
@@ -47,8 +47,8 @@ npm run smoke:browser# smoke + 11 браузерных проверок dist (he
 
 Сьюты, которые проверяют именно реальный прод-код: `test/core/session-model.test.ts`
 (15 тестов, `SessionModel`), `test/data/stats-service.test.ts` (26, `StatsService` через
-`MemoryRepository`), `test/components/App.test.tsx` (10, интеграция на реальных хуках
-и фейковом `Services`), `test/hooks/*` (32, `renderHook`).
+`MemoryRepository`), `test/components/App.test.tsx` (15, интеграция на реальных хуках
+и фейковом `Services`), `test/hooks/*` (41, `renderHook`).
 
 ## Контракт аудио-теста (1.8.4)
 
@@ -75,7 +75,7 @@ test/
 │   ├── app-drivers.ts             # шаги пользователя для App-сьютов (карта → раунд → ✕)
 │   ├── app-setup.tsx              # renderApp/makeAppServices для App-сьютов
 │   └── session-channel.ts         # управляемая заглушка BroadcastChannel (вторая вкладка)
-├── core/                          # 12 файлов / 140 тестов
+├── core/                          # 12 файлов / 141 тест
 │   ├── config.test.ts             # CONFIG: версия 3, каталог, зоны, константы (6)
 │   ├── errors.test.ts             # цепочка наследования и name (3)
 │   ├── error-handler.test.ts      # handleError, глобальные обработчики (8)
@@ -83,14 +83,15 @@ test/
 │   ├── generator.test.ts          # ProblemGenerator: диапазоны по таблице, 4 варианта (15)
 │   ├── scoring.test.ts            # calculateRoundScore, isRoundSuccessful (8)
 │   ├── player-rules.test.ts       # getAction, normalizeIndex (14)
-│   ├── player-state.test.ts       # moveTo, revert, commitWin (7)
+│   ├── player-state.test.ts       # moveTo, revert, commitWin, restore (8)
 │   ├── map-layout.test.ts         # шаг 100px, полосы, SVG-путь, точка (19)
 │   ├── map-catalog.test.ts        # get / getDefault / has (9)
 │   ├── session-model.test.ts      # счётчики, getResults, reset (15)
 │   └── stats-schema.test.ts       # defaults, миграции 1→2→3, onStep, console.info (20)
-├── data/                          # 5 файлов / 49 тестов
+├── data/                          # 6 файлов / 57 тестов
 │   ├── stats-service.test.ts      # счёт/позиция, switchMap, reset/skip/memory (26)
-│   ├── stats-service.migration.test.ts # write-back, лог ступени, дедупликация (7)
+│   ├── stats-service.migration.test.ts # write-back, лог, дедупликация, без репортёра (8)
+│   ├── stats-service.cache.test.ts # кэш экземпляра, StrictMode, режим памяти (7)
 │   ├── local-repository.test.ts   # round-trip, порча, квота, недоступность (8)
 │   ├── repository.test.ts         # контракт «Not implemented» (3)
 │   └── memory-repository.test.ts  # save/load/clear, сериализация (5)
@@ -98,10 +99,10 @@ test/
 │   └── error-bus.test.ts          # очередь до подписки, доставка, отписка (5)
 ├── services/
 │   └── audio-service.test.ts      # preload, play, ошибки (9)
-├── components/                    # 10 файлов / 60 тестов
-│   ├── App.test.tsx               # карта → игра → результаты, шина ошибок, выход (14)
+├── components/                    # 10 файлов / 63 теста
+│   ├── App.test.tsx               # карта → игра → результаты, шина ошибок, выход (15)
 │   ├── App.map-freshness.test.tsx # «Играть снова» → ✕ → «Выйти» и «На карту»: счёт 100 (3)
-│   ├── App.startup.test.tsx       # стартовая ошибка хранилища без ручного report (3)
+│   ├── App.startup.test.tsx       # стартовая ошибка хранилища и очередь сообщений (5)
 │   ├── ConfirmModal.test.tsx      # тексты, кнопки, оверлей (5)
 │   ├── GameScreen.test.tsx        # вопрос, 4 ответа, feedback, «+10» (10)
 │   ├── MapScreen.test.tsx         # 15 тренажёров, зоны, модалка, transitionend (9)
@@ -109,9 +110,10 @@ test/
 │   ├── MapSelectionModal.test.tsx # карты из props, selected, выбор (5)
 │   ├── Header.test.tsx            # счёт 🏆 и кнопка 🌍 (4)
 │   └── ErrorModal.test.tsx        # текст, «OK», оверлей (3)
-└── hooks/                         # 4 файла / 40 тестов
+└── hooks/                         # 5 файлов / 41 тест
     ├── useGame.test.tsx           # ответы, счёт, жизни, таймер, выход (10)
-    ├── useMap.test.tsx            # движение, модалка, откат, запись (12)
+    ├── useMap.test.tsx            # движение, модалка, откат, запись (11)
+    ├── useMap.save-failure.test.tsx # UI = хранилище при провале записи (2)
     ├── useResults.test.tsx        # оценка, «(не зачтено)», порядок записи (8)
     └── useSessionLock.test.tsx    # владелец/претендент, heartbeat, fallback (10)
 ```
@@ -144,24 +146,30 @@ test/
 - **Бюджет сьюта — 200 строк** (`wc -l`), проверяется локально и шагом CI. Превышение
   устраняется выносом фикстур/драйверов в `test/support/*.ts`, а не удалением сценариев
   и не дроблением сьюта. Новый сценарий, не влезающий в лимит, живёт отдельным сьютом —
-  это исключение A91, и оно фиксируется здесь: `App.map-freshness.test.tsx` (счёт на
-  путях возврата, TR-85), `App.startup.test.tsx` (стартовая ошибка хранилища, A86) и
-  `stats-service.migration.test.ts` (write-back миграции и лог, A89) — отдельные сценарии,
-  а не дробление основных сьютов; фикстуры для них уже в `test/support/`.
+  A91 читается как «основной сьют + **не более двух** дополнительных» (T90.1): четвёртый
+  сьют к модулю вводится только новым правилом. Действующие исключения фиксируются здесь:
+  для `App` — `App.map-freshness.test.tsx` (счёт на путях возврата, TR-85) и
+  `App.startup.test.tsx` (стартовая ошибка хранилища и очередь сообщений, A86/A94);
+  для `useMap` — `useMap.save-failure.test.tsx` (инвариант `UI === storage` при провале
+  записи, A92/T86); для `StatsService` — `stats-service.migration.test.ts` (write-back
+  миграции и лог, A89) и `stats-service.cache.test.ts` (кэш экземпляра, A95/T89).
+  Сценарии в них не дублируют основные сьюты: успешные пути раунда остаются в
+  `useMap.test.tsx`, счёт и позиция — в `stats-service.test.ts`; фикстуры — в
+  `test/support/`.
 
-## Покрытие (1.10.1)
+## Покрытие (1.10.2)
 
-`npm run test:coverage`, срез 1.10.1 — 33 сьюта, 303 теста:
+`npm run test:coverage`, срез 1.10.2 — 35 сьютов, 316 тестов:
 
 | Группа | Stmts | Branch | Funcs | Lines | Порог |
 |---|---|---|---|---|---|
-| `src/core/**` | 99.32 | 89.47 | 98.64 | 99.63 | 80 |
-| `src/data/**` | 98.01 | 94.28 | 96.96 | 98.91 | 80 |
+| `src/core/**` | 99.32 | 89.47 | 98.66 | 99.64 | 80 |
+| `src/data/**` | 98.21 | 94.59 | 96.96 | 99.01 | 80 |
 | `src/services/**` | 100 | 100 | 100 | 100 | 80 |
 | `src/components/**` | 93.93 | 86.27 | 100 | 98.3 | 60 |
-| `src/hooks/**` | 96.57 | 87.5 | 97.91 | 98.84 | 60 |
-| `src/App.tsx` | 96.42 | 94.44 | 100 | 96.29 | 60 |
-| **Итого** | **97.57** | **89.19** | **98.52** | **98.94** | — |
+| `src/hooks/**` | 96.59 | 87.5 | 97.91 | 98.85 | 60 |
+| `src/App.tsx` | 96.66 | 94.44 | 100 | 96.42 | 60 |
+| **Итого** | **97.63** | **89.25** | **98.53** | **98.96** | — |
 
 Baseline 1.8.3 (до этапа 18) — 46.3% statements / 41.39% branches, потому что в отчёт
 попадали только загруженные модули. После `coverage.include` итог считается по всем
@@ -191,6 +199,21 @@ Playwright **не установлен**, в `npm test` E2E не входит. H
 отдельным конфигом; в `npm test` он не входит.
 
 ## История
+
+### 1.10.2 — синхронизация позиции, один звук, очередь сообщений, кэш статистики
+
+`PlayerState.restore(index)` и синхронизация в `useMap.gameFinished` (A92/T86): при провале
+`saveTrainerIndex` позиция берётся из хранилища, инвариант `UI === storage` проверяется в
+новом сьюте `useMap.save-failure.test.tsx` (2 сценария — победа и проигрыш). Звук выхода
+перенесён в `App.handleExitRequested` (A93/T87): `useGame.exit()` только сообщает о выходе,
+два ✕ дают одну модалку и один `click` (`App.test.tsx` +1). Показ сообщений переведён на
+очередь (A94/T88): `App.startup.test.tsx` +2 — «два `report()` → два показа» и «стартовая
+ошибка хранилища + `busy`». `StatsService` кэширует статистику в экземпляре (A95/T89):
+новый сьют `stats-service.cache.test.ts` (7) — одно чтение на геттеры и первый рендер
+`StrictMode`, 0 чтений после записи, сброс кэша в режиме памяти, ошибка чтения не кэшируется.
+`stats-service.migration.test.ts` +1 (сервис без репортёра), `player-state.test.ts` +1
+(`restore`), `useMap.test.tsx` 12 → 11 (сценарий провала записи переехал в отдельный сьют).
+Итог — **35 сьютов / 316 тестов**, coverage — **97.63 / 89.25** (пороги 80/60 зелёные).
 
 ### 1.10.1 — стартовая ошибка, выход через `ConfirmModal`, write-back миграции
 

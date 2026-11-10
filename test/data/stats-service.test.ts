@@ -38,7 +38,7 @@ describe('StatsService.load', () => {
         expect(Object.keys(loaded).sort()).toEqual(['currentMap', 'maps', 'version']);
         expect(loaded.maps.math).toEqual({ totalScore: 5, currentTrainerIndex: 7 });
         repo.save({ version: 2, totalScore: 5 });
-        expect(stats.getTrainerIndex()).toBe(-1);
+        expect(new StatsService(repo).getTrainerIndex()).toBe(-1);
     });
     test('неизвестная карта в сохранении → math, данные химии не теряются', () => {
         repo.save({

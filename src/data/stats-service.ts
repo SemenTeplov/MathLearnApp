@@ -1,9 +1,9 @@
 // ============================================
-// DATA/STATS-SERVICE.TS — счёт и позиция по картам (1.10.1)
+// DATA/STATS-SERVICE.TS — счёт и позиция по картам (1.10.2)
 // ============================================
-// Ожидаемая ошибка хранилища не глотается: handleError() классифицирует её,
-// сервис применяет действие (reset/skip/memory) и публикует сообщение через
-// порт ErrorReporter (A79/A87). Миграция фиксируется write-back (A89).
+// Ошибка хранилища не глотается: handleError() классифицирует её, сервис применяет
+// действие (reset/skip/memory) и публикует сообщение через порт (A79). Статистика
+// читается один раз за экземпляр и живёт в кэше (A95), миграция фиксируется (A89).
 
 import { CONFIG } from '../core/config';
 import { handleError } from '../core/error-handler';
@@ -16,27 +16,18 @@ import { createMemoryFallback } from './memory-fallback';
 import type { FallbackFactory } from './memory-fallback';
 import type { Repository } from './repository';
 
-/** Глубокая копия: правки попадают в хранилище только после успешной записи (A12). */
 function clone(stats: Stats): Stats {
     return JSON.parse(JSON.stringify(stats)) as Stats;
 }
 
-/**
- * Сервис статистики игрока: счёт и позиция текущей карты.
- * Работает через Repository и StatsSchema, обрабатывает ошибки.
- */
 export class StatsService {
     _repo: Repository;
     _errors: ErrorReporter | null;
     _fallback: FallbackFactory;
     _reported: string | null = null;
     _logged: Set<string> = new Set();
+    _cache: Stats | null = null;
 
-    /**
-     * @param repo — основное хранилище
-     * @param errors — получатель игровых сообщений (без него сообщения не публикуются)
-     * @param fallback — фабрика резервного репозитория для режима «память»
-     */
     constructor(
         repo: Repository,
         errors: ErrorReporter | null = null,
@@ -47,11 +38,15 @@ export class StatsService {
         this._fallback = fallback;
     }
 
-    /** Загружает статистику: ошибка классифицируется, действие применяется (A79). */
+    /** Загружает статистику: кэш, иначе чтение; ошибка классифицируется (A79/A95). */
     load(): Stats {
+        if (this._cache) return this._cache;
         try {
-            return this._read();
+            const stats = this._read();
+            this._cache = stats;
+            return stats;
         } catch (e) {
+            this._cache = null;
             this._recover(handleError(e as Error, 'StatsService.load'));
             return this._readOrDefaults();
         }
@@ -61,6 +56,7 @@ export class StatsService {
     save(stats: Stats): boolean {
         try {
             this._repo.save(stats);
+            this._cache = clone(stats);
             this._reported = null;
             return true;
         } catch (e) {
@@ -147,6 +143,7 @@ export class StatsService {
             // Основное хранилище недоступно: режим памяти стартует с пустых данных.
         }
         this._repo = this._fallback(snapshot);
+        this._cache = null;
     }
 
     /** Одна ошибка — одно сообщение, пока не было успешной записи (A79). */
@@ -173,6 +170,7 @@ export class StatsService {
     _writeBack(stats: Stats): void {
         try {
             this._repo.save(stats);
+            this._cache = stats;
             this._reported = null;
         } catch (e) {
             this._recover(handleError(e as Error, 'StatsService.save'));
@@ -187,10 +185,12 @@ export class StatsService {
         console.info('[StatsSchema] миграция', from, '→', to);
     }
 
-    /** Чтение после применённого действия: сбой чтения уже не показывается повторно. */
+    /** Чтение после действия: успех кэшируется, повторный сбой — нет (T89/Z49). */
     _readOrDefaults(): Stats {
         try {
-            return this._read();
+            const stats = this._read();
+            this._cache = stats;
+            return stats;
         } catch {
             return StatsSchema.defaults();
         }
